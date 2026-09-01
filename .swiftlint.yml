@@ -1,0 +1,68 @@
+included:
+  - App
+  - Packages
+  - Tools
+
+excluded:
+  - .build
+  - DerivedData
+  - design
+
+opt_in_rules:
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - fatal_error_message
+  - empty_count
+  - first_where
+  - last_where
+  - contains_over_filter_count
+  - contains_over_first_not_nil
+  - reduce_into
+  - sorted_first_last
+  - redundant_nil_coalescing
+  - toggle_bool
+  - explicit_init
+  - closure_spacing
+  - collection_alignment
+  - modifier_order
+  - operator_usage_whitespace
+  - prefer_self_type_over_type_of_self
+  - yoda_condition
+
+disabled_rules:
+  - todo
+
+line_length:
+  warning: 110
+  error: 140
+  ignores_urls: true
+
+file_length:
+  warning: 500
+  error: 800
+  ignore_comment_only_lines: true
+
+type_body_length: { warning: 300, error: 450 }
+function_body_length: { warning: 50, error: 90 }
+cyclomatic_complexity: { warning: 10, error: 18 }
+
+identifier_name:
+  min_length: { warning: 2 }
+  excluded: [id, db, ok, up, io, x, y, dx, dy]
+
+custom_rules:
+  no_print:
+    name: "print вместо логгера"
+    regex: '(^|[^\w.])print\('
+    message: "Только Logger: через print секрет может утечь в системный лог"
+    severity: warning
+  unchecked_sendable:
+    name: "@unchecked Sendable"
+    regex: '@unchecked\s+Sendable'
+    message: "Каждый @unchecked Sendable — с комментарием, почему это безопасно"
+    severity: warning
+  no_sleep_in_wait:
+    name: "Task.sleep вместо ожидания события"
+    regex: 'Task\.sleep\('
+    message: "Готовность проверяем фактом, а не таймером — см. §5.1 плана"
+    severity: warning

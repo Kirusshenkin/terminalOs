@@ -57,14 +57,6 @@ public struct TerminalPane: View {
         return false
     }
 
-    private func colour(for kind: TerminalLine.Kind) -> Color {
-        switch kind {
-        case .prompt: style.bright
-        case .output: style.text.opacity(0.85)
-        case .warning: style.warning
-        case .error: style.danger
-        }
-    }
 }
 
 /// The pet's corner: a bounded scene the animals never leave.

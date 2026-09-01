@@ -13,7 +13,7 @@ public struct DockerView: View {
 
     private var strings: Strings { model.strings }
     private var containers: [Container] {
-        model.sessionState.containers.isEmpty ? model.containers : model.sessionState.containers
+        model.sessionState.containers.isEmpty ? Self.demoContainers : model.sessionState.containers
     }
 
     private var selected: Container? {
@@ -217,6 +217,21 @@ public struct DockerView: View {
         ("CONCURRENCY", "8"),
         ("DATABASE_PASSWORD", "hunter2"),
         ("API_KEY", "sk-live-4471"),
+    ]
+
+    /// Показывается, пока нет подключения, чтобы окно не было пустым.
+    /// Живые данные всегда важнее: как только сессия отвечает, витрина исчезает.
+    private static let demoContainers: [Container] = [
+        Container(
+            id: "3f9a2c7e11b0", name: "api-gateway", image: "api:2.14", state: .running,
+            status: "Up 6 days", ports: "127.0.0.1:8080->8080", project: "prod",
+            health: "healthy"),
+        Container(
+            id: "77aa31ff90de", name: "worker-billing", image: "wrk:2.1", state: .running,
+            status: "Up 2 hours (unhealthy)", project: "prod", health: "unhealthy"),
+        Container(
+            id: "1c0de55ab332", name: "migrator", image: "api:2.14", state: .exited,
+            status: "Exited (0) 6 days ago", project: "prod"),
     ]
 
     private static let demoLogs: [(String, Int)] = [

@@ -73,8 +73,11 @@ let package = Package(
         // SwiftUI views.
         .target(
             name: "PhosphorUI",
-            dependencies: ["PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit",
-                           "DockerKit", "MetricsKit", "KeysKit", "ThemeKit", "ProvisionKit", "SessionKit", "TerminalCore"],
+            dependencies: [
+                "PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit", "DockerKit",
+                "MetricsKit", "KeysKit", "ThemeKit", "ProvisionKit", "SessionKit",
+                "TerminalCore", "MCPBridge",
+            ],
             swiftSettings: strict
         ),
 

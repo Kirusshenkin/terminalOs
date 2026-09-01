@@ -54,7 +54,7 @@ public extension EnvironmentValues {
 ///
 /// Scanlines and vignette are static gradients, not animations — they cost one
 /// composite and nothing per frame.
-public struct Screen<Content: View>: View {
+public struct CRTFrame<Content: View>: View {
     @Environment(\.style) private var style
     private let content: Content
 

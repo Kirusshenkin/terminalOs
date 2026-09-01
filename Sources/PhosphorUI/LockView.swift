@@ -43,7 +43,7 @@ public struct LockView: View {
     }
 
     public var body: some View {
-        Screen {
+        CRTFrame {
             ZStack {
                 revealed
                     .scaleEffect(x: 1, y: sweep, anchor: .center)

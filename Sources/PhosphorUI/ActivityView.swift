@@ -1,0 +1,131 @@
+public import HostsKit
+public import MCPBridge
+public import SwiftUI
+
+/// Что делал ИИ и что ему разрешено.
+///
+/// Экран существует не для красоты: MCP-сервер над терминалом означает, что у
+/// модели есть shell на боевых серверах, и единственный честный ответ на это —
+/// показывать каждое её действие и держать переключатели на виду.
+public struct ActivityView: View {
+    @Environment(\.style) private var style
+    @Bindable var model: AppModel
+
+    public init(model: AppModel) { self.model = model }
+
+    public var body: some View {
+        HStack(alignment: .top, spacing: 22) {
+            access
+            Rectangle().fill(style.rule).frame(width: 1)
+            journal
+        }
+        .task { await model.loadAudit() }
+    }
+
+    private var access: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label2("доступ по хостам")
+            Text("новый хост выключен: забыть настроить не значит открыть")
+                .font(style.font(11)).foregroundStyle(style.muted)
+
+            ForEach(model.book.hosts) { host in
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(host.name).font(style.font(12.5)).foregroundStyle(style.bright)
+                        Spacer()
+                    }
+                    HStack(spacing: 4) {
+                        ForEach(MCPMode.allCases, id: \.self) { mode in
+                            Button {
+                                Task { await model.setMCPMode(mode, for: host) }
+                            } label: {
+                                Text(mode.title)
+                                    .font(style.font(10))
+                                    .padding(.horizontal, 7).padding(.vertical, 2)
+                                    .foregroundStyle(
+                                        model.mcpModes[host.id] == mode ? style.background : style.muted
+                                    )
+                                    .background(
+                                        model.mcpModes[host.id] == mode ? tint(mode) : .clear
+                                    )
+                                    .overlay(
+                                        Rectangle().stroke(
+                                            model.mcpModes[host.id] == mode
+                                                ? tint(mode)
+                                                : style.text.opacity(0.25),
+                                            lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            Spacer(minLength: 0)
+
+            Text("запрещённые команды отклоняются в любом режиме, включая полный")
+                .font(style.font(11))
+                .foregroundStyle(style.warning)
+                .padding(.horizontal, 12).padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(style.surface)
+                .overlay(Rectangle().stroke(style.warning.opacity(0.4), lineWidth: 1))
+        }
+        .frame(width: 340, alignment: .leading)
+    }
+
+    /// Чем опаснее режим, тем заметнее цвет.
+    private func tint(_ mode: MCPMode) -> Color {
+        switch mode {
+        case .disabled: style.muted
+        case .readOnly: style.accent
+        case .confirm: style.warning
+        case .full: style.danger
+        }
+    }
+
+    private var journal: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label2("журнал действий")
+                Spacer()
+                Text("только дозапись · инструмента для правки не существует")
+                    .font(style.font(10.5)).foregroundStyle(style.muted)
+            }
+            if model.auditEntries.isEmpty {
+                Text("пока ничего не происходило")
+                    .font(style.font(12)).foregroundStyle(style.muted)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(model.auditEntries.reversed()) { entry in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 8) {
+                                Text(entry.succeeded ? "✓" : "✗")
+                                    .foregroundStyle(entry.succeeded ? style.accent : style.warning)
+                                Text(entry.tool).foregroundStyle(style.bright)
+                                Text(entry.hostName).foregroundStyle(style.muted)
+                                Spacer()
+                                Text(entry.time.formatted(date: .omitted, time: .standard))
+                                    .foregroundStyle(style.muted)
+                            }
+                            .font(style.font(12))
+                            if !entry.arguments.isEmpty {
+                                Text(entry.arguments)
+                                    .font(style.font(11)).foregroundStyle(style.text.opacity(0.7))
+                            }
+                            Text("\(entry.decision) · \(entry.summary)")
+                                .font(style.font(11)).foregroundStyle(style.muted)
+                        }
+                        .padding(.bottom, 4)
+                        .overlay(alignment: .bottom) {
+                            Rectangle().fill(style.rule.opacity(0.5)).frame(height: 1)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}

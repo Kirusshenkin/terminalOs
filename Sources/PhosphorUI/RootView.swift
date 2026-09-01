@@ -58,7 +58,7 @@ public struct RootView: View {
     }
 
     private var main: some View {
-        Screen {
+        CRTFrame {
             VStack(alignment: .leading, spacing: 0) {
                 header
                 Rule().padding(.top, 6).padding(.bottom, 14)
@@ -94,7 +94,7 @@ public struct RootView: View {
         }
     }
 
-    private var tabs: [(String, Screen2)] {
+    private var tabs: [(String, Section)] {
         [
             ("nav.hosts", .hosts), ("tab.terminal", .terminal),
             ("tab.docker", .docker), ("tab.monitor", .monitor),
@@ -117,6 +117,7 @@ public struct RootView: View {
         case .monitor: MonitorView(model: model)
         case .keys: KeysView(model: model)
         case .provision: ProvisionView(model: model)
+        case .activity: ActivityView(model: model)
         case .theme: ThemeView(model: model)
         }
         Spacer(minLength: 0)

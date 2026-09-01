@@ -1,0 +1,195 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .glow { text-shadow: 0 0 6px rgba(91,232,127,.45); }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.72) 100%); }
+    .fp { cursor: pointer; animation: pulse 2.1s ease-in-out infinite; }
+    .fp:hover { opacity: 1 !important; }
+    @keyframes pulse { 0%,100% { opacity: .58 } 50% { opacity: 1 } }
+    @keyframes caret { 0%,49% { opacity: 1 } 50%,100% { opacity: 0 } }
+    .caret { animation: caret .6s steps(1) infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .fp, .caret { animation: none; opacity: 1 }
+    }
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #05080A; padding: 22px; box-sizing: border-box;">
+  <div style="width: 100%; height: 100%; background: #071008; border-radius: 26px; position: relative; overflow: hidden; box-shadow: inset 0 0 90px rgba(0,0,0,.9), inset 0 0 20px rgba(91,232,127,.06);">
+
+    <div class="glow" style="position: absolute; inset: 0; padding: 30px 34px; box-sizing: border-box; color: #5BE87F; font-size: 13px; display: flex; flex-direction: column;">
+
+      <!-- шапка -->
+      <div style="display: flex; align-items: baseline; gap: 26px;">
+        <span style="letter-spacing: .2em; color: #3E9E5A;">HELM 0.1</span>
+        <span style="color: #2E7A45;">darwin arm64</span>
+        <div style="flex-grow: 1;"></div>
+        <span style="letter-spacing: .14em; color: {{stateFg}};">{{stateLabel}}</span>
+      </div>
+      <div style="height: 1px; background: rgba(91,232,127,.24); margin: 6px 0 0;"></div>
+
+      <!-- центр -->
+      <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+        <div style="width: 620px;">
+
+          <!-- журнал загрузки -->
+          <div style="line-height: 1.85; margin-bottom: 34px;">
+            <sc-for list="{{boot}}" as="b" hint-placeholder-count="6">
+              <div style="display: flex; color: {{b.fg}};">
+                <span style="flex-grow: 1; white-space: pre;">{{b.t}}</span>
+                <span>{{b.r}}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- замок -->
+          <div style="display: flex; align-items: center; gap: 32px;">
+            <div class="fp" onClick="{{ toggle }}" style="flex-shrink: 0;">
+              <sc-if value="{{locked}}" hint-placeholder-val="{{ true }}">
+                <svg width="86" height="86" viewBox="0 0 86 86" fill="none" stroke="#5BE87F" stroke-width="1.6" stroke-linecap="round">
+                  <path d="M43 74 C33 66 29 56 29 44 C29 36 35 30 43 30 C51 30 57 36 57 44 C57 50 56 54 54 58"/>
+                  <path d="M43 66 C37 60 35 53 35 44 C35 39.5 38.5 36 43 36 C47.5 36 51 39.5 51 44 C51 52 50 57 48 62"/>
+                  <path d="M43 58 C41 54 41 49 41 44 C41 42.8 41.9 42 43 42 C44.1 42 45 42.8 45 44 C45 50 44.5 55 43.5 59"/>
+                  <path d="M23 44 C23 32.5 31.9 24 43 24 C54.1 24 63 32.5 63 44 C63 48 62.6 51.5 61.8 55"/>
+                  <path d="M17 46 C16.6 31 27.8 18 43 18 C58.2 18 69.4 31 69 46"/>
+                  <path d="M11 42 C13 25 26 12 43 12 C60 12 73 25 75 42" stroke="rgba(91,232,127,.4)"/>
+                </svg>
+              </sc-if>
+              <sc-if value="{{unlocked}}" hint-placeholder-val="{{ false }}">
+                <svg width="86" height="86" viewBox="0 0 86 86" fill="none" stroke="#9DF7B4" stroke-width="1.8" stroke-linecap="round">
+                  <rect x="24" y="40" width="38" height="30" rx="3"/>
+                  <path d="M33 40 V30 C33 23.4 38.4 18 45 18 C51.6 18 57 23.4 57 30"/>
+                  <path d="M36 55 L41 60 L51 50"/>
+                </svg>
+              </sc-if>
+            </div>
+
+            <div>
+              <div style="font-size: 19px; color: #9DF7B4; letter-spacing: .04em;">{{promptTitle}}</div>
+              <div style="color: #3E9E5A; margin-top: 9px; line-height: 1.7; white-space: pre-line;">{{promptSub}}</div>
+              <div style="color: #2E7A45; margin-top: 14px; font-size: 12px;">{{promptHint}}</div>
+            </div>
+          </div>
+
+          <!-- что за замком -->
+          <div style="margin-top: 40px; border-top: 1px solid rgba(91,232,127,.18); padding-top: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px;">
+            <sc-for list="{{vault}}" as="v" hint-placeholder-count="4">
+              <div>
+                <div style="font-size: 21px; color: {{v.fg}};">{{v.n}}</div>
+                <div style="font-size: 11.5px; color: #2E7A45; letter-spacing: .1em; margin-top: 4px;">{{v.label}}</div>
+              </div>
+            </sc-for>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- подвал -->
+      <div style="height: 1px; background: rgba(91,232,127,.24); margin-bottom: 8px;"></div>
+      <div style="display: flex; gap: 24px; color: #2E7A45; letter-spacing: .1em; font-size: 12px;">
+        <span>{{footLeft}}</span>
+        <div style="flex-grow: 1;"></div>
+        <span>{{footRight}}</span>
+      </div>
+    </div>
+
+    <!-- котёнок: спит под замком, просыпается после входа -->
+    <div style="position: absolute; left: 40px; bottom: 44px; width: 230px; height: 120px; pointer-events: none; opacity: {{catOpacity}};">
+      <svg width="230" height="120" viewBox="0 0 230 120" fill="none">
+        <rect x="18" y="52" width="46" height="30" rx="2" stroke="#2E7A45" stroke-width="1.5"/>
+        <path d="M18 60 L64 60" stroke="#2E7A45" stroke-width="1.5"/>
+        <circle cx="166" cy="74" r="6" stroke="#2E7A45" stroke-width="1.5"/>
+        <g transform="translate(96 30)">
+          <path d="M14 44 C10 44 6 40 6 33 L6 20 C6 12 12 6 20 6 C28 6 34 12 34 20 L34 33 C34 40 30 44 26 44 Z" fill="#123D22"/>
+          <path d="M8 12 L6 2 L15 8 Z" fill="#123D22"/>
+          <path d="M32 12 L34 2 L25 8 Z" fill="#123D22"/>
+          <sc-if value="{{locked}}" hint-placeholder-val="{{ true }}">
+            <path d="M12 20 L18 20" stroke="#5BE87F" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M22 20 L28 20" stroke="#5BE87F" stroke-width="1.6" stroke-linecap="round"/>
+          </sc-if>
+          <sc-if value="{{unlocked}}" hint-placeholder-val="{{ false }}">
+            <circle cx="15" cy="20" r="1.8" fill="#5BE87F"/>
+            <circle cx="25" cy="20" r="1.8" fill="#5BE87F"/>
+          </sc-if>
+          <path d="M34 40 C44 40 48 32 46 24" stroke="#123D22" stroke-width="4" stroke-linecap="round"/>
+        </g>
+        <path d="M8 82 L196 82" stroke="rgba(91,232,127,.16)" stroke-width="1"/>
+        <text x="150" y="34" fill="#2E7A45" font-family="IBM Plex Mono, monospace" font-size="12">{{catNote}}</text>
+      </svg>
+    </div>
+
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const open = this.state.open ?? false;
+    const dots = (s, n) => s + ' ' + '.'.repeat(Math.max(2, n - s.length));
+    const okLine = (s) => ({ t: dots(s, 46), r: 'ок', fg: '#3E9E5A' });
+    return {
+      locked: !open,
+      unlocked: open,
+      toggle: () => this.setState({ open: !open }),
+
+      stateLabel: open ? 'ОТКРЫТО' : 'ЗАБЛОКИРОВАНО',
+      stateFg: open ? '#9DF7B4' : '#C9A227',
+
+      boot: open
+        ? [
+            okLine('ядро терминала'),
+            okLine('туннель v2box 127.0.0.1:10808'),
+            okLine('профиль расшифрован'),
+            { t: dots('хосты', 46), r: '3', fg: '#3E9E5A' },
+            { t: dots('ключи в secure enclave', 46), r: '2', fg: '#3E9E5A' },
+            { t: dots('открываю prod-01', 46), r: '…', fg: '#9DF7B4' },
+          ]
+        : [
+            okLine('ядро терминала'),
+            okLine('эмулятор vt100'),
+            okLine('туннель v2box 127.0.0.1:10808'),
+            { t: dots('связка ключей', 46), r: 'ждёт', fg: '#3E9E5A' },
+            { t: dots('профиль', 46), r: 'заблокирован', fg: '#C9A227' },
+            { t: '', r: '', fg: '#3E9E5A' },
+          ],
+
+      promptTitle: open ? 'доступ открыт' : 'приложи палец',
+      promptSub: open
+        ? 'ключи расшифрованы на 15 минут.\nповторный запрос — при опасных действиях.'
+        : 'ни логина, ни пароля. учётной записи у Helm нет —\nесть профиль на этой машине, и открывает его отпечаток.',
+      promptHint: open
+        ? 'esc — заблокировать снова'
+        : 'нет Touch ID? apple watch · пароль учётной записи',
+
+      vault: [
+        { n: '3', label: 'ХОСТА', fg: open ? '#9DF7B4' : '#2E7A45' },
+        { n: '2', label: 'КЛЮЧА', fg: open ? '#9DF7B4' : '#2E7A45' },
+        { n: '15', label: 'КОНТЕЙНЕРОВ', fg: open ? '#9DF7B4' : '#2E7A45' },
+        { n: '41д', label: 'ПОСЛЕДНИЙ ВХОД', fg: open ? '#9DF7B4' : '#2E7A45' },
+      ],
+
+      catOpacity: open ? '.6' : '.32',
+      catNote: open ? 'потягивается' : 'спит',
+
+      footLeft: open ? 'СЕССИЯ ОТКРЫТА 11:41' : 'ОЖИДАНИЕ БИОМЕТРИИ',
+      footRight: 'СЕКРЕТЫ НЕ ПОКИДАЮТ SECURE ENCLAVE',
+    };
+  }
+}
+</script>
+</body>
+</html>

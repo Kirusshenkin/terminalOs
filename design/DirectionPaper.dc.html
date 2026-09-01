@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+  <style>
+    body { margin: 0; font-family: "Newsreader", Georgia, serif; }
+    a { color: #B3402F; } a:hover { color: #8C2F22; }
+    .row:hover { background: #EDE6D8; }
+    .tabx:hover { color: #1A1712; }
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #F4EFE4; color: #1A1712; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+
+  <div style="display: flex; align-items: baseline; gap: 12px; padding: 26px 44px 0;">
+    <div style="font-size: 27px; letter-spacing: -.01em;">Helm</div>
+    <div style="font-size: 13px; color: #857A68; font-style: italic;">prod-01 · root@10.2.14.8</div>
+    <div style="flex-grow: 1;"></div>
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .14em; color: #857A68;">V2BOX · TOUCH ID</div>
+  </div>
+
+  <div style="display: flex; align-items: baseline; gap: 26px; padding: 16px 44px 10px;">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+      <div class="tabx" onClick="{{ t.pick }}" style="font-size: 16px; cursor: pointer; color: {{t.fg}}; border-bottom: 2px solid {{t.bar}}; padding-bottom: 3px;">{{t.name}}</div>
+    </sc-for>
+  </div>
+  <div style="height: 2px; background: #1A1712; margin: 0 44px;"></div>
+  <div style="height: 1px; background: #1A1712; margin: 2px 44px 0;"></div>
+
+  <div style="display: flex; flex-grow: 1; min-height: 0; padding: 22px 44px 0; gap: 34px;">
+
+    <div style="width: 186px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .18em; color: #857A68; padding-bottom: 7px; border-bottom: 1px solid #D6CDBB;">ХОСТЫ</div>
+        <sc-for list="{{hosts}}" as="h" hint-placeholder-count="3">
+          <div class="row" style="display: flex; align-items: baseline; gap: 8px; padding: 5px 0; cursor: pointer; font-size: 15px; color: {{h.fg}};">
+            <span style="color: {{h.dot}}; font-size: 10px;">●</span><span>{{h.name}}</span>
+            <div style="flex-grow: 1;"></div>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A69B87;">{{h.n}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .18em; color: #857A68; padding-bottom: 7px; border-bottom: 1px solid #D6CDBB;">КОНТЕЙНЕРЫ</div>
+        <sc-for list="{{containers}}" as="c" hint-placeholder-count="6">
+          <div class="row" style="display: flex; align-items: baseline; gap: 8px; padding: 4px 0; cursor: pointer; font-size: 14px; color: #4A4238;">
+            <span style="color: {{c.dot}}; font-size: 10px;">●</span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{c.name}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; min-width: 0; border-left: 1px solid #D6CDBB; padding-left: 32px;">
+      <sc-if value="{{isTerm}}" hint-placeholder-val="{{ true }}">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.78;">
+          <sc-for list="{{lines}}" as="l" hint-placeholder-count="10">
+            <div style="color: {{l.fg}}; white-space: pre;">{{l.t}}</div>
+          </sc-for>
+          <div>root@prod-01:~# <span style="display: inline-block; width: 8px; height: 14px; background: #1A1712; vertical-align: -2px;"></span></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isDocker}}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="display: grid; grid-template-columns: 2fr 1.3fr .7fr .8fr 1fr; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .16em; color: #857A68; padding-bottom: 8px; border-bottom: 1px solid #1A1712;">
+            <div>ИМЯ</div><div>ОБРАЗ</div><div>CPU</div><div>ПАМЯТЬ</div><div>СОСТОЯНИЕ</div>
+          </div>
+          <sc-for list="{{containers}}" as="c" hint-placeholder-count="6">
+            <div class="row" style="display: grid; grid-template-columns: 2fr 1.3fr .7fr .8fr 1fr; padding: 11px 0; border-bottom: 1px solid #E2DACB; align-items: baseline;">
+              <div style="font-size: 17px;">{{c.name}}</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #857A68;">{{c.img}}</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;">{{c.cpu}}</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;">{{c.mem}}</div>
+              <div style="font-size: 13px; font-style: italic; color: {{c.dot}};">{{c.state}}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isMon}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 26px;">
+          <div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .18em; color: #857A68; margin-bottom: 12px;">ЯДРА · 8</div>
+            <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px;">
+              <sc-for list="{{cores}}" as="k" hint-placeholder-count="8">
+                <div>
+                  <div style="height: 76px; border: 1px solid #D6CDBB; position: relative; overflow: hidden;">
+                    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: {{k.h}}; background: {{k.c}};"></div>
+                  </div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #857A68; margin-top: 5px;">{{k.pct}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px;">
+            <sc-for list="{{gauges}}" as="g" hint-placeholder-count="3">
+              <div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .18em; color: #857A68;">{{g.label}}</div>
+                <div style="font-size: 30px; margin: 6px 0 10px; line-height: 1;">{{g.val}}</div>
+                <div style="height: 6px; border: 1px solid #1A1712;"><div style="height: 4px; width: {{g.w}}; background: {{g.c}};"></div></div>
+                <div style="font-size: 13px; color: #857A68; font-style: italic; margin-top: 8px;">{{g.sub}}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 30px; bottom: 34px; width: 250px; height: 140px; pointer-events: none;">
+    <svg width="250" height="140" viewBox="0 0 250 140" fill="none">
+      <rect x="26" y="66" width="46" height="30" rx="1" stroke="#C7BCA6" stroke-width="1.5"/>
+      <path d="M26 74 L72 74" stroke="#C7BCA6" stroke-width="1.5"/>
+      <circle cx="176" cy="88" r="6" stroke="#C7BCA6" stroke-width="1.5"/>
+      <g transform="translate(104 44)">
+        <path d="M14 44 C10 44 6 40 6 33 L6 20 C6 12 12 6 20 6 C28 6 34 12 34 20 L34 33 C34 40 30 44 26 44 Z" fill="#D9CFBB"/>
+        <path d="M8 12 L6 2 L15 8 Z" fill="#D9CFBB"/>
+        <path d="M32 12 L34 2 L25 8 Z" fill="#D9CFBB"/>
+        <circle cx="15" cy="20" r="1.8" fill="#B3402F"/>
+        <circle cx="25" cy="20" r="1.8" fill="#B3402F"/>
+        <path d="M34 40 C44 40 48 32 46 24" stroke="#D9CFBB" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <path d="M14 96 L206 96" stroke="#E2DACB" stroke-width="1"/>
+    </svg>
+  </div>
+
+  <div style="height: 42px; display: flex; align-items: center; gap: 22px; padding: 0 44px; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: .12em; color: #857A68; flex-shrink: 0;">
+    <span>BASH 80×24</span><span>UPTIME 41Д</span><span>LOAD 0.42</span>
+    <div style="flex-grow: 1;"></div><span>КОТЯТА СПЯТ</span>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const tab = this.state.tab ?? 'term';
+    const names = [['term','Терминал'],['docker','Docker'],['mon','Мониторинг']];
+    return {
+      tabs: names.map(([id, name]) => ({
+        id, name,
+        fg: tab === id ? '#1A1712' : '#857A68',
+        bar: tab === id ? '#B3402F' : 'transparent',
+        pick: () => this.setState({ tab: id }),
+      })),
+      isTerm: tab === 'term', isDocker: tab === 'docker', isMon: tab === 'mon',
+      hosts: [
+        { name: 'prod-01', n: '9', dot: '#4F7A46', fg: '#1A1712' },
+        { name: 'stage-01', n: '4', dot: '#857A68', fg: '#4A4238' },
+        { name: 'build', n: '2', dot: '#C7BCA6', fg: '#4A4238' },
+      ],
+      containers: [
+        { name: 'api-gateway', img: 'api:2.14', cpu: '12%', mem: '412M', state: 'работает', dot: '#4F7A46' },
+        { name: 'postgres-main', img: 'pg:16', cpu: '4%', mem: '1.2G', state: 'работает', dot: '#4F7A46' },
+        { name: 'redis-cache', img: 'redis:7', cpu: '1%', mem: '88M', state: 'работает', dot: '#4F7A46' },
+        { name: 'worker-billing', img: 'wrk:2.1', cpu: '31%', mem: '640M', state: 'работает', dot: '#4F7A46' },
+        { name: 'nginx-edge', img: 'nginx:1.27', cpu: '2%', mem: '52M', state: 'работает', dot: '#4F7A46' },
+        { name: 'migrator', img: 'api:2.14', cpu: '0%', mem: '—', state: 'остановлен', dot: '#B3402F' },
+      ],
+      lines: [
+        { t: 'root@prod-01:~# docker compose ps', fg: '#1A1712' },
+        { t: 'NAME              IMAGE        STATUS', fg: '#857A68' },
+        { t: 'api-gateway       api:2.14     Up 6 days', fg: '#4A4238' },
+        { t: 'postgres-main     pg:16        Up 41 days', fg: '#4A4238' },
+        { t: 'worker-billing    wrk:2.1      Up 2 hours', fg: '#4A4238' },
+        { t: 'migrator          api:2.14     Exited (0) 6 days ago', fg: '#B3402F' },
+        { t: '', fg: '#4A4238' },
+        { t: 'root@prod-01:~# journalctl -u api | tail -2', fg: '#1A1712' },
+        { t: 'окт 02 11:41:09 api[912]  POST /v2/pay 201 62ms', fg: '#857A68' },
+        { t: 'окт 02 11:41:12 api[912]  WARN retry upstream billing', fg: '#B3402F' },
+      ],
+      cores: [62,18,44,9,77,23,31,12].map((p) => ({
+        pct: p + '%', h: p + '%', c: p > 70 ? '#B3402F' : '#C2B49A',
+      })),
+      gauges: [
+        { label: 'ПАМЯТЬ', val: '11.4 / 32', w: '36%', c: '#1A1712', sub: 'swap не используется' },
+        { label: 'ДИСК /', val: '188 / 220', w: '85%', c: '#B3402F', sub: 'осталось 32 ГБ' },
+        { label: 'СЕТЬ', val: '4.2 МБ/с', w: '22%', c: '#1A1712', sub: 'вх 3.1 · исх 1.1' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+.DS_Store
+build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+
+# собранный канвас — генерируется из design/*.dc.html
+design/helm-terminal-sketches.html

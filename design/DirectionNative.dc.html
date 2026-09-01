@@ -1,0 +1,205 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+    a { color: #0A84FF; } a:hover { color: #409CFF; }
+    .row:hover { background: rgba(255,255,255,.05); }
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: linear-gradient(140deg, #22252B, #1A1C21 60%); position: relative; color: #F2F2F7; display: flex; flex-direction: column; overflow: hidden; font-size: 13px; border-radius: 10px;">
+
+  <div style="display: flex; align-items: center; gap: 14px; height: 52px; padding: 0 16px; flex-shrink: 0;">
+    <div style="display: flex; gap: 8px;">
+      <div style="width: 12px; height: 12px; border-radius: 50%; background: #FF5F57;"></div>
+      <div style="width: 12px; height: 12px; border-radius: 50%; background: #FEBC2E;"></div>
+      <div style="width: 12px; height: 12px; border-radius: 50%; background: #28C840;"></div>
+    </div>
+    <div style="width: 172px;"></div>
+    <div style="display: flex; align-items: center; gap: 2px; background: rgba(255,255,255,.07); border-radius: 7px; padding: 2px;">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+        <div onClick="{{ t.pick }}" style="padding: 5px 15px; font-size: 12.5px; cursor: pointer; border-radius: 5px; color: {{t.fg}}; background: {{t.bg}};">{{t.name}}</div>
+      </sc-for>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 8px; color: #98989D; font-size: 12px;">
+      <span style="display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,.07); padding: 4px 10px; border-radius: 6px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0A84FF" stroke-width="2.2"><path d="M12 2 4 6v6c0 5 3.4 9 8 10 4.6-1 8-5 8-10V6z"/></svg>
+        v2box
+      </span>
+      <span style="display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,.07); padding: 4px 10px; border-radius: 6px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#98989D" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        Touch ID
+      </span>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-grow: 1; min-height: 0; padding: 0 10px 10px; gap: 10px;">
+
+    <div style="width: 232px; background: rgba(255,255,255,.045); border-radius: 9px; display: flex; flex-direction: column; flex-shrink: 0; padding: 8px 8px 12px;">
+      <div style="padding: 6px 8px 6px; font-size: 11px; color: #8E8E93; font-weight: 590;">Хосты</div>
+      <sc-for list="{{hosts}}" as="h" hint-placeholder-count="3">
+        <div class="row" style="padding: 6px 9px; display: flex; align-items: center; gap: 9px; color: {{h.fg}}; cursor: pointer; border-radius: 6px; background: {{h.bg}};">
+          <div style="width: 7px; height: 7px; border-radius: 50%; background: {{h.dot}};"></div>
+          <span style="font-size: 13px;">{{h.name}}</span>
+          <div style="flex-grow: 1;"></div>
+          <span style="color: #6E6E73; font-size: 12px;">{{h.n}}</span>
+        </div>
+      </sc-for>
+      <div style="padding: 16px 8px 6px; font-size: 11px; color: #8E8E93; font-weight: 590;">Контейнеры</div>
+      <sc-for list="{{containers}}" as="c" hint-placeholder-count="6">
+        <div class="row" style="padding: 5px 9px; display: flex; align-items: center; gap: 9px; cursor: pointer; border-radius: 6px;">
+          <div style="width: 7px; height: 7px; border-radius: 50%; background: {{c.dot}}; flex-shrink: 0;"></div>
+          <span style="color: #D1D1D6; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{c.name}}</span>
+          <div style="flex-grow: 1;"></div>
+          <span style="color: #6E6E73; font-size: 11px;">{{c.cpu}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex-grow: 1; position: relative; min-width: 0; background: rgba(0,0,0,.28); border-radius: 9px; overflow: hidden; display: flex; flex-direction: column;">
+
+      <sc-if value="{{isTerm}}" hint-placeholder-val="{{ true }}">
+        <div style="flex-grow: 1; padding: 18px 20px; line-height: 1.65; font-size: 12.5px; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; overflow: hidden;">
+          <sc-for list="{{lines}}" as="l" hint-placeholder-count="12">
+            <div style="color: {{l.fg}}; white-space: pre;">{{l.t}}</div>
+          </sc-for>
+          <div style="display: flex; align-items: center; color: #64D2FF;">
+            <span>root@prod-01</span><span style="color: #8E8E93;">:</span><span style="color: #0A84FF;">~</span><span style="color: #8E8E93;"># </span>
+            <span style="display: inline-block; width: 8px; height: 15px; background: #0A84FF; margin-left: 2px; border-radius: 1px;"></span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isDocker}}" hint-placeholder-val="{{ false }}">
+        <div style="flex-grow: 1; padding: 16px 20px; overflow: hidden;">
+          <div style="display: grid; grid-template-columns: 2fr 1.4fr .8fr .8fr .9fr; gap: 0; font-size: 11px; color: #8E8E93; font-weight: 590; padding-bottom: 9px;">
+            <div>Имя</div><div>Образ</div><div>CPU</div><div>Память</div><div>Состояние</div>
+          </div>
+          <sc-for list="{{containers}}" as="c" hint-placeholder-count="6">
+            <div class="row" style="display: grid; grid-template-columns: 2fr 1.4fr .8fr .8fr .9fr; gap: 0; padding: 10px 8px; margin: 0 -8px; border-radius: 6px; font-size: 13px; align-items: center;">
+              <div style="color: #F2F2F7;">{{c.name}}</div>
+              <div style="color: #98989D; font-family: 'IBM Plex Mono', monospace; font-size: 12px;">{{c.img}}</div>
+              <div style="color: #D1D1D6;">{{c.cpu}}</div>
+              <div style="color: #D1D1D6;">{{c.mem}}</div>
+              <div><span style="background: {{c.chipBg}}; color: {{c.dot}}; padding: 2px 9px; font-size: 11.5px; border-radius: 20px;">{{c.state}}</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isMon}}" hint-placeholder-val="{{ false }}">
+        <div style="flex-grow: 1; padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow: hidden;">
+          <div>
+            <div style="font-size: 11px; color: #8E8E93; font-weight: 590; margin-bottom: 11px;">Ядра · 8</div>
+            <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px;">
+              <sc-for list="{{cores}}" as="k" hint-placeholder-count="8">
+                <div style="height: 64px; background: rgba(255,255,255,.06); border-radius: 7px; position: relative; overflow: hidden;">
+                  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: {{k.h}}; background: {{k.c}};"></div>
+                  <div style="position: absolute; left: 7px; top: 6px; font-size: 11px; color: #C7C7CC;">{{k.pct}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+            <sc-for list="{{gauges}}" as="g" hint-placeholder-count="3">
+              <div style="background: rgba(255,255,255,.06); padding: 15px 16px; border-radius: 9px;">
+                <div style="font-size: 11px; color: #8E8E93; font-weight: 590;">{{g.label}}</div>
+                <div style="font-size: 23px; color: #F2F2F7; margin: 8px 0 10px; font-weight: 500;">{{g.val}}</div>
+                <div style="height: 5px; background: rgba(255,255,255,.09); border-radius: 3px;"><div style="height: 5px; width: {{g.w}}; background: {{g.c}}; border-radius: 3px;"></div></div>
+                <div style="font-size: 12px; color: #8E8E93; margin-top: 8px;">{{g.sub}}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+      <div style="position: absolute; left: 0; bottom: 30px; width: 250px; height: 140px; pointer-events: none;">
+        <svg width="250" height="140" viewBox="0 0 250 140" fill="none">
+          <rect x="26" y="66" width="46" height="30" rx="2" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+          <path d="M26 74 L72 74" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+          <circle cx="176" cy="88" r="6" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>
+          <g transform="translate(104 44)">
+            <path d="M14 44 C10 44 6 40 6 33 L6 20 C6 12 12 6 20 6 C28 6 34 12 34 20 L34 33 C34 40 30 44 26 44 Z" fill="rgba(255,255,255,.13)"/>
+            <path d="M8 12 L6 2 L15 8 Z" fill="rgba(255,255,255,.13)"/>
+            <path d="M32 12 L34 2 L25 8 Z" fill="rgba(255,255,255,.13)"/>
+            <circle cx="15" cy="20" r="1.8" fill="#64D2FF"/>
+            <circle cx="25" cy="20" r="1.8" fill="#64D2FF"/>
+            <path d="M34 40 C44 40 48 32 46 24" stroke="rgba(255,255,255,.13)" stroke-width="4" stroke-linecap="round"/>
+          </g>
+          <path d="M14 96 L206 96" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+        </svg>
+      </div>
+  <div style="height: 30px; display: flex; align-items: center; gap: 20px; padding: 0 18px 6px; font-size: 11.5px; color: #6E6E73; flex-shrink: 0;">
+    <span>bash · 80×24</span><span>uptime 41д</span><span>load 0.42 0.51 0.48</span>
+    <div style="flex-grow: 1;"></div>
+    <span>котята спят</span>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const tab = this.state.tab ?? 'term';
+    const names = [['term','Терминал'],['docker','Docker'],['mon','Мониторинг']];
+    return {
+      tabs: names.map(([id, name]) => ({
+        id, name,
+        fg: tab === id ? '#FFFFFF' : '#98989D',
+        bg: tab === id ? 'rgba(255,255,255,.13)' : 'transparent',
+        pick: () => this.setState({ tab: id }),
+      })),
+      isTerm: tab === 'term', isDocker: tab === 'docker', isMon: tab === 'mon',
+      hosts: [
+        { name: 'prod-01', n: '9', dot: '#30D158', fg: '#FFFFFF', bg: 'rgba(255,255,255,.09)' },
+        { name: 'stage-01', n: '4', dot: '#0A84FF', fg: '#C7C7CC', bg: 'transparent' },
+        { name: 'build', n: '2', dot: '#6E6E73', fg: '#C7C7CC', bg: 'transparent' },
+      ],
+      containers: [
+        { name: 'api-gateway', img: 'api:2.14', cpu: '12%', mem: '412M', state: 'работает', dot: '#30D158', chipBg: 'rgba(48,209,88,.16)' },
+        { name: 'postgres-main', img: 'pg:16', cpu: '4%', mem: '1.2G', state: 'работает', dot: '#30D158', chipBg: 'rgba(48,209,88,.16)' },
+        { name: 'redis-cache', img: 'redis:7', cpu: '1%', mem: '88M', state: 'работает', dot: '#30D158', chipBg: 'rgba(48,209,88,.16)' },
+        { name: 'worker-billing', img: 'wrk:2.1', cpu: '31%', mem: '640M', state: 'работает', dot: '#30D158', chipBg: 'rgba(48,209,88,.16)' },
+        { name: 'nginx-edge', img: 'nginx:1.27', cpu: '2%', mem: '52M', state: 'работает', dot: '#30D158', chipBg: 'rgba(48,209,88,.16)' },
+        { name: 'migrator', img: 'api:2.14', cpu: '0%', mem: '—', state: 'остановлен', dot: '#FF9F0A', chipBg: 'rgba(255,159,10,.16)' },
+      ],
+      lines: [
+        { t: 'root@prod-01:~# docker compose ps', fg: '#F2F2F7' },
+        { t: 'NAME              IMAGE        STATUS', fg: '#8E8E93' },
+        { t: 'api-gateway       api:2.14     Up 6 days', fg: '#D1D1D6' },
+        { t: 'postgres-main     pg:16        Up 41 days', fg: '#D1D1D6' },
+        { t: 'worker-billing    wrk:2.1      Up 2 hours', fg: '#D1D1D6' },
+        { t: 'migrator          api:2.14     Exited (0) 6 days ago', fg: '#FF9F0A' },
+        { t: '', fg: '#D1D1D6' },
+        { t: 'root@prod-01:~# journalctl -u api --since "10 min ago" | tail -3', fg: '#F2F2F7' },
+        { t: 'окт 02 11:41:08 api[912]  GET /v2/session 200 14ms', fg: '#98989D' },
+        { t: 'окт 02 11:41:09 api[912]  POST /v2/pay 201 62ms', fg: '#98989D' },
+        { t: 'окт 02 11:41:12 api[912]  WARN retry upstream billing', fg: '#FF9F0A' },
+        { t: '', fg: '#D1D1D6' },
+      ],
+      cores: [62,18,44,9,77,23,31,12].map((p) => ({
+        pct: p + '', h: p + '%', c: p > 70 ? 'rgba(255,159,10,.55)' : 'rgba(10,132,255,.45)',
+      })),
+      gauges: [
+        { label: 'Память', val: '11.4 / 32 ГБ', w: '36%', c: '#0A84FF', sub: 'swap не используется' },
+        { label: 'Диск /', val: '188 / 220 ГБ', w: '85%', c: '#FF9F0A', sub: 'осталось 32 ГБ' },
+        { label: 'Сеть', val: '4.2 МБ/с', w: '22%', c: '#0A84FF', sub: 'вх 3.1 · исх 1.1' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

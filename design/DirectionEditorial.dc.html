@@ -1,0 +1,208 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #E8A33D; } a:hover { color: #F2BC6A; }
+    .row:hover { color: #F0E9E0; }
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #14100E; position: relative; color: #F0E9E0; display: flex; flex-direction: column; overflow: hidden; font-size: 13px;">
+
+  <div style="display: flex; align-items: center; gap: 16px; height: 44px; padding: 0 18px; flex-shrink: 0;">
+    <div style="display: flex; gap: 7px;">
+      <div style="width: 10px; height: 10px; border-radius: 50%; border: 1px solid #4A423B;"></div>
+      <div style="width: 10px; height: 10px; border-radius: 50%; border: 1px solid #4A423B;"></div>
+      <div style="width: 10px; height: 10px; border-radius: 50%; border: 1px solid #4A423B;"></div>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <span style="font-size: 11px; letter-spacing: .14em; color: #6B6058;">V2BOX · 1Ч 12М</span>
+    <span style="font-size: 11px; letter-spacing: .14em; color: #6B6058;">TOUCH ID</span>
+  </div>
+
+  <div style="display: flex; align-items: baseline; gap: 34px; padding: 6px 48px 22px; flex-shrink: 0;">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+      <div onClick="{{ t.pick }}" style="font-family: 'Instrument Serif', Georgia, serif; font-size: 34px; line-height: 1; cursor: pointer; color: {{t.fg}}; border-bottom: 3px solid {{t.bar}}; padding-bottom: 5px;">{{t.name}}</div>
+    </sc-for>
+    <div style="flex-grow: 1;"></div>
+    <div style="text-align: right;">
+      <div style="font-family: 'Instrument Serif', Georgia, serif; font-size: 26px; color: #E8A33D; line-height: 1;">prod-01</div>
+      <div style="font-size: 11px; color: #6B6058; margin-top: 5px;">root@10.2.14.8</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-grow: 1; min-height: 0; padding: 0 48px 0 48px; gap: 44px;">
+
+    <div style="width: 190px; flex-shrink: 0; display: flex; flex-direction: column; gap: 22px;">
+      <div>
+        <div style="font-size: 10.5px; letter-spacing: .18em; color: #5C534C; margin-bottom: 11px;">ХОСТЫ</div>
+        <div style="display: flex; flex-direction: column; gap: 7px;">
+          <sc-for list="{{hosts}}" as="h" hint-placeholder-count="3">
+            <div class="row" style="display: flex; align-items: center; gap: 10px; color: {{h.fg}}; cursor: pointer; font-size: 13.5px;">
+              <div style="width: 5px; height: 5px; border-radius: 50%; background: {{h.dot}};"></div>
+              <span>{{h.name}}</span>
+              <div style="flex-grow: 1;"></div>
+              <span style="color: #4A423B; font-size: 11.5px;">{{h.n}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 10.5px; letter-spacing: .18em; color: #5C534C; margin-bottom: 11px;">КОНТЕЙНЕРЫ</div>
+        <div style="display: flex; flex-direction: column; gap: 7px;">
+          <sc-for list="{{containers}}" as="c" hint-placeholder-count="6">
+            <div class="row" style="display: flex; align-items: center; gap: 10px; color: #9A8F85; cursor: pointer; font-size: 12.5px;">
+              <div style="width: 5px; height: 5px; border-radius: 50%; background: {{c.dot}}; flex-shrink: 0;"></div>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{c.name}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; position: relative; min-width: 0; display: flex; flex-direction: column; border-left: 1px solid #241E1A; padding-left: 40px;">
+
+      <sc-if value="{{isTerm}}" hint-placeholder-val="{{ true }}">
+        <div style="flex-grow: 1; line-height: 1.85; font-size: 13.5px; overflow: hidden;">
+          <sc-for list="{{lines}}" as="l" hint-placeholder-count="12">
+            <div style="color: {{l.fg}}; white-space: pre;">{{l.t}}</div>
+          </sc-for>
+          <div style="display: flex; align-items: center; color: #E8A33D;">
+            <span>root@prod-01</span><span style="color: #6B6058;">:</span><span style="color: #C9A227;">~</span><span style="color: #6B6058;"># </span>
+            <span style="display: inline-block; width: 9px; height: 17px; background: #E8A33D; margin-left: 3px;"></span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isDocker}}" hint-placeholder-val="{{ false }}">
+        <div style="flex-grow: 1; overflow: hidden;">
+          <div style="display: grid; grid-template-columns: 2fr 1.3fr .7fr .8fr 1fr; gap: 0; font-size: 10.5px; letter-spacing: .16em; color: #5C534C; padding-bottom: 12px;">
+            <div>ИМЯ</div><div>ОБРАЗ</div><div>CPU</div><div>ПАМЯТЬ</div><div>СОСТОЯНИЕ</div>
+          </div>
+          <sc-for list="{{containers}}" as="c" hint-placeholder-count="6">
+            <div style="display: grid; grid-template-columns: 2fr 1.3fr .7fr .8fr 1fr; gap: 0; padding: 13px 0; border-top: 1px solid #241E1A; font-size: 13px; align-items: baseline;">
+              <div style="font-family: 'Instrument Serif', Georgia, serif; font-size: 19px; color: #F0E9E0;">{{c.name}}</div>
+              <div style="color: #6B6058;">{{c.img}}</div>
+              <div style="color: #9A8F85;">{{c.cpu}}</div>
+              <div style="color: #9A8F85;">{{c.mem}}</div>
+              <div style="color: {{c.dot}}; font-size: 11.5px; letter-spacing: .1em;">{{c.state}}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isMon}}" hint-placeholder-val="{{ false }}">
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 30px; overflow: hidden;">
+          <div>
+            <div style="font-size: 10.5px; letter-spacing: .18em; color: #5C534C; margin-bottom: 14px;">ЯДРА · 8</div>
+            <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px;">
+              <sc-for list="{{cores}}" as="k" hint-placeholder-count="8">
+                <div>
+                  <div style="height: 78px; background: #1C1714; position: relative; overflow: hidden;">
+                    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: {{k.h}}; background: {{k.c}};"></div>
+                  </div>
+                  <div style="font-size: 11px; color: #6B6058; margin-top: 6px;">{{k.pct}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px;">
+            <sc-for list="{{gauges}}" as="g" hint-placeholder-count="3">
+              <div>
+                <div style="font-size: 10.5px; letter-spacing: .18em; color: #5C534C;">{{g.label}}</div>
+                <div style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; color: #F0E9E0; margin: 9px 0 12px; line-height: 1;">{{g.val}}</div>
+                <div style="height: 2px; background: #241E1A;"><div style="height: 2px; width: {{g.w}}; background: {{g.c}};"></div></div>
+                <div style="font-size: 11.5px; color: #6B6058; margin-top: 9px;">{{g.sub}}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+      <div style="position: absolute; left: 0; bottom: 30px; width: 250px; height: 140px; pointer-events: none;">
+        <svg width="250" height="140" viewBox="0 0 250 140" fill="none">
+          <rect x="26" y="66" width="46" height="30" rx="2" stroke="#3A322C" stroke-width="1.5"/>
+          <path d="M26 74 L72 74" stroke="#3A322C" stroke-width="1.5"/>
+          <circle cx="176" cy="88" r="6" stroke="#4A423B" stroke-width="1.5"/>
+          <g transform="translate(104 44)">
+            <path d="M14 44 C10 44 6 40 6 33 L6 20 C6 12 12 6 20 6 C28 6 34 12 34 20 L34 33 C34 40 30 44 26 44 Z" fill="#2E2621"/>
+            <path d="M8 12 L6 2 L15 8 Z" fill="#2E2621"/>
+            <path d="M32 12 L34 2 L25 8 Z" fill="#2E2621"/>
+            <circle cx="15" cy="20" r="1.8" fill="#E8A33D"/>
+            <circle cx="25" cy="20" r="1.8" fill="#E8A33D"/>
+            <path d="M34 40 C44 40 48 32 46 24" stroke="#2E2621" stroke-width="4" stroke-linecap="round"/>
+          </g>
+          <path d="M14 96 L206 96" stroke="#241E1A" stroke-width="1"/>
+        </svg>
+      </div>
+  <div style="height: 40px; display: flex; align-items: center; gap: 26px; padding: 0 48px; font-size: 11px; letter-spacing: .1em; color: #5C534C; flex-shrink: 0;">
+    <span>BASH · 80×24</span><span>UPTIME 41Д</span><span>LOAD 0.42</span>
+    <div style="flex-grow: 1;"></div>
+    <span>КОТЯТА СПЯТ</span>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const tab = this.state.tab ?? 'term';
+    const names = [['term','Терминал'],['docker','Docker'],['mon','Мониторинг']];
+    return {
+      tabs: names.map(([id, name]) => ({
+        id, name,
+        fg: tab === id ? '#F0E9E0' : '#5C534C',
+        bar: tab === id ? '#E8A33D' : 'transparent',
+        pick: () => this.setState({ tab: id }),
+      })),
+      isTerm: tab === 'term', isDocker: tab === 'docker', isMon: tab === 'mon',
+      hosts: [
+        { name: 'prod-01', n: '9', dot: '#E8A33D', fg: '#F0E9E0' },
+        { name: 'stage-01', n: '4', dot: '#7C8F6B', fg: '#9A8F85' },
+        { name: 'build', n: '2', dot: '#4A423B', fg: '#9A8F85' },
+      ],
+      containers: [
+        { name: 'api-gateway', img: 'api:2.14', cpu: '12%', mem: '412M', state: 'РАБОТАЕТ', dot: '#7C8F6B' },
+        { name: 'postgres-main', img: 'pg:16', cpu: '4%', mem: '1.2G', state: 'РАБОТАЕТ', dot: '#7C8F6B' },
+        { name: 'redis-cache', img: 'redis:7', cpu: '1%', mem: '88M', state: 'РАБОТАЕТ', dot: '#7C8F6B' },
+        { name: 'worker-billing', img: 'wrk:2.1', cpu: '31%', mem: '640M', state: 'РАБОТАЕТ', dot: '#7C8F6B' },
+        { name: 'nginx-edge', img: 'nginx:1.27', cpu: '2%', mem: '52M', state: 'РАБОТАЕТ', dot: '#7C8F6B' },
+        { name: 'migrator', img: 'api:2.14', cpu: '0%', mem: '—', state: 'ОСТАНОВЛЕН', dot: '#C4703A' },
+      ],
+      lines: [
+        { t: 'root@prod-01:~# docker compose ps', fg: '#F0E9E0' },
+        { t: 'NAME              IMAGE        STATUS', fg: '#6B6058' },
+        { t: 'api-gateway       api:2.14     Up 6 days', fg: '#9A8F85' },
+        { t: 'postgres-main     pg:16        Up 41 days', fg: '#9A8F85' },
+        { t: 'worker-billing    wrk:2.1      Up 2 hours', fg: '#9A8F85' },
+        { t: 'migrator          api:2.14     Exited (0) 6 days ago', fg: '#C4703A' },
+        { t: '', fg: '#9A8F85' },
+        { t: 'root@prod-01:~# journalctl -u api --since "10 min ago" | tail -3', fg: '#F0E9E0' },
+        { t: 'окт 02 11:41:08 api[912]  GET /v2/session 200 14ms', fg: '#6B6058' },
+        { t: 'окт 02 11:41:12 api[912]  WARN retry upstream billing', fg: '#C4703A' },
+      ],
+      cores: [62,18,44,9,77,23,31,12].map((p) => ({
+        pct: p + '%', h: p + '%', c: p > 70 ? '#C4703A' : '#6E5F3F',
+      })),
+      gauges: [
+        { label: 'ПАМЯТЬ', val: '11.4 / 32', w: '36%', c: '#E8A33D', sub: 'swap не используется' },
+        { label: 'ДИСК /', val: '188 / 220', w: '85%', c: '#C4703A', sub: 'осталось 32 ГБ' },
+        { label: 'СЕТЬ', val: '4.2 МБ/с', w: '22%', c: '#E8A33D', sub: 'вх 3.1 · исх 1.1' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

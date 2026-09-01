@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #7FC8C0; } a:hover { color: #A5DED8; }
+    .tabx:hover { color: #DDE2EA; }
+    .row:hover { color: #DDE2EA; }
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #16181D; color: #C8CCD4; display: flex; flex-direction: column; font-size: 13px; line-height: 1.62; overflow: hidden; position: relative;">
+
+  <!-- строка окон, как в tmux -->
+  <div style="display: flex; align-items: center; gap: 0; padding: 5px 10px; flex-shrink: 0; background: #1B1E24;">
+    <span style="background: #7FC8C0; color: #16181D; padding: 1px 9px; font-weight: 500;">helm</span>
+    <span style="width: 12px;"></span>
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+      <span class="tabx" onClick="{{ t.pick }}" style="cursor: pointer; color: {{t.fg}}; background: {{t.bg}}; padding: 1px 10px;">{{t.idx}}:{{t.name}}{{t.star}}</span>
+    </sc-for>
+    <div style="flex-grow: 1;"></div>
+    <span style="color: #5A6474;">"prod-01" 11:41 02-окт-26</span>
+  </div>
+
+  <div style="display: flex; flex-grow: 1; min-height: 0;">
+
+    <!-- левая колонка -->
+    <div style="width: 258px; flex-shrink: 0; border-right: 1px solid #2A2F38; display: flex; flex-direction: column;">
+      <div style="padding: 8px 12px 0; color: #5A6474;">┤ <span style="color: #C8CCD4;">хосты</span> ├───────────────────</div>
+      <div style="padding: 4px 12px;">
+        <sc-for list="{{hosts}}" as="h" hint-placeholder-count="3">
+          <div class="row" style="color: {{h.fg}}; cursor: pointer; white-space: pre;">{{h.txt}}</div>
+        </sc-for>
+      </div>
+      <div style="padding: 12px 12px 0; color: #5A6474;">┤ <span style="color: #C8CCD4;">контейнеры</span> ├──────────────</div>
+      <div style="padding: 4px 12px;">
+        <sc-for list="{{containers}}" as="c" hint-placeholder-count="6">
+          <div class="row" style="color: {{c.fg}}; cursor: pointer; white-space: pre;">{{c.side}}</div>
+        </sc-for>
+      </div>
+
+      <div style="flex-grow: 1;"></div>
+      <div style="padding: 0 12px 4px; color: #5A6474;">├──────────────────────────</div>
+      <div style="padding: 6px 12px 14px; color: #3E4552; white-space: pre; line-height: 1.35; font-size: 12.5px;">  /\_/\     ______
+ ( <span style="color: #7FC8C0;">o</span>.<span style="color: #7FC8C0;">o</span> )   |      |    <span style="color: #4A5262;">●</span>
+  &gt; ^ &lt;    |______|
+ котёнок спит</div>
+    </div>
+
+    <!-- правая колонка -->
+    <div style="flex-grow: 1; min-width: 0; padding: 8px 14px;">
+      <sc-if value="{{isTerm}}" hint-placeholder-val="{{ true }}">
+        <div>
+          <sc-for list="{{lines}}" as="l" hint-placeholder-count="11">
+            <div style="color: {{l.fg}}; white-space: pre;">{{l.t}}</div>
+          </sc-for>
+          <div style="color: #C8CCD4;"><span style="color: #7FC8C0;">root@prod-01</span>:<span style="color: #8AA9E0;">~</span># <span style="display: inline-block; width: 8px; height: 15px; background: #C8CCD4; vertical-align: -3px;"></span></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isDocker}}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="color: #5A6474; white-space: pre;">ИМЯ               ОБРАЗ         CPU    ПАМЯТЬ   СОСТОЯНИЕ</div>
+          <div style="color: #2A2F38;">──────────────────────────────────────────────────────────────</div>
+          <sc-for list="{{containers}}" as="c" hint-placeholder-count="6">
+            <div class="row" style="color: {{c.fg}}; white-space: pre; cursor: pointer;">{{c.row}}</div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isMon}}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="color: #5A6474;">┤ <span style="color: #C8CCD4;">ядра</span> ├────────────────────────────────────────</div>
+          <sc-for list="{{cores}}" as="k" hint-placeholder-count="8">
+            <div style="color: {{k.fg}}; white-space: pre;">{{k.txt}}</div>
+          </sc-for>
+          <div style="color: #5A6474; margin-top: 10px;">┤ <span style="color: #C8CCD4;">ресурсы</span> ├─────────────────────────────────────</div>
+          <sc-for list="{{gauges}}" as="g" hint-placeholder-count="3">
+            <div style="color: {{g.fg}}; white-space: pre;">{{g.txt}}</div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- нижняя строка состояния -->
+  <div style="display: flex; align-items: center; gap: 0; flex-shrink: 0; background: #1B1E24;">
+    <span style="background: #4A5262; color: #DDE2EA; padding: 3px 11px;">prod-01</span>
+    <span style="padding: 3px 12px; color: #5A6474;">v2box 1:12</span>
+    <span style="padding: 3px 12px; color: #5A6474;">touch id</span>
+    <div style="flex-grow: 1;"></div>
+    <span style="padding: 3px 12px; color: #5A6474;">load 0.42 0.51 0.48</span>
+    <span style="padding: 3px 12px; color: #5A6474;">up 41д</span>
+    <span style="background: #7FC8C0; color: #16181D; padding: 3px 11px;">80×24</span>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const tab = this.state.tab ?? 'term';
+    const names = [['term','терминал'],['docker','docker'],['mon','мониторинг']];
+    const pad = (s, n) => (s + '                     ').slice(0, n);
+    const bar = (p) => '█'.repeat(Math.round(p / 4)) + '·'.repeat(25 - Math.round(p / 4));
+    const cs = [
+      ['api-gateway','api:2.14','12%','412M','running',1],
+      ['postgres-main','pg:16','4%','1.2G','running',1],
+      ['redis-cache','redis:7','1%','88M','running',1],
+      ['worker-billing','wrk:2.1','31%','640M','running',1],
+      ['nginx-edge','nginx:1.27','2%','52M','running',1],
+      ['migrator','api:2.14','0%','—','exited',0],
+    ];
+    return {
+      tabs: names.map(([id, name], i) => ({
+        id, name, idx: i + '',
+        star: tab === id ? '*' : ' ',
+        fg: tab === id ? '#16181D' : '#7C8696',
+        bg: tab === id ? '#C8CCD4' : 'transparent',
+        pick: () => this.setState({ tab: id }),
+      })),
+      isTerm: tab === 'term', isDocker: tab === 'docker', isMon: tab === 'mon',
+      hosts: [
+        { txt: ' ▸ prod-01           9', fg: '#DDE2EA' },
+        { txt: '   stage-01          4', fg: '#7C8696' },
+        { txt: '   build             2', fg: '#7C8696' },
+      ],
+      containers: cs.map(([name, img, cpu, mem, st, ok]) => ({
+        side: '   ' + (ok ? '●' : '○') + ' ' + pad(name, 16) + cpu,
+        row: ' ' + (ok ? '●' : '○') + ' ' + pad(name, 16) + pad(img, 14) + pad(cpu, 7) + pad(mem, 9) + st,
+        fg: ok ? '#9BB89C' : '#D0A45E',
+      })),
+      lines: [
+        { t: 'root@prod-01:~# docker compose ps', fg: '#DDE2EA' },
+        { t: 'NAME              IMAGE        STATUS', fg: '#5A6474' },
+        { t: 'api-gateway       api:2.14     Up 6 days', fg: '#C8CCD4' },
+        { t: 'postgres-main     pg:16        Up 41 days', fg: '#C8CCD4' },
+        { t: 'worker-billing    wrk:2.1      Up 2 hours', fg: '#C8CCD4' },
+        { t: 'migrator          api:2.14     Exited (0) 6 days ago', fg: '#D0A45E' },
+        { t: '', fg: '#C8CCD4' },
+        { t: 'root@prod-01:~# journalctl -u api | tail -3', fg: '#DDE2EA' },
+        { t: 'окт 02 11:41:08 api[912]  GET /v2/session 200 14ms', fg: '#7C8696' },
+        { t: 'окт 02 11:41:09 api[912]  POST /v2/pay 201 62ms', fg: '#7C8696' },
+        { t: 'окт 02 11:41:12 api[912]  WARN retry upstream billing', fg: '#D0A45E' },
+        { t: '', fg: '#C8CCD4' },
+      ],
+      cores: [62,18,44,9,77,23,31,12].map((p, i) => ({
+        txt: ' cpu' + i + '  ' + bar(p) + ' ' + (p + '%').padStart(4),
+        fg: p > 70 ? '#D0A45E' : '#7FC8C0',
+      })),
+      gauges: [
+        { txt: ' память  ' + bar(36) + '  11.4 / 32 ГБ', fg: '#7FC8C0' },
+        { txt: ' диск /  ' + bar(85) + '  188 / 220 ГБ', fg: '#D0A45E' },
+        { txt: ' сеть    ' + bar(22) + '  4.2 МБ/с', fg: '#7FC8C0' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

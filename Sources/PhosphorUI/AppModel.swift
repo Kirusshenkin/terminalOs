@@ -3,6 +3,7 @@ public import AuthKit
 public import DockerKit
 public import Foundation
 public import HostsKit
+public import KeysKit
 public import MetricsKit
 public import PhosphorCore
 public import ProvisionKit
@@ -60,8 +61,8 @@ public final class AppModel {
     public var selectedHost: ServerHost.ID?
 
     /// Живая сессия выбранного хоста, если он подключён.
-    public private(set) var session: HostSession?
-    public private(set) var sessionState = SessionState()
+    public internal(set) var session: HostSession?
+    public internal(set) var sessionState = SessionState()
     private var observerToken: UUID?
 
     public var containers: [Container] = []
@@ -73,21 +74,27 @@ public final class AppModel {
     /// Что терминал просит подтвердить: запись в буфер, необычная ссылка.
     public var guardPrompt: GuardPrompt?
 
+    /// Ключи на выбранном сервере.
+    public internal(set) var serverKeys: [AuthorizedKey] = []
+    public internal(set) var myFingerprint: String?
+    public internal(set) var keysError: String?
+    public var pendingKeyRemoval: AuthorizedKey?
+
     /// Настройка сервера.
-    public private(set) var provisionSteps: [StepProgress] = []
-    public private(set) var provisionLog = RingBuffer<String>(capacity: 4_000)
-    public private(set) var isProvisioning = false
-    public private(set) var plannedCommands: [(step: String, commands: [String])] = []
+    public internal(set) var provisionSteps: [StepProgress] = []
+    public internal(set) var provisionLog = RingBuffer<String>(capacity: 4_000)
+    public internal(set) var isProvisioning = false
+    public internal(set) var plannedCommands: [(step: String, commands: [String])] = []
     public var showsPlannedCommands = false
-    private var runner: ProvisionRunner?
+    var runner: ProvisionRunner?
 
     /// Разрушающее действие, ожидающее подтверждения.
     public var pendingAction: PendingAction?
     /// Итог последнего действия — одной строкой под списком.
     public var lastOutcome: ActionOutcome?
     /// Логи выбранного контейнера. Кольцевой: логи умеют идти мегабайтами.
-    public private(set) var logs = RingBuffer<String>(capacity: 5_000)
-    private var logTask: Task<Void, Never>?
+    public internal(set) var logs = RingBuffer<String>(capacity: 5_000)
+    var logTask: Task<Void, Never>?
 
     /// Действие, которому нужно «да» от человека.
     public struct PendingAction: Identifiable, Sendable {
@@ -118,6 +125,7 @@ public final class AppModel {
         book.search(query, groupID: selectedGroup)
     }
 
+    private let appearance = AppearanceStore()
     private let gate: any BiometricGate
     private let profiles: ProfileStore
     /// Отложенное сохранение: правки копятся и уходят одной записью.
@@ -130,6 +138,23 @@ public final class AppModel {
         self.gate = gate
         self.profiles = profiles
         self.gateCapability = gate.capability()
+
+        let saved = appearance.load()
+        themeID = saved.themeID
+        language = Language(rawValue: saved.language) ?? .system
+        pet = Pet(rawValue: saved.pet) ?? .cat
+        eggs = EasterEggs(enabled: saved.eggsEnabled)
+    }
+
+    /// Сохраняет внешний вид. Вызывается из представлений при изменении.
+    public func saveAppearance() {
+        appearance.save(
+            Appearance(
+                themeID: themeID,
+                language: language.rawValue,
+                pet: pet.rawValue,
+                eggsEnabled: eggs.enabled
+            ))
     }
 
     /// Проверяет человека и открывает профиль.
@@ -171,90 +196,6 @@ public final class AppModel {
         } catch {
             unlockError = "профиль не читается: \(error.localizedDescription)"
         }
-    }
-
-    /// Запускает действие: разрушающие — только через подтверждение.
-    public func request(_ action: ContainerAction, on container: Container) {
-        if action.isDestructive {
-            pendingAction = PendingAction(action: action, container: container)
-        } else {
-            Task { await perform(action, on: container) }
-        }
-    }
-
-    public func confirm(_ pending: PendingAction) {
-        pendingAction = nil
-        Task { await perform(pending.action, on: pending.container) }
-    }
-
-    private func perform(_ action: ContainerAction, on container: Container) async {
-        guard let session else {
-            lastOutcome = ActionOutcome(
-                action: action, containerName: container.name,
-                succeeded: false, message: "нет подключения к хосту"
-            )
-            return
-        }
-        lastOutcome = await session.perform(action, on: container)
-    }
-
-    /// Готовит рецепт под конкретный сервер и запускает его.
-    public func startProvisioning(inputs: RecipeInputs = RecipeInputs()) async {
-        guard let session, let profile, !isProvisioning else { return }
-        let host = book.hosts.first { $0.id == selectedHost }
-        let reach = host.map { book.reach(for: $0) } ?? .direct
-
-        let fresh = ProvisionRunner(
-            transport: SystemSSHTransport(host: host ?? ServerHost(name: "", address: ""), reach: reach),
-            recipe: BuiltInRecipe.base(inputs),
-            profile: profile,
-            proveKeyAccess: {
-                // Отдельное соединение, а не текущая сессия: смысл проверки в
-                // том, что ключ работает сам по себе.
-                guard let host else { return false }
-                let probe = SystemSSHTransport(host: host, reach: reach)
-                defer { Task { await probe.close() } }
-                let result = try? await probe.run("true", timeout: .seconds(15))
-                return result?.succeeded == true
-            }
-        )
-        runner = fresh
-        provisionLog.removeAll()
-        isProvisioning = true
-        plannedCommands = await fresh.plannedCommands()
-
-        await fresh.observe(
-            onLine: { [weak self] line in
-                Task { @MainActor in self?.provisionLog.append(line) }
-            },
-            onProgress: { [weak self] steps in
-                Task { @MainActor in self?.provisionSteps = steps }
-            }
-        )
-        await fresh.run()
-        isProvisioning = false
-        // После настройки профиль устарел: перечитываем, иначе панель будет
-        // считать сервер пустым.
-        await session.start()
-    }
-
-    public func stopProvisioning() {
-        Task { await runner?.stop() }
-    }
-
-    /// Переключает поток логов на другой контейнер.
-    public func watchLogs(of container: Container) async {
-        logTask?.cancel()
-        logs.removeAll()
-        guard let session else { return }
-        logTask = await session.streamLogs(for: container) { [weak self] line in
-            Task { @MainActor in self?.logs.append(line) }
-        }
-    }
-
-    public func stopWatchingLogs() {
-        logTask?.cancel()
-        logTask = nil
     }
 
     /// Выполняет то, на что человек согласился в диалоге терминала.

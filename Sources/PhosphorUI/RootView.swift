@@ -37,6 +37,21 @@ public struct RootView: View {
                 secondaryButton: .cancel(Text("отмена"))
             )
         }
+        // Удаление ключа, которым ты подключён, — единственное действие,
+        // способное отрезать тебя от сервера навсегда.
+        .alert(item: $model.pendingKeyRemoval) { key in
+            Alert(
+                title: Text("удалить ключ, которым ты подключён?"),
+                message: Text(
+                    "\(key.comment ?? key.algorithm)\n\(key.fingerprint)\n\n"
+                        + "после этого войти на сервер можно будет только другим ключом"),
+                primaryButton: .destructive(Text("удалить")) { model.confirmKeyRemoval(key) },
+                secondaryButton: .cancel(Text("отмена"))
+            )
+        }
+        .onChange(of: model.screen) { _, screen in
+            if screen == .keys { Task { await model.loadKeys() } }
+        }
         .onChange(of: scenePhase) { _, phase in
             Task { await model.setWindowActive(phase == .active) }
         }

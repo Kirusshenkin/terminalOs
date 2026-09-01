@@ -42,7 +42,13 @@ public struct ThemeView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                Toggle(isOn: Binding(get: { model.eggs.enabled }, set: { model.eggs.enabled = $0 })) {
+                Toggle(
+                    isOn: Binding(
+                        get: { model.eggs.enabled },
+                        set: {
+                            model.eggs.enabled = $0; model.saveAppearance()
+                        })
+                ) {
                     Text(strings("settings.eggs")).font(style.font(12)).foregroundStyle(style.text)
                 }
                 .toggleStyle(.switch)

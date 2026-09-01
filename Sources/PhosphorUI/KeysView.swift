@@ -4,13 +4,18 @@ public import SwiftUI
 /// Keys installed on the server, with the lock-out guard in plain sight.
 public struct KeysView: View {
     @Environment(\.style) private var style
-    let model: AppModel
+    @Bindable var model: AppModel
 
     public init(model: AppModel) { self.model = model }
     private var strings: Strings { model.strings }
 
-    private var keys: [AuthorizedKey] { AuthorizedKeysFile.parse(Self.sample) }
-    private var currentFingerprint: String? { keys.first?.fingerprint }
+    /// Ключи с сервера; пример — только пока нет подключения.
+    private var keys: [AuthorizedKey] {
+        model.serverKeys.isEmpty ? AuthorizedKeysFile.parse(Self.sample) : model.serverKeys
+    }
+
+    private var isLive: Bool { !model.serverKeys.isEmpty }
+    private var currentFingerprint: String? { model.myFingerprint ?? keys.first?.fingerprint }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -18,11 +23,18 @@ public struct KeysView: View {
                 Text("authorized_keys").font(style.font(15)).foregroundStyle(style.bright)
                 Text("root@app-1").font(style.font(12)).foregroundStyle(style.muted)
                 Spacer()
+                if !isLive {
+                    Text("нет подключения — показан пример")
+                        .font(style.font(10.5)).foregroundStyle(style.muted)
+                }
+                PhButton("обновить") { Task { await model.loadKeys() } }
                 PhButton("+ добавить", kind: .primary) {}
-                PhButton("скопировать мой") {}
             }
             header
             ForEach(keys) { key in row(key) }
+            if let error = model.keysError {
+                Text(error).font(style.font(11.5)).foregroundStyle(style.warning)
+            }
             warning
             Spacer(minLength: 0)
         }
@@ -32,7 +44,8 @@ public struct KeysView: View {
         HStack(spacing: 10) {
             Label2("ключ").frame(width: 240, alignment: .leading)
             Label2("отпечаток").frame(maxWidth: .infinity, alignment: .leading)
-            Label2("опции").frame(width: 200, alignment: .leading)
+            Label2("опции").frame(width: 140, alignment: .leading)
+            Label2("").frame(width: 80, alignment: .leading)
         }
         .padding(.bottom, 4)
         .overlay(alignment: .bottom) { Rule() }
@@ -61,8 +74,12 @@ public struct KeysView: View {
 
             Text(key.options ?? "—")
                 .font(style.font(11)).foregroundStyle(style.muted)
-                .frame(width: 200, alignment: .leading)
+                .frame(width: 140, alignment: .leading)
                 .lineLimit(1)
+
+            PhButton("удалить", kind: .danger) { model.requestKeyRemoval(key) }
+                .disabled(!isLive)
+                .opacity(isLive ? 1 : 0.4)
         }
         .font(style.font(12))
         .padding(.vertical, 6)

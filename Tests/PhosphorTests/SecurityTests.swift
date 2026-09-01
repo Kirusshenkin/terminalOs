@@ -4,6 +4,7 @@ import Testing
 
 @testable import AuthKit
 @testable import PhosphorCore
+@testable import PhosphorUI
 @testable import VaultKit
 
 @Suite("Экранирование и проверка ввода")
@@ -337,5 +338,49 @@ struct ProfileStoreTests {
         try await store.destroy()
         #expect(await !store.hasProfile())
         #expect(await !secrets.exists(ProfileStore.masterKeyAccount))
+    }
+}
+
+@Suite("Настройки внешнего вида")
+struct AppearanceTests {
+    private func temporaryURL() -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("phosphor-\(UUID().uuidString)/settings.json")
+    }
+
+    @Test("переживают перезапуск")
+    func roundTrip() throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let store = AppearanceStore(url: url)
+        let value = Appearance(themeID: "amber", language: "en", pet: "glider", eggsEnabled: false)
+        store.save(value)
+        #expect(AppearanceStore(url: url).load() == value)
+    }
+
+    @Test("лежат открытым читаемым JSON — их можно править руками и класть в git")
+    func fileIsPlainJSON() throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        AppearanceStore(url: url).save(Appearance(themeID: "ruby"))
+        let text = String(decoding: try Data(contentsOf: url), as: UTF8.self)
+        #expect(text.contains("\"themeID\" : \"ruby\""))
+        #expect(text.contains("\n"), "должен быть отформатирован для чтения человеком")
+    }
+
+    @Test("испорченный файл не мешает запуску")
+    func corruptFileFallsBack() throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("{ это не json".utf8).write(to: url)
+        // Внешний вид не стоит того, чтобы из-за него не открылось окно.
+        #expect(AppearanceStore(url: url).load() == Appearance())
+    }
+
+    @Test("отсутствующий файл — это первый запуск, а не ошибка")
+    func missingFileIsFine() {
+        #expect(AppearanceStore(url: temporaryURL()).load() == Appearance())
     }
 }

@@ -58,7 +58,8 @@ let package = Package(
         // Live per-host session: probe, containers, metrics.
         .target(
             name: "SessionKit",
-            dependencies: ["PhosphorCore", "SSHKit", "DockerKit", "MetricsKit", "ProvisionKit", "HostsKit"],
+            dependencies: ["PhosphorCore", "SSHKit", "DockerKit", "MetricsKit",
+                           "ProvisionKit", "HostsKit", "KeysKit"],
             swiftSettings: strict
         ),
 
@@ -76,7 +77,7 @@ let package = Package(
             name: "PhosphorTests",
             dependencies: ["PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit",
                            "DockerKit", "MetricsKit", "KeysKit", "ThemeKit",
-                           "ProvisionKit", "SessionKit"],
+                           "ProvisionKit", "SessionKit", "PhosphorUI"],
             swiftSettings: strict
         ),
     ]

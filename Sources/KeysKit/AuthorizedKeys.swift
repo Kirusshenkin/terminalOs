@@ -13,6 +13,18 @@ public struct AuthorizedKey: Identifiable, Hashable, Sendable {
     /// A line commented out by us counts as disabled rather than removed.
     public var isEnabled: Bool
 
+    public init(
+        id: Int, options: String?, algorithm: String,
+        base64: String, comment: String?, isEnabled: Bool
+    ) {
+        self.id = id
+        self.options = options
+        self.algorithm = algorithm
+        self.base64 = base64
+        self.comment = comment
+        self.isEnabled = isEnabled
+    }
+
     /// `SHA256:…` as OpenSSH prints it, computed locally.
     ///
     /// The fingerprint is the SHA-256 of the decoded blob, base64 without

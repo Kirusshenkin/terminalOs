@@ -23,7 +23,7 @@ public struct TerminalPane: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            PetCorner(pet: $model.pet)
+            PetCorner(pet: $model.pet) { model.saveAppearance() }
         }
         // Ничего не попадает в буфер обмена и не открывается, пока человек не
         // увидел, что именно. Согласиться вслепую — как раз то, чем пользуется
@@ -75,8 +75,12 @@ public struct TerminalPane: View {
 public struct PetCorner: View {
     @Environment(\.style) private var style
     @Binding var pet: Pet
+    private let onChange: () -> Void
 
-    public init(pet: Binding<Pet>) { self._pet = pet }
+    public init(pet: Binding<Pet>, onChange: @escaping () -> Void = {}) {
+        self._pet = pet
+        self.onChange = onChange
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {

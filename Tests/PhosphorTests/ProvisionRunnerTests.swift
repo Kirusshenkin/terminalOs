@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import HostsKit
+@testable import KeysKit
 @testable import PhosphorCore
 @testable import ProvisionKit
 @testable import SSHKit
@@ -165,5 +166,110 @@ struct ProvisionRunnerTests {
         let executed = await transport.executed
         // Шаг паролей от пакетного менеджера не зависит, всё остальное — да.
         #expect(!executed.contains { $0.contains("apt-get") })
+    }
+}
+
+@Suite("Ключи на сервере")
+struct KeyManagerTests {
+    private let host = ServerHost(name: "prod", address: "10.0.0.1")
+
+    private var sample: String {
+        """
+        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh you@mac
+        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlMnOpQrStUvWxYz012345 deploy@ci
+        """
+    }
+
+    /// Транспорт, отдающий содержимое файла и запоминающий, что в него писали.
+    private actor KeyTransport: SSHTransport {
+        nonisolated let host: ServerHost
+        private let contents: String
+        private(set) var written: [String] = []
+
+        init(host: ServerHost, contents: String) {
+            self.host = host
+            self.contents = contents
+        }
+
+        func run(_ command: String, timeout: Duration) async throws -> CommandResult {
+            if command.hasPrefix("cat ") { return CommandResult(status: 0, stdout: contents, stderr: "") }
+            written.append(command)
+            return CommandResult(status: 0, stdout: "", stderr: "")
+        }
+
+        func stream(_ command: String, onLine: @escaping @Sendable (String) -> Void) async throws {}
+        func close() async {}
+    }
+
+    @Test("чтение разбирает файл с сервера")
+    func reads() async throws {
+        let manager = KeyManager(transport: KeyTransport(host: host, contents: sample))
+        let keys = try await manager.load()
+        #expect(keys.count == 2)
+        #expect(keys[0].comment == "you@mac")
+    }
+
+    @Test("удалить свой ключ нельзя без явного согласия")
+    func refusesSelfLockout() async throws {
+        let transport = KeyTransport(host: host, contents: sample)
+        let manager = KeyManager(transport: transport)
+        let keys = try await manager.load()
+        let mine = keys[0]
+
+        await #expect(throws: KeyManager.KeyError.wouldLockOut) {
+            _ = try await manager.remove(
+                ids: [mine.id], from: keys, currentFingerprint: mine.fingerprint)
+        }
+        // Главное: файл не тронут.
+        #expect(await transport.written.isEmpty)
+    }
+
+    @Test("удалить чужой ключ можно, и запись атомарна с бэкапом")
+    func removesOther() async throws {
+        let transport = KeyTransport(host: host, contents: sample)
+        let manager = KeyManager(transport: transport)
+        let keys = try await manager.load()
+        let remaining = try await manager.remove(
+            ids: [keys[1].id], from: keys, currentFingerprint: keys[0].fingerprint)
+
+        #expect(remaining.count == 1)
+        let command = try #require(await transport.written.first)
+        #expect(command.contains(".phosphor.bak"), "бэкап обязателен")
+        #expect(command.contains(".phosphor.tmp"), "запись через временный файл")
+        #expect(command.contains("chmod 600"))
+        #expect(command.contains("mv "), "подмена одним движением, а не дозапись")
+    }
+
+    @Test("выключение своего ключа приравнивается к удалению")
+    func disablingSelfIsBlocked() async throws {
+        let transport = KeyTransport(host: host, contents: sample)
+        let manager = KeyManager(transport: transport)
+        let keys = try await manager.load()
+        await #expect(throws: KeyManager.KeyError.wouldLockOut) {
+            _ = try await manager.setEnabled(
+                false, id: keys[0].id, in: keys, currentFingerprint: keys[0].fingerprint)
+        }
+        #expect(await transport.written.isEmpty)
+    }
+
+    @Test("повторное добавление того же ключа ничего не меняет")
+    func addIsIdempotent() async throws {
+        let transport = KeyTransport(host: host, contents: sample)
+        let manager = KeyManager(transport: transport)
+        let keys = try await manager.load()
+        let again = try await manager.add(
+            line: sample.components(separatedBy: "\n")[0],
+            to: keys, currentFingerprint: keys[0].fingerprint)
+        #expect(again.count == keys.count)
+        #expect(await transport.written.isEmpty, "дублирующая запись не нужна")
+    }
+
+    @Test("мусор вместо ключа отвергается")
+    func rejectsGarbage() async throws {
+        let manager = KeyManager(transport: KeyTransport(host: host, contents: sample))
+        let keys = try await manager.load()
+        await #expect(throws: KeyManager.KeyError.self) {
+            _ = try await manager.add(line: "это не ключ", to: keys, currentFingerprint: nil)
+        }
     }
 }

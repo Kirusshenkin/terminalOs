@@ -273,3 +273,79 @@ struct KeyManagerTests {
         }
     }
 }
+
+@Suite("Листинг файлов")
+struct ListingParserTests {
+    /// Вывод GNU `ls -la --time-style=+%s` — то, что мы просим у сервера.
+    private let epochListing = """
+        total 48
+        drwxr-xr-x  6 root root  4096 1756800000 .
+        drwxr-xr-x 22 root root  4096 1756700000 ..
+        drwxr-xr-x  2 root root  4096 1756790000 app
+        -rw-r--r--  1 root root  2148 1756795000 docker-compose.yml
+        -rw-------  1 root root   640 1756000000 .env.prod
+        lrwxrwxrwx  1 root root    11 1756795500 current -> app/release
+        -rw-r--r--  1 deploy web 50593792 1756799000 deploy.tar.gz
+        """
+
+    @Test("разбираем права, владельца, размер и время")
+    func parsesFields() throws {
+        let files = ListingParser.parse(epochListing)
+        let compose = try #require(files.first { $0.name == "docker-compose.yml" })
+        #expect(compose.permissions == "-rw-r--r--")
+        #expect(compose.size == 2148)
+        #expect(compose.owner == "root root")
+        #expect(!compose.isDirectory)
+        #expect(compose.modified != nil)
+    }
+
+    @Test("папки, ссылки и обычные файлы различаются")
+    func detectsKinds() throws {
+        let files = ListingParser.parse(epochListing)
+        #expect(files.first { $0.name == "app" }?.isDirectory == true)
+        let link = try #require(files.first { $0.name == "current" })
+        #expect(link.isSymlink)
+        #expect(link.linkTarget == "app/release")
+        #expect(files.first { $0.name == "deploy.tar.gz" }?.isDirectory == false)
+    }
+
+    @Test("строка total и мусор пропускаются")
+    func ignoresNoise() {
+        let files = ListingParser.parse("total 48\n\nсовсем не листинг\n" + epochListing)
+        #expect(files.allSatisfy { !$0.name.isEmpty })
+        #expect(files.contains { $0.name == "app" })
+    }
+
+    @Test("имя с пробелами собирается целиком")
+    func nameWithSpaces() throws {
+        let listing = "-rw-r--r--  1 root root  10 1756795000 отчёт за январь.txt"
+        let file = try #require(ListingParser.parse(listing).first)
+        #expect(file.name == "отчёт за январь.txt")
+    }
+
+    @Test("листинг без эпохи не роняет разбор, просто без времени")
+    func classicListing() throws {
+        let listing = "-rw-r--r--  1 root root  2148 Sep  2 01:12 docker-compose.yml"
+        let file = try #require(ListingParser.parse(listing).first)
+        #expect(file.name == "docker-compose.yml")
+        #expect(file.size == 2148)
+        #expect(file.modified == nil)
+    }
+
+    @Test("путь экранируется — пробелы и кавычки не ломают команду")
+    func quotesPath() {
+        let command = ListingParser.command(path: "/srv/мой проект'; rm -rf /")
+        #expect(command.contains("'/srv/мой проект'\\''; rm -rf /'"))
+    }
+
+    @Test("переход вверх не уводит выше корня")
+    func resolveStaysInsideRoot() {
+        let browser = FileBrowser(
+            transport: RecordingTransport(host: ServerHost(name: "x", address: "1")),
+            host: ServerHost(name: "x", address: "1"), reach: .direct, controlPath: "/tmp/x")
+        #expect(browser.resolve("/srv/app", entering: "..") == "/srv")
+        #expect(browser.resolve("/srv", entering: "..") == "/")
+        #expect(browser.resolve("/", entering: "..") == "/")
+        #expect(browser.resolve("/srv", entering: "app") == "/srv/app")
+    }
+}

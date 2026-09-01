@@ -96,7 +96,7 @@ public struct RootView: View {
 
     private var tabs: [(String, Section)] {
         [
-            ("nav.hosts", .hosts), ("tab.terminal", .terminal),
+            ("nav.hosts", .hosts), ("tab.terminal", .terminal), ("tab.files", .files),
             ("tab.docker", .docker), ("tab.monitor", .monitor),
             ("nav.keys", .keys), ("tab.theme", .theme),
         ]
@@ -113,6 +113,7 @@ public struct RootView: View {
         switch model.screen {
         case .hosts: HostsView(model: model)
         case .terminal: TerminalPane(model: model)
+        case .files: FilesView(model: model)
         case .docker: DockerView(model: model)
         case .monitor: MonitorView(model: model)
         case .keys: KeysView(model: model)

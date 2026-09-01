@@ -14,7 +14,7 @@ public import ThemeKit
 
 /// Which screen the window is showing.
 public enum Section: String, CaseIterable, Sendable {
-    case hosts, terminal, docker, monitor, keys, provision, activity, theme
+    case hosts, terminal, files, docker, monitor, keys, provision, activity, theme
 }
 
 /// Кто живёт в углу.
@@ -69,6 +69,13 @@ public final class AppModel {
 
     /// Что терминал просит подтвердить: запись в буфер, необычная ссылка.
     public var guardPrompt: GuardPrompt?
+
+    /// Файловые панели.
+    public var localPath = NSHomeDirectory()
+    public var remotePath = "/"
+    public internal(set) var localFiles: [RemoteFile] = []
+    public internal(set) var remoteFiles: [RemoteFile] = []
+    public internal(set) var filesError: String?
 
     /// Журнал действий ИИ и режимы доступа по хостам.
     public internal(set) var auditEntries: [AuditEntry] = []

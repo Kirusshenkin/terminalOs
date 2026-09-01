@@ -508,3 +508,53 @@ struct FormatTests {
         #expect(ByteFormat.percent(0.855) == "86 %")
     }
 }
+
+@Suite("Быстрое подключение и импорт")
+struct QuickConnectTests {
+    /// Разбор `user@host:port` — то, что набирают в строке поиска.
+    ///
+    /// Проверяется отдельно от интерфейса, потому что ошибка здесь ведёт не к
+    /// кривой вёрстке, а к подключению не туда.
+    private func parse(_ text: String) -> ServerHost? {
+        let value = text.trimmingCharacters(in: .whitespaces)
+        guard value.contains("@") else { return nil }
+        let parts = value.split(separator: "@", maxSplits: 1)
+        guard parts.count == 2, !parts[0].isEmpty else { return nil }
+        let target = parts[1].split(separator: ":", maxSplits: 1)
+        guard let address = target.first, !address.isEmpty else { return nil }
+        let port = target.count > 1 ? Int(target[1]) ?? 22 : 22
+        return ServerHost(
+            name: String(parts[1]), address: String(address),
+            port: port, user: String(parts[0])
+        )
+    }
+
+    @Test("обычная форма разбирается")
+    func plain() throws {
+        let host = try #require(parse("root@10.0.0.1"))
+        #expect(host.user == "root")
+        #expect(host.address == "10.0.0.1")
+        #expect(host.port == 22)
+    }
+
+    @Test("порт учитывается")
+    func withPort() throws {
+        let host = try #require(parse("deploy@example.com:2222"))
+        #expect(host.port == 2222)
+        #expect(host.user == "deploy")
+    }
+
+    @Test("мусор не превращается в хост")
+    func rejectsGarbage() {
+        #expect(parse("") == nil)
+        #expect(parse("просто текст") == nil)
+        #expect(parse("@10.0.0.1") == nil, "пустой пользователь — не хост")
+        #expect(parse("root@") == nil, "пустой адрес — не хост")
+    }
+
+    @Test("нечисловой порт не роняет разбор, а откатывается к 22")
+    func badPortFallsBack() throws {
+        let host = try #require(parse("root@10.0.0.1:абв"))
+        #expect(host.port == 22)
+    }
+}

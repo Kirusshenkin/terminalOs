@@ -52,6 +52,8 @@ public final class AppModel {
     public var selectedGroup: HostGroup.ID?
     public var query = ""
     public var selectedHost: ServerHost.ID?
+    public var isAddingHost = false
+    public var importReport: ImportReport?
 
     /// Живая сессия выбранного хоста, если он подключён.
     public internal(set) var session: HostSession?

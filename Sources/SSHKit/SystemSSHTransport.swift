@@ -12,6 +12,12 @@ public actor SystemSSHTransport: SSHTransport {
 
     private let controlPath: String
     private let reach: Reach
+    /// Когда прокси в последний раз подтверждённо отвечал.
+    ///
+    /// Проверять его перед каждой командой — лишний коннект каждые несколько
+    /// секунд; не проверять вовсе — вернуться к неотличимым ошибкам.
+    private var proxyCheckedAt: ContinuousClock.Instant?
+    private let proxyCheckLifetime: Duration = .seconds(30)
 
     public init(host: ServerHost, reach: Reach) {
         self.host = host
@@ -85,6 +91,22 @@ public actor SystemSSHTransport: SSHTransport {
         )
     }
 
+    /// Убеждается, что прокси на месте, не чаще раза в полминуты.
+    private func ensureProxyAlive(host proxyHost: String, port proxyPort: Int) async throws {
+        if let checked = proxyCheckedAt, ContinuousClock.now - checked < proxyCheckLifetime {
+            return
+        }
+        guard
+            await Reachability.canConnect(
+                host: proxyHost, port: proxyPort, timeout: .seconds(2)
+            )
+        else {
+            proxyCheckedAt = nil
+            throw TransportError.proxyUnreachable(host: proxyHost, port: proxyPort)
+        }
+        proxyCheckedAt = .now
+    }
+
     public func close() async {
         let target = "\(host.user)@\(host.address)"
         _ = try? await Subprocess.run(
@@ -92,5 +114,6 @@ public actor SystemSSHTransport: SSHTransport {
             arguments: ["-o", "ControlPath=\(controlPath)", "-O", "exit", target],
             timeout: .seconds(5)
         )
+        proxyCheckedAt = nil
     }
 }

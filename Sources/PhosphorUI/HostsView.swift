@@ -57,19 +57,45 @@ public struct HostsView: View {
             .padding(.vertical, 7)
             .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))
 
-            PhButton(strings("hosts.connect"), kind: .primary) {}
+            PhButton(strings("hosts.connect"), kind: .primary) {
+                // Набрал user@host — подключился, ничего не сохраняя.
+                if let host = model.parseQuickConnect(model.query) {
+                    model.screen = .terminal
+                    Task { await model.connect(to: host) }
+                } else if let first = model.visibleHosts.first {
+                    model.screen = .terminal
+                    Task { await model.connect(to: first) }
+                }
+            }
         }
     }
 
     private var actionRow: some View {
         HStack(spacing: 10) {
-            PhButton(strings("hosts.new")) {}
-            PhButton(strings("hosts.import")) {}
+            PhButton(strings("hosts.new")) { model.isAddingHost = true }
+            PhButton(strings("hosts.import")) { model.importReport = model.importSSHConfig() }
             Spacer()
-            Text(model.selectedGroup == nil ? strings("hosts.filterHint") : strings("hosts.clearFilter"))
+            if let report = model.importReport {
+                Text(importSummary(report))
+                    .font(style.font(11))
+                    .foregroundStyle(report.skipped.isEmpty ? style.muted : style.warning)
+            } else {
+                Text(
+                    model.selectedGroup == nil
+                        ? strings("hosts.filterHint") : strings("hosts.clearFilter")
+                )
                 .font(style.font(11))
                 .foregroundStyle(style.muted)
+            }
         }
+    }
+
+    /// Итог импорта словами: сколько взяли и сколько не поняли.
+    private func importSummary(_ report: AppModel.ImportReport) -> String {
+        if report.added == 0, report.skipped.isEmpty { return "в ~/.ssh/config нечего импортировать" }
+        var text = "добавлено \(report.added)"
+        if !report.skipped.isEmpty { text += ", не распознано \(report.skipped.count)" }
+        return text
     }
 
     private var groups: some View {

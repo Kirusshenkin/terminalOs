@@ -158,7 +158,7 @@ class Component extends DCLogic {
         ['pids   14', '#3E9E5A'],
       ].map(([t, fg]) => ({ t, fg })),
       env: [['NODE_ENV','production'],['BILLING_URL','https://billing.internal'],['CONCURRENCY','8'],['DATABASE_URL','••••••••'],['REDIS_URL','redis://redis-cache:6379'],['API_KEY','••••••••']].map(([k,v]) => ({k,v})),
-      mounts: [{src:'prod_worker_data', dst:'/data', mode:'rw'},{src:'/srv/prod/config', dst:'/app/config', mode:'ro'},{src:'/var/run/docker.sock', dst:'/var/run/docker.sock', mode:'ro'}],
+      mounts: [{src:'prod_worker_data', dst:'/data', mode:'rw'},{src:'/srv/app/config', dst:'/app/config', mode:'ro'},{src:'/var/run/docker.sock', dst:'/var/run/docker.sock', mode:'ro'}],
     };
   }
 }

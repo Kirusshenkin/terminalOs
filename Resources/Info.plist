@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>Phosphor</string>
+    <key>CFBundleDisplayName</key><string>Phosphor</string>
+    <key>CFBundleIdentifier</key><string>dev.phosphor.terminal</string>
+    <key>CFBundleExecutable</key><string>Phosphor</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>__SHORT_VERSION__</string>
+    <key>CFBundleVersion</key><string>__BUILD_VERSION__</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <!-- Одно окно, никаких фоновых агентов и иконки в строке меню. -->
+    <key>LSUIElement</key><false/>
+    <key>NSHumanReadableCopyright</key><string>Phosphor</string>
+    <!-- Sparkle: канал обновлений и открытый ключ EdDSA. Подпись обновления
+         заменяет нам нотаризацию как доказательство подлинности. -->
+    <key>SUFeedURL</key><string>https://github.com/__OWNER__/__REPO__/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>__SPARKLE_PUBLIC_KEY__</string>
+    <key>SUEnableInstallerLauncherService</key><false/>
+</dict>
+</plist>

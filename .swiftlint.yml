@@ -1,12 +1,12 @@
 included:
-  - App
-  - Packages
-  - Tools
+  - Sources
+  - Tests
 
 excluded:
   - .build
   - DerivedData
   - design
+  - dist
 
 opt_in_rules:
   - force_unwrapping
@@ -31,11 +31,31 @@ opt_in_rules:
 
 disabled_rules:
   - todo
+  # swift-format из тулчейна сам расставляет висящие запятые в многострочных
+  # литералах. Держать оба инструмента и спорить с ними — бессмысленно.
+  - trailing_comma
+  # Data(string.utf8) не эквивалентен string.data(using:) там, где нам нужен
+  # именно опциональный путь при разборе чужого ввода.
+  - optional_data_string_conversion
+  # Форматтер ставит открывающую скобку по своим правилам.
+  - opening_brace
+  - closure_parameter_position
+
+identifier_name:
+  min_length: { warning: 2 }
+  max_length: { warning: 50 }
+  excluded: [id, db, ok, up, io, x, y, dx, dy, a, b, to, at]
+
+type_name:
+  # ID — имя, которого требует Identifiable.
+  excluded: [ID]
 
 line_length:
-  warning: 110
-  error: 140
+  warning: 120
+  error: 160
   ignores_urls: true
+  ignores_comments: true
+
 
 file_length:
   warning: 500
@@ -46,9 +66,6 @@ type_body_length: { warning: 300, error: 450 }
 function_body_length: { warning: 50, error: 90 }
 cyclomatic_complexity: { warning: 10, error: 18 }
 
-identifier_name:
-  min_length: { warning: 2 }
-  excluded: [id, db, ok, up, io, x, y, dx, dy]
 
 custom_rules:
   no_print:
@@ -58,11 +75,13 @@ custom_rules:
     severity: warning
   unchecked_sendable:
     name: "@unchecked Sendable"
-    regex: '@unchecked\s+Sendable'
+    regex: '^\s*(final\s+)?class[^\n]*@unchecked\s+Sendable'
     message: "Каждый @unchecked Sendable — с комментарием, почему это безопасно"
     severity: warning
-  no_sleep_in_wait:
-    name: "Task.sleep вместо ожидания события"
-    regex: 'Task\.sleep\('
-    message: "Готовность проверяем фактом, а не таймером — см. §5.1 плана"
+  no_sleep_poll:
+    name: "ожидание готовности таймером"
+    # Ловим именно «поспать и считать, что готово»: пауза внутри цикла опроса
+    # без последующей проверки факта. Пауза в анимации или в бэкоффе — законна.
+    regex: 'while[^\n]*\{[^}]*Task\.sleep\([^)]*\)[^}]*\}(?![^}]*canConnect)'
+    message: "Готовность проверяем фактом соединения, а не таймером — §5.2 плана"
     severity: warning

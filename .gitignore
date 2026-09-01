@@ -1,8 +1,25 @@
 .DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved.bak
+
+# Xcode
 build/
 DerivedData/
 *.xcuserstate
 *.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
 
-# собранный канвас — генерируется из design/*.dc.html
+# Release artifacts and signing material — never in git
+*.app
+*.zip
+*.dmg
+appcast.xml
+*.pem
+*.key
+
+# Generated canvas — built from design/*.dc.html
 design/helm-terminal-sketches.html

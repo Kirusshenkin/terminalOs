@@ -133,9 +133,9 @@ hosts_script = '''class Component extends DCLogic {
       { id: 'misc',  name: 'без группы', n: '4 хоста', env: '—', dot: '#2E7A45' },
     ];
     const all = [
-      ['prod.stage1','UBU','ssh, prod, stage','prod',''], ['prod.w1','UBU','ssh, prod, api','prod',''],
-      ['prod.s2','UBU','ssh, prod, api','prod',''], ['prod.s3','UBU','ssh, prod, api','prod','!'],
-      ['prod.s4','UBU','ssh, prod, api','prod',''], ['prod.w2','UBU','ssh, prod, worker','prod','!'],
+      ['app-1','UBU','ssh, prod, stage','prod',''], ['worker-1','UBU','ssh, prod, api','prod',''],
+      ['node-2','UBU','ssh, prod, api','prod',''], ['node-3','UBU','ssh, prod, api','prod','!'],
+      ['node-4','UBU','ssh, prod, api','prod',''], ['worker-2','UBU','ssh, prod, worker','prod','!'],
       ['lobby','UBU','ssh, lobby, games','games',''], ['web.dev','UBU','ssh, dev, games','games',''],
       ['lab.dev','DEB','ssh, lab','lab',''], ['lab.dev new','DEB','ssh, lab','lab',''],
       ['203.0.113.9','SRV','ssh, telnet, root','misc',''], ['203.0.113.24','SRV','ssh, root','misc',''],
@@ -180,10 +180,10 @@ sftp_body = '''        <div style="flex-grow: 1; min-width: 0; display: flex; fl
           <div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px;">
 ''' + filelist("ЛОКАЛЬНО", "~ › project › terminal", local_rows, selected=4) + '''
         <div style="width: 1px; background: rgba(91,232,127,.18);"></div>
-''' + filelist("PROD-01 · ТО ЖЕ SSH-СОЕДИНЕНИЕ", "/ › srv › prod", remote_rows, selected=5) + '''
+''' + filelist("PROD-01 · ТО ЖЕ SSH-СОЕДИНЕНИЕ", "/ › srv › app", remote_rows, selected=5) + '''
           </div>
           <div style="border-top: 1px solid rgba(91,232,127,.18); padding-top: 8px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px;">
-            <div style="display: flex; gap: 10px; align-items: center;"><span class="lbl">ОЧЕРЕДЬ</span><span class="mid">deploy.tar.gz → prod-01:/srv/prod</span><div style="flex-grow: 1;"></div><span class="hi">66 % · 4,1 МБ/с · 4 с</span></div>
+            <div style="display: flex; gap: 10px; align-items: center;"><span class="lbl">ОЧЕРЕДЬ</span><span class="mid">deploy.tar.gz → prod-01:/srv/app</span><div style="flex-grow: 1;"></div><span class="hi">66 % · 4,1 МБ/с · 4 с</span></div>
             <div style="height: 3px; background: rgba(91,232,127,.14);"><div style="height: 3px; width: 66%; background: #5BE87F;"></div></div>
             <div class="dim">перетащи файл между панелями или из Finder — это и есть загрузка. Обрыв — докачка с места остановки.</div>
           </div>
@@ -286,7 +286,7 @@ docker_script = '''class Component extends DCLogic {
         ['pids   14', '#3E9E5A'],
       ].map(([t, fg]) => ({ t, fg })),
       env: [['NODE_ENV','production'],['BILLING_URL','https://billing.internal'],['CONCURRENCY','8'],['DATABASE_URL','••••••••'],['REDIS_URL','redis://redis-cache:6379'],['API_KEY','••••••••']].map(([k,v]) => ({k,v})),
-      mounts: [{src:'prod_worker_data', dst:'/data', mode:'rw'},{src:'/srv/prod/config', dst:'/app/config', mode:'ro'},{src:'/var/run/docker.sock', dst:'/var/run/docker.sock', mode:'ro'}],
+      mounts: [{src:'prod_worker_data', dst:'/data', mode:'rw'},{src:'/srv/app/config', dst:'/app/config', mode:'ro'},{src:'/var/run/docker.sock', dst:'/var/run/docker.sock', mode:'ro'}],
     };
   }
 }'''
@@ -456,7 +456,7 @@ open("Theme.dc.html","w",encoding="utf-8").write(frame("Тема", tabs("ТЕМ�
 # ====================================================================== ВЫПОЛНЕНИЕ РЕЦЕПТА
 steps = [("обновить пакеты и unattended-upgrades","✓","готово · 41 с"),
          ("Docker + Compose, лимит логов docker и journald","▸","идёт · 28 с"),("nginx","·","ожидает"),
-         ("certbot · prod.example.com","·","ожидает · DNS проверен"),("UFW: только 22 80 443 · проверка портов compose","·","ожидает"),
+         ("certbot · app.example.com","·","ожидает · DNS проверен"),("UFW: только 22 80 443 · проверка портов compose","·","ожидает"),
          ("закрыть вход по паролю","·","последним, после проверки ключа")]
 step_rows = ""
 for name, mark, st in steps:

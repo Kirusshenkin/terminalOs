@@ -1,0 +1,98 @@
+public import SwiftUI
+
+/// The window: lock screen until unlocked, then the tabbed interface.
+public struct RootView: View {
+    @State private var model = AppModel()
+
+    public init() {}
+
+    public var body: some View {
+        Group {
+            if model.isUnlocked {
+                main
+            } else {
+                LockView(strings: model.strings) {
+                    withAnimation(.easeOut(duration: 0.25)) { model.isUnlocked = true }
+                }
+            }
+        }
+        .environment(\.style, model.style)
+        .frame(minWidth: 1_060, minHeight: 680)
+        .onAppear { model.loadDemoData() }
+    }
+
+    private var main: some View {
+        Screen {
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                Rule().padding(.top, 6).padding(.bottom, 14)
+                content
+                Rule().padding(.top, 12).padding(.bottom, 8)
+                footer
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 22) {
+            Text("PHOSPHOR")
+                .font(model.style.font(11)).tracking(3)
+                .foregroundStyle(model.style.muted)
+            ForEach(tabs, id: \.0) { tab in
+                Button {
+                    model.screen = tab.1
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(model.screen == tab.1 ? "▸" : " ")
+                        Text(model.strings(tab.0).uppercased())
+                    }
+                    .font(model.style.font(11)).tracking(1.2)
+                    .foregroundStyle(model.screen == tab.1 ? model.style.bright : model.style.muted)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer()
+            Text(headerRight)
+                .font(model.style.font(11)).tracking(1.2)
+                .foregroundStyle(model.style.muted)
+        }
+    }
+
+    private var tabs: [(String, Screen2)] {
+        [
+            ("nav.hosts", .hosts), ("tab.terminal", .terminal),
+            ("tab.docker", .docker), ("tab.monitor", .monitor),
+            ("nav.keys", .keys), ("tab.theme", .theme),
+        ]
+    }
+
+    private var headerRight: String {
+        guard let id = model.selectedHost,
+            let host = model.book.hosts.first(where: { $0.id == id })
+        else { return "TOUCH ID" }
+        return "\(host.name.uppercased()) · \(model.book.reach(for: host).summary.uppercased()) · TOUCH ID"
+    }
+
+    @ViewBuilder private var content: some View {
+        switch model.screen {
+        case .hosts: HostsView(model: model)
+        case .terminal: TerminalPane(model: model)
+        case .docker: DockerView(model: model)
+        case .monitor: MonitorView(model: model)
+        case .keys: KeysView(model: model)
+        case .theme: ThemeView(model: model)
+        }
+        Spacer(minLength: 0)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 22) {
+            Text("\(model.book.hosts.count) хостов · \(model.book.groups.count) групп")
+            Text(model.style.theme.name)
+            Spacer()
+            Text(model.pet == .cat ? "котёнок спит" : "поссум спит")
+        }
+        .font(model.style.font(11)).tracking(1.1)
+        .foregroundStyle(model.style.muted)
+    }
+}

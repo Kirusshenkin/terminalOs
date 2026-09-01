@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 fail=0
 
 echo "==> swift format"
-swift format lint --recursive --parallel App Packages Tools 2>/dev/null || fail=1
+swift format lint --recursive --parallel Sources 2>/dev/null || fail=1
 
 echo "==> swiftlint"
 swiftlint lint --quiet || fail=1

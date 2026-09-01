@@ -1,5 +1,6 @@
 public import DockerKit
 public import PhosphorCore
+public import SessionKit
 public import SwiftUI
 
 /// Container list with the inspector beside it.
@@ -11,8 +12,22 @@ public struct DockerView: View {
     public init(model: AppModel) { self.model = model }
 
     private var strings: Strings { model.strings }
+    private var containers: [Container] {
+        model.sessionState.containers.isEmpty ? model.containers : model.sessionState.containers
+    }
+
     private var selected: Container? {
-        model.containers.first { $0.id == model.selectedContainer } ?? model.containers.first
+        containers.first { $0.id == model.selectedContainer } ?? containers.first
+    }
+
+    /// Одна строка о том, что сейчас с хостом. Разные причины — разные подсказки.
+    private var connectionNote: String? {
+        switch model.sessionState.phase {
+        case .idle: "нет подключения — показаны примерные данные"
+        case .connecting, .probing: "подключаюсь…"
+        case .ready: nil
+        case .failed(let reason): reason
+        }
     }
 
     public var body: some View {
@@ -25,19 +40,25 @@ public struct DockerView: View {
 
     private var list: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label2("\(strings("docker.containers")) · \(model.containers.count)")
+            Label2("\(strings("docker.containers")) · \(containers.count)")
                 .padding(.bottom, 6)
+            if let connectionNote {
+                Text(connectionNote)
+                    .font(style.font(10.5))
+                    .foregroundStyle(isFailure ? style.warning : style.muted)
+                    .padding(.bottom, 4)
+            }
             // The eclipse banner sits above the true list, never in place of it.
             if let egg = model.eggs.eclipseBanner(
-                total: model.containers.count,
-                down: model.containers.filter { $0.state != .running }.count
+                total: containers.count,
+                down: containers.filter { $0.state != .running }.count
             ) {
                 Text(strings(egg).uppercased())
                     .font(style.font(10.5)).tracking(2)
                     .foregroundStyle(style.danger)
                     .padding(.bottom, 4)
             }
-            ForEach(model.containers) { container in
+            ForEach(containers) { container in
                 Button {
                     model.selectedContainer = container.id
                 } label: {
@@ -58,6 +79,11 @@ public struct DockerView: View {
             Spacer(minLength: 0)
         }
         .frame(width: 240, alignment: .leading)
+    }
+
+    private var isFailure: Bool {
+        if case .failed = model.sessionState.phase { return true }
+        return false
     }
 
     private func dot(_ container: Container) -> Color {
@@ -146,13 +172,17 @@ public struct DockerView: View {
     }
 
     private func overview(_ container: Container) -> [(String, String)] {
-        [
+        let stats = model.sessionState.stats[container.name]
+        return [
             ("id", String(container.id.prefix(12))),
             ("образ", container.image),
             ("состояние", container.state.title),
             ("порты", container.ports.isEmpty ? "—" : container.ports),
             ("стек", container.project ?? "—"),
             ("health", container.health ?? "—"),
+            ("cpu", stats.map { ByteFormat.percent($0.cpu) } ?? "—"),
+            ("память", stats.map { ByteFormat.size($0.memoryUsed) } ?? "—"),
+            ("pids", stats.map { String($0.pids) } ?? "—"),
         ]
     }
 

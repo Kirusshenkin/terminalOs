@@ -50,6 +50,14 @@ type_name:
   # ID — имя, которого требует Identifiable.
   excluded: [ID]
 
+inclusive_language:
+  # «мастер-ключ» — устоявшийся термин из документации по шифрованию;
+  # заменять его синонимом значит запутать читателя, а не улучшить язык.
+  override_allowed_terms: [master]
+
+large_tuple:
+  warning: 3
+
 line_length:
   warning: 120
   error: 160

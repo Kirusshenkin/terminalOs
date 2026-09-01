@@ -135,8 +135,8 @@ public struct HostsView: View {
 
     private func hostCard(_ host: ServerHost) -> some View {
         Button {
-            model.selectedHost = host.id
             model.screen = .terminal
+            Task { await model.connect(to: host) }
         } label: {
             HStack(spacing: 11) {
                 Text(host.osBadge)

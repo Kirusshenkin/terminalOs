@@ -1,5 +1,6 @@
 public import MetricsKit
 public import PhosphorCore
+public import SessionKit
 public import SwiftUI
 
 /// Cores, memory, disks and network for the selected host.
@@ -18,10 +19,29 @@ public struct MonitorView: View {
         }
     }
 
+    /// Живые ядра, если хост подключён; иначе показательные — чтобы окно не
+    /// было пустым до первого подключения.
+    private var coreValues: [Double] {
+        let live = model.sessionState.coreUsage
+        return live.isEmpty ? Self.demoCores : live
+    }
+
+    private var stealValues: [Double] {
+        model.sessionState.coreSteal
+    }
+
+    private var isLive: Bool { !model.sessionState.coreUsage.isEmpty }
+
     private var cores: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label2("\(strings("monitor.cores")) · \(Self.demoCores.count)")
-            ForEach(Array(Self.demoCores.enumerated()), id: \.offset) { index, value in
+            HStack(spacing: 8) {
+                Label2("\(strings("monitor.cores")) · \(coreValues.count)")
+                if !isLive {
+                    Text("нет соединения — показаны примерные значения")
+                        .font(style.font(10.5)).foregroundStyle(style.muted)
+                }
+            }
+            ForEach(Array(coreValues.enumerated()), id: \.offset) { index, value in
                 HStack(spacing: 10) {
                     Text("cpu\(index)")
                         .font(style.font(12)).foregroundStyle(style.muted).frame(
@@ -35,15 +55,25 @@ public struct MonitorView: View {
                     // Steal is a neighbour on the hypervisor eating your time;
                     // nothing you change on the server will help, so it is shown
                     // separately rather than folded into usage.
-                    if index == 0 || index == 4 {
-                        Text("steal 3 %").font(style.font(10.5)).foregroundStyle(style.warning.opacity(0.8))
+                    if index < stealValues.count, stealValues[index] > 0.01 {
+                        Text("steal \(ByteFormat.percent(stealValues[index]))")
+                            .font(style.font(10.5)).foregroundStyle(style.warning.opacity(0.8))
                     }
                 }
             }
             Rule().padding(.vertical, 4)
             HStack(spacing: 22) {
-                metric("load", "0.42 0.51 0.48")
-                metric(strings("monitor.uptime"), ByteFormat.duration(seconds: 41 * 86_400 + 6 * 3_600))
+                if let snapshot = model.sessionState.latest {
+                    metric(
+                        "load",
+                        String(
+                            format: "%.2f %.2f %.2f",
+                            snapshot.loadOne, snapshot.loadFive, snapshot.loadFifteen))
+                    metric(strings("monitor.uptime"), ByteFormat.duration(seconds: snapshot.uptime))
+                } else {
+                    metric("load", "—")
+                    metric(strings("monitor.uptime"), "—")
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -53,12 +83,18 @@ public struct MonitorView: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 Label2("\(strings("monitor.memory")) · MemAvailable")
-                Bar(fraction: 0.36, colour: style.accent)
-                Text("11,4 / 32 ГБ").font(style.font(12)).foregroundStyle(style.bright)
+                let snapshot = model.sessionState.latest
+                Bar(fraction: snapshot?.memoryUsage ?? 0.36, colour: style.accent)
+                Text(
+                    snapshot.map {
+                        "\(ByteFormat.size($0.memoryUsed)) из \(ByteFormat.size($0.memoryTotal))"
+                    } ?? "—"
+                )
+                .font(style.font(12)).foregroundStyle(style.bright)
             }
             VStack(alignment: .leading, spacing: 8) {
                 Label2(strings("monitor.disks"))
-                ForEach(Self.demoDisks, id: \.0) { disk in
+                ForEach(disks, id: \.0) { disk in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text(disk.0).font(style.font(12)).foregroundStyle(style.text)
@@ -73,7 +109,12 @@ public struct MonitorView: View {
             }
             VStack(alignment: .leading, spacing: 6) {
                 Label2(strings("monitor.network"))
-                Text("↓ 3,1 МБ/с   ↑ 1,1 МБ/с").font(style.font(12)).foregroundStyle(style.bright)
+                if let flow = model.sessionState.throughput.first {
+                    Text("↓ \(ByteFormat.size(Int64(flow.down)))/с   ↑ \(ByteFormat.size(Int64(flow.up)))/с")
+                        .font(style.font(12)).foregroundStyle(style.bright)
+                } else {
+                    Text("—").font(style.font(12)).foregroundStyle(style.muted)
+                }
             }
             Spacer(minLength: 0)
         }
@@ -88,6 +129,14 @@ public struct MonitorView: View {
     }
 
     private static let demoCores: [Double] = [0.62, 0.18, 0.44, 0.09, 0.77, 0.23, 0.31, 0.12]
+    /// Диски с сервера, если он на связи; иначе показательные.
+    private var disks: [(String, Double)] {
+        guard let snapshot = model.sessionState.latest, !snapshot.filesystems.isEmpty else {
+            return Self.demoDisks
+        }
+        return snapshot.filesystems.map { ($0.mount, $0.usage) }
+    }
+
     private static let demoDisks: [(String, Double)] = [
         ("/", 0.85), ("/var/lib/docker", 0.30), ("/backups", 0.55),
     ]

@@ -1,3 +1,5 @@
+public import PhosphorCore
+public import SessionKit
 public import SwiftUI
 
 /// The terminal pane with the pet corner.
@@ -10,23 +12,49 @@ public struct TerminalPane: View {
     public var body: some View {
         ZStack(alignment: .bottomLeading) {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(model.scrollback.elements) { line in
-                    Text(line.text)
-                        .font(style.font(12.5))
-                        .foregroundStyle(colour(for: line.kind))
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                if let note = phaseNote {
+                    Text(note)
+                        .font(style.font(12))
+                        .foregroundStyle(isFailure ? style.warning : style.muted)
+                        .padding(.bottom, 8)
                 }
-                HStack(spacing: 0) {
-                    Text("root@").foregroundStyle(style.accent)
-                    Text("phosphor").foregroundStyle(style.bright)
-                    Text(":~# ").foregroundStyle(style.muted)
-                    Rectangle().fill(style.cursor).frame(width: 8, height: 14)
+                TerminalHost(theme: style.theme) { request in
+                    Task { @MainActor in model.guardPrompt = GuardPrompt(request: request) }
                 }
-                .font(style.font(12.5))
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             PetCorner(pet: $model.pet)
         }
+        // Ничего не попадает в буфер обмена и не открывается, пока человек не
+        // увидел, что именно. Согласиться вслепую — как раз то, чем пользуется
+        // атака через OSC 52.
+        .alert(item: $model.guardPrompt) { prompt in
+            Alert(
+                title: Text(prompt.title),
+                message: Text(prompt.detail),
+                primaryButton: .default(Text("разрешить")) { model.accept(prompt) },
+                secondaryButton: .cancel(Text("отклонить"))
+            )
+        }
+    }
+
+    /// Что сейчас с соединением — одной строкой, с причиной.
+    private var phaseNote: String? {
+        switch model.sessionState.phase {
+        case .idle: nil
+        case .connecting: "подключаюсь…"
+        case .probing: "собираю профиль хоста…"
+        case .ready:
+            model.sessionState.profile.map {
+                "\($0.osName) \($0.osVersion) · аптайм \(ByteFormat.duration(seconds: $0.uptimeSeconds))"
+            }
+        case .failed(let reason): reason
+        }
+    }
+
+    private var isFailure: Bool {
+        if case .failed = model.sessionState.phase { return true }
+        return false
     }
 
     private func colour(for kind: TerminalLine.Kind) -> Color {

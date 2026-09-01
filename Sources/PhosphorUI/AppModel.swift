@@ -1,3 +1,5 @@
+public import AppKit
+public import AuthKit
 public import DockerKit
 public import Foundation
 public import HostsKit
@@ -5,6 +7,7 @@ public import MetricsKit
 public import PhosphorCore
 public import ProvisionKit
 public import SSHKit
+public import SessionKit
 public import ThemeKit
 
 /// Which screen the window is showing.
@@ -40,6 +43,11 @@ public struct TerminalLine: Sendable, Identifiable {
 @Observable
 public final class AppModel {
     public var isUnlocked = false
+    /// Что этот Мак реально умеет: обещаем только доступное.
+    public private(set) var gateCapability = GateCapability(
+        hasBiometry: false, hasWatch: false, hasPassword: true)
+    public private(set) var unlockError: String?
+    public private(set) var isUnlocking = false
     public var screen: Screen2 = .hosts
     public var language: Language = .system
     public var themeID = BuiltInThemes.phosphor.id
@@ -51,11 +59,19 @@ public final class AppModel {
     public var query = ""
     public var selectedHost: ServerHost.ID?
 
+    /// Живая сессия выбранного хоста, если он подключён.
+    public private(set) var session: HostSession?
+    public private(set) var sessionState = SessionState()
+    private var observerToken: UUID?
+
     public var containers: [Container] = []
     public var selectedContainer: String?
     public var snapshots = RingBuffer<Snapshot>(capacity: 1_800)
     public var profile: HostProfile?
     public var provisionOffer: HostProfile?
+
+    /// Что терминал просит подтвердить: запись в буфер, необычная ссылка.
+    public var guardPrompt: GuardPrompt?
 
     /// Terminal scrollback, bounded on purpose.
     public var scrollback = RingBuffer<TerminalLine>(capacity: 50_000)
@@ -79,7 +95,131 @@ public final class AppModel {
         book.search(query, groupID: selectedGroup)
     }
 
-    public init() {}
+    private let gate: any BiometricGate
+    private let profiles: ProfileStore
+    /// Отложенное сохранение: правки копятся и уходят одной записью.
+    private var saveTask: Task<Void, Never>?
+
+    public init(
+        gate: any BiometricGate = SystemBiometricGate(),
+        profiles: ProfileStore = ProfileStore(store: KeychainSecretStore())
+    ) {
+        self.gate = gate
+        self.profiles = profiles
+        self.gateCapability = gate.capability()
+    }
+
+    /// Проверяет человека и открывает профиль.
+    ///
+    /// Открытые соединения при блокировке не рвутся — закрывается интерфейс,
+    /// а не сессии, иначе однажды это оборвёт долгий деплой.
+    public func unlock() async {
+        guard !isUnlocking else { return }
+        isUnlocking = true
+        unlockError = nil
+        defer { isUnlocking = false }
+
+        do {
+            try await gate.authenticate(reason: "открыть профиль Phosphor")
+            await loadProfile()
+            isUnlocked = true
+        } catch GateError.unavailable(let reason) {
+            unlockError = "проверка недоступна: \(reason)"
+        } catch GateError.lockedOut {
+            unlockError = "биометрия заблокирована — войди паролем учётной записи"
+        } catch {
+            unlockError = "вход отменён"
+        }
+    }
+
+    public func lock() {
+        isUnlocked = false
+    }
+
+    private func loadProfile() async {
+        do {
+            book = try await profiles.load(HostBook.self, reason: "открыть профиль Phosphor")
+        } catch ProfileStoreError.empty {
+            // Первый запуск: показываем что-то живое, но ничего не сохраняем,
+            // пока человек сам не заведёт хост.
+            loadDemoData()
+        } catch ProfileStoreError.keyLost {
+            unlockError = "профиль на месте, но ключ утерян — восстанови из экспорта"
+        } catch {
+            unlockError = "профиль не читается: \(error.localizedDescription)"
+        }
+    }
+
+    /// Выполняет то, на что человек согласился в диалоге терминала.
+    public func accept(_ prompt: GuardPrompt) {
+        switch prompt.request {
+        case .clipboardWrite(let text):
+            let board = NSPasteboard.general
+            board.clearContents()
+            board.setString(text, forType: .string)
+        case .unsafeLink(let uri):
+            // Открываем только то, что система сочтёт корректным адресом, и
+            // только по явному согласию.
+            if let url = URL(string: uri) { NSWorkspace.shared.open(url) }
+        }
+        guardPrompt = nil
+    }
+
+    /// Подключается к хосту и начинает получать от него данные.
+    ///
+    /// Прошлая сессия закрывается: держать открытыми соединения к хостам, на
+    /// которые никто не смотрит, — это чужой ресурс и чужие деньги.
+    public func connect(to host: ServerHost) async {
+        if let session, let observerToken {
+            await session.stopObserving(observerToken)
+            await session.stop()
+        }
+        selectedHost = host.id
+        let fresh = HostSession(host: host, reach: book.reach(for: host))
+        session = fresh
+        sessionState = SessionState()
+        observerToken = await fresh.observe { [weak self] state in
+            Task { @MainActor in
+                self?.sessionState = state
+                self?.adopt(state)
+            }
+        }
+        await fresh.start()
+    }
+
+    /// Переносит данные сессии в поля, из которых рисуются панели.
+    private func adopt(_ state: SessionState) {
+        if !state.containers.isEmpty { containers = state.containers }
+        profile = state.profile
+        if let snapshot = state.latest { snapshots.append(snapshot) }
+        // Свежий сервер предлагаем настроить один раз, а не при каждом обновлении.
+        if let hostProfile = state.profile, hostProfile.isFresh, provisionOffer == nil {
+            provisionOffer = hostProfile
+        }
+    }
+
+    public func disconnect() async {
+        if let session, let observerToken { await session.stopObserving(observerToken) }
+        await session?.stop()
+        session = nil
+        observerToken = nil
+        sessionState = SessionState()
+    }
+
+    /// Приостанавливает опрос, когда окно ушло на второй план.
+    public func setWindowActive(_ active: Bool) async {
+        await session?.setActive(active)
+    }
+
+    /// Планирует запись профиля, схлопывая частые правки в одну.
+    public func scheduleSave() {
+        saveTask?.cancel()
+        saveTask = Task { [profiles, book] in
+            try? await Task.sleep(for: .milliseconds(700))
+            guard !Task.isCancelled else { return }
+            try? await profiles.save(book, reason: "сохранить профиль Phosphor")
+        }
+    }
 
     /// Sample content so the window is not empty before a real connection.
     public func loadDemoData() {

@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 import Testing
 
+@testable import AuthKit
 @testable import PhosphorCore
 @testable import VaultKit
 
@@ -226,5 +227,115 @@ struct VaultTests {
 
         let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
         #expect((attributes[.posixPermissions] as? NSNumber)?.int16Value == 0o600)
+    }
+}
+
+@Suite("Хранилище профиля")
+struct ProfileStoreTests {
+    private struct Sample: Codable, Equatable {
+        var hosts: [String]
+        var note: String
+    }
+
+    private func temporaryURL() -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("phosphor-\(UUID().uuidString)/profile.phosphor")
+    }
+
+    @Test("первый запуск: профиля нет, ключ создаётся при записи")
+    func firstRun() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let secrets = MemorySecretStore()
+        let store = ProfileStore(store: secrets, url: url)
+
+        #expect(await !store.hasProfile())
+        await #expect(throws: ProfileStoreError.empty) {
+            _ = try await store.load(Sample.self, reason: "тест")
+        }
+
+        let value = Sample(hosts: ["prod-01"], note: "первый")
+        try await store.save(value, reason: "тест")
+        #expect(await store.hasProfile())
+        #expect(
+            await secrets.exists(ProfileStore.masterKeyAccount), "ключ должен появиться при первой записи")
+        let loaded = try await store.load(Sample.self, reason: "тест")
+        #expect(loaded == value)
+    }
+
+    @Test("на диске лежит шифротекст, а не JSON")
+    func fileIsEncrypted() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let store = ProfileStore(store: MemorySecretStore(), url: url)
+        try await store.save(Sample(hosts: ["секретный-хост"], note: "x"), reason: "тест")
+
+        let raw = try Data(contentsOf: url)
+        let text = String(decoding: raw, as: UTF8.self)
+        #expect(!text.contains("секретный-хост"))
+        #expect(!text.contains("hosts"))
+        #expect(try Vault.version(of: raw) == Vault.currentVersion)
+    }
+
+    @Test("потерянный ключ не подменяется новым молча")
+    func lostKeyIsReported() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let secrets = MemorySecretStore()
+        let store = ProfileStore(store: secrets, url: url)
+        try await store.save(Sample(hosts: ["a"], note: "b"), reason: "тест")
+
+        // Ключ пропал, файл остался — второе хранилище видит именно это.
+        let orphan = ProfileStore(store: MemorySecretStore(), url: url)
+        await #expect(throws: ProfileStoreError.keyLost) {
+            _ = try await orphan.load(Sample.self, reason: "тест")
+        }
+    }
+
+    @Test("экспорт под парольной фразой переносится на другую машину")
+    func exportAndImport() async throws {
+        let source = temporaryURL()
+        let target = temporaryURL()
+        defer {
+            try? FileManager.default.removeItem(at: source.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: target.deletingLastPathComponent())
+        }
+        let value = Sample(hosts: ["prod-01", "prod-02"], note: "перенос")
+        let first = ProfileStore(store: MemorySecretStore(), url: source)
+        try await first.save(value, reason: "тест")
+
+        let bundle = try await first.export(passphrase: "длинная фраза", reason: "тест")
+        let second = ProfileStore(store: MemorySecretStore(), url: target)
+        try await second.importProfile(bundle, passphrase: "длинная фраза", reason: "тест")
+        #expect(try await second.load(Sample.self, reason: "тест") == value)
+    }
+
+    @Test("неверная фраза не открывает экспорт")
+    func wrongPassphrase() async throws {
+        let source = temporaryURL()
+        let target = temporaryURL()
+        defer {
+            try? FileManager.default.removeItem(at: source.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: target.deletingLastPathComponent())
+        }
+        let first = ProfileStore(store: MemorySecretStore(), url: source)
+        try await first.save(Sample(hosts: ["a"], note: "b"), reason: "тест")
+        let bundle = try await first.export(passphrase: "правильная", reason: "тест")
+
+        let second = ProfileStore(store: MemorySecretStore(), url: target)
+        await #expect(throws: VaultError.cannotDecrypt) {
+            try await second.importProfile(bundle, passphrase: "неправильная", reason: "тест")
+        }
+    }
+
+    @Test("уничтожение стирает и файл, и ключ")
+    func destroy() async throws {
+        let url = temporaryURL()
+        let secrets = MemorySecretStore()
+        let store = ProfileStore(store: secrets, url: url)
+        try await store.save(Sample(hosts: ["a"], note: "b"), reason: "тест")
+        try await store.destroy()
+        #expect(await !store.hasProfile())
+        #expect(await !secrets.exists(ProfileStore.masterKeyAccount))
     }
 }

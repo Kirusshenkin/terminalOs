@@ -2,6 +2,7 @@ public import SwiftUI
 
 /// The window: lock screen until unlocked, then the tabbed interface.
 public struct RootView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var model = AppModel()
 
     public init() {}
@@ -11,14 +12,22 @@ public struct RootView: View {
             if model.isUnlocked {
                 main
             } else {
-                LockView(strings: model.strings) {
-                    withAnimation(.easeOut(duration: 0.25)) { model.isUnlocked = true }
+                LockView(
+                    strings: model.strings,
+                    capability: model.gateCapability.summary,
+                    error: model.unlockError
+                ) {
+                    await model.unlock()
                 }
             }
         }
         .environment(\.style, model.style)
         .frame(minWidth: 1_060, minHeight: 680)
-        .onAppear { model.loadDemoData() }
+        // Опрос замирает, когда на окно никто не смотрит: терминал открыт весь
+        // день, и фоновому окну незачем будить процессор.
+        .onChange(of: scenePhase) { _, phase in
+            Task { await model.setWindowActive(phase == .active) }
+        }
     }
 
     private var main: some View {

@@ -12,7 +12,7 @@ public import ThemeKit
 
 /// Which screen the window is showing.
 public enum Screen2: String, CaseIterable, Sendable {
-    case hosts, terminal, docker, monitor, keys, theme
+    case hosts, terminal, docker, monitor, keys, provision, theme
 }
 
 /// Кто живёт в углу.
@@ -72,6 +72,14 @@ public final class AppModel {
 
     /// Что терминал просит подтвердить: запись в буфер, необычная ссылка.
     public var guardPrompt: GuardPrompt?
+
+    /// Настройка сервера.
+    public private(set) var provisionSteps: [StepProgress] = []
+    public private(set) var provisionLog = RingBuffer<String>(capacity: 4_000)
+    public private(set) var isProvisioning = false
+    public private(set) var plannedCommands: [(step: String, commands: [String])] = []
+    public var showsPlannedCommands = false
+    private var runner: ProvisionRunner?
 
     /// Разрушающее действие, ожидающее подтверждения.
     public var pendingAction: PendingAction?
@@ -188,6 +196,50 @@ public final class AppModel {
             return
         }
         lastOutcome = await session.perform(action, on: container)
+    }
+
+    /// Готовит рецепт под конкретный сервер и запускает его.
+    public func startProvisioning(inputs: RecipeInputs = RecipeInputs()) async {
+        guard let session, let profile, !isProvisioning else { return }
+        let host = book.hosts.first { $0.id == selectedHost }
+        let reach = host.map { book.reach(for: $0) } ?? .direct
+
+        let fresh = ProvisionRunner(
+            transport: SystemSSHTransport(host: host ?? ServerHost(name: "", address: ""), reach: reach),
+            recipe: BuiltInRecipe.base(inputs),
+            profile: profile,
+            proveKeyAccess: {
+                // Отдельное соединение, а не текущая сессия: смысл проверки в
+                // том, что ключ работает сам по себе.
+                guard let host else { return false }
+                let probe = SystemSSHTransport(host: host, reach: reach)
+                defer { Task { await probe.close() } }
+                let result = try? await probe.run("true", timeout: .seconds(15))
+                return result?.succeeded == true
+            }
+        )
+        runner = fresh
+        provisionLog.removeAll()
+        isProvisioning = true
+        plannedCommands = await fresh.plannedCommands()
+
+        await fresh.observe(
+            onLine: { [weak self] line in
+                Task { @MainActor in self?.provisionLog.append(line) }
+            },
+            onProgress: { [weak self] steps in
+                Task { @MainActor in self?.provisionSteps = steps }
+            }
+        )
+        await fresh.run()
+        isProvisioning = false
+        // После настройки профиль устарел: перечитываем, иначе панель будет
+        // считать сервер пустым.
+        await session.start()
+    }
+
+    public func stopProvisioning() {
+        Task { await runner?.stop() }
     }
 
     /// Переключает поток логов на другой контейнер.

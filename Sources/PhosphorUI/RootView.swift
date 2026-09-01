@@ -101,6 +101,7 @@ public struct RootView: View {
         case .docker: DockerView(model: model)
         case .monitor: MonitorView(model: model)
         case .keys: KeysView(model: model)
+        case .provision: ProvisionView(model: model)
         case .theme: ThemeView(model: model)
         }
         Spacer(minLength: 0)

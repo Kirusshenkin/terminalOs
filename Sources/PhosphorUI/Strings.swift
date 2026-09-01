@@ -66,6 +66,7 @@ public struct Strings: Sendable {
         "tab.docker": [.russian: "docker", .english: "docker"],
         "tab.monitor": [.russian: "мониторинг", .english: "monitor"],
         "tab.theme": [.russian: "тема", .english: "theme"],
+        "tab.provision": [.russian: "настройка", .english: "provision"],
 
         // Hosts
         "hosts.search": [

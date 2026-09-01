@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .glow { text-shadow: 0 0 6px rgba(91,232,127,.45); }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.72) 100%); }
+    .card { border: 1px solid rgba(91,232,127,.22); background: rgba(91,232,127,.035); }
+    .card:hover { border-color: rgba(91,232,127,.5); }
+    .row:hover { background: rgba(91,232,127,.06); }
+    .dim { color: #2E7A45; } .mid { color: #3E9E5A; } .hi { color: #9DF7B4; } .amb { color: #C9A227; }
+    .lbl { font-size: 10.5px; letter-spacing: .16em; color: #2E7A45; }
+    .hr { height: 1px; background: rgba(91,232,127,.22); }
+    .btn { border: 1px solid rgba(91,232,127,.35); color: #5BE87F; padding: 3px 10px; font-size: 11px; letter-spacing: .06em; cursor: pointer; }
+    .btn:hover { border-color: #5BE87F; color: #9DF7B4; }
+    .btn.pri { background: #5BE87F; color: #071008; border-color: #5BE87F; }
+    .btn.warn { border-color: rgba(201,162,39,.5); color: #C9A227; }
+
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #05080A; padding: 22px; box-sizing: border-box; position: relative;">
+  <div style="width: 100%; height: 100%; background: #071008; border-radius: 26px; position: relative; overflow: hidden; box-shadow: inset 0 0 90px rgba(0,0,0,.9), inset 0 0 20px rgba(91,232,127,.06);">
+    <div class="glow" style="position: absolute; inset: 0; padding: 26px 32px; box-sizing: border-box; color: #5BE87F; font-size: 12.5px; display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: baseline; gap: 22px; padding-bottom: 6px;">
+        <span style="letter-spacing: .2em; color: #3E9E5A;">HELM</span>
+        <span class="hi" style="letter-spacing: .1em;">▸ ХОСТЫ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;SFTP · PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;DOCKER</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;МОНИТОРИНГ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;КЛЮЧИ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ТЕМА</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;+</span>
+        <div style="flex-grow: 1;"></div>
+        <span class="dim" style="letter-spacing: .12em;">V2BOX · TOUCH ID</span>
+      </div>
+      <div class="hr" style="margin-bottom: 14px;"></div>
+
+      <div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px;">
+        <div style="width: 168px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px;">
+          <div class="lbl" style="margin-bottom: 8px;">-- РАЗДЕЛ --</div>
+          <div class="hi" style="padding: 3px 0; cursor: pointer;">▸ хосты</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; ключи</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; проброс портов</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; сниппеты</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; известные хосты</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; журнал</div>
+        </div>
+        <div style="flex-grow: 1; min-width: 0; border-left: 1px solid rgba(91,232,127,.18); padding-left: 22px; display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="flex-grow: 1; border: 1px solid rgba(91,232,127,.3); padding: 7px 12px; display: flex; gap: 8px; align-items: center;">
+              <span class="dim">&gt;</span><span class="mid">найти хост, тег, группу или user@host…</span>
+              <span style="display: inline-block; width: 7px; height: 13px; background: #5BE87F; margin-left: 2px;"></span>
+            </div>
+            <div class="btn pri">ПОДКЛЮЧИТЬСЯ</div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <div class="btn">+ НОВЫЙ ХОСТ</div><div class="btn">ИМПОРТ ~/.ssh/config</div>
+            <div style="flex-grow: 1;"></div>
+            <span class="dim" style="font-size: 11px;">вид:</span><span class="hi" style="font-size: 11px;">▦ сетка</span><span class="dim" style="font-size: 11px;">≡ список</span>
+          </div>
+
+          <div class="lbl">ГРУППЫ · {{groupHint}}</div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;">
+            <sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+              <div class="card" onClick="{{ g.pick }}" style="padding: 10px 12px; cursor: pointer; border-color: {{g.br}};">
+                <div style="display: flex; align-items: baseline; gap: 8px;"><span style="color: {{g.dot}};">■</span><span class="hi">{{g.name}}</span></div>
+                <div class="dim" style="font-size: 11px; margin-top: 3px;">{{g.n}} · {{g.env}}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div class="lbl">ХОСТЫ · {{hostCount}}</div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; overflow: hidden;">
+            <sc-for list="{{hosts}}" as="h" hint-placeholder-count="9">
+              <div class="card" style="padding: 10px 12px; display: flex; gap: 11px; align-items: center; cursor: pointer;">
+                <div style="width: 30px; height: 30px; border: 1px solid rgba(91,232,127,.35); display: flex; align-items: center; justify-content: center; font-size: 10px; color: #3E9E5A; flex-shrink: 0;">{{h.os}}</div>
+                <div style="min-width: 0;">
+                  <div style="display: flex; gap: 6px; align-items: baseline;"><span class="hi" style="white-space: nowrap;">{{h.name}}</span><span style="color: #C9A227; font-size: 11px;">{{h.warn}}</span></div>
+                  <div class="dim" style="font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{h.tags}}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr" style="margin: 12px 0 8px;"></div>
+      <div style="display: flex; gap: 24px; color: #2E7A45; letter-spacing: .1em; font-size: 11px;">
+        <span>20 ХОСТОВ · 4 ГРУППЫ</span><span>3 ПОДКЛЮЧЕНО</span>
+        <div style="flex-grow: 1;"></div><span>КОТЯТА СПЯТ</span>
+      </div>
+    </div>
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const sel = this.state.group ?? null;
+    const groups = [
+      { id: 'prod', name: 'prod', n: '9 хостов', env: 'прод, красная тема', dot: '#E0673F' },
+      { id: 'games', name: 'games', n: '4 хоста', env: 'стейдж', dot: '#7AA2E3' },
+      { id: 'lab',  name: 'lab',  n: '3 хоста', env: 'дев', dot: '#3E9E5A' },
+      { id: 'misc',  name: 'без группы', n: '4 хоста', env: '—', dot: '#2E7A45' },
+    ];
+    const all = [
+      ['prod.stage1','UBU','ssh, prod, stage','prod',''], ['prod.w1','UBU','ssh, prod, api','prod',''],
+      ['prod.s2','UBU','ssh, prod, api','prod',''], ['prod.s3','UBU','ssh, prod, api','prod','!'],
+      ['prod.s4','UBU','ssh, prod, api','prod',''], ['prod.w2','UBU','ssh, prod, worker','prod','!'],
+      ['lobby','UBU','ssh, lobby, games','games',''], ['web.dev','UBU','ssh, dev, games','games',''],
+      ['lab.dev','DEB','ssh, lab','lab',''], ['lab.dev new','DEB','ssh, lab','lab',''],
+      ['203.0.113.9','SRV','ssh, telnet, root','misc',''], ['203.0.113.24','SRV','ssh, root','misc',''],
+    ];
+    const hosts = all.filter(h => !sel || h[3] === sel).map(([name, os, tags, g, warn]) => ({ name, os, tags, warn }));
+    return {
+      groups: groups.map(g => ({ ...g, br: sel === g.id ? '#5BE87F' : 'rgba(91,232,127,.22)',
+                                  pick: () => this.setState({ group: sel === g.id ? null : g.id }) })),
+      groupHint: sel ? 'фильтр: ' + sel + ' (нажми ещё раз — снять)' : 'нажми, чтобы отфильтровать',
+      hosts, hostCount: hosts.length + ' из ' + all.length,
+    };
+  }
+}
+</script>
+</body>
+</html>

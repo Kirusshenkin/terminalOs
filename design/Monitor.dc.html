@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .glow { text-shadow: 0 0 6px rgba(91,232,127,.45); }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.72) 100%); }
+    .card { border: 1px solid rgba(91,232,127,.22); background: rgba(91,232,127,.035); }
+    .card:hover { border-color: rgba(91,232,127,.5); }
+    .row:hover { background: rgba(91,232,127,.06); }
+    .dim { color: #2E7A45; } .mid { color: #3E9E5A; } .hi { color: #9DF7B4; } .amb { color: #C9A227; }
+    .lbl { font-size: 10.5px; letter-spacing: .16em; color: #2E7A45; }
+    .hr { height: 1px; background: rgba(91,232,127,.22); }
+    .btn { border: 1px solid rgba(91,232,127,.35); color: #5BE87F; padding: 3px 10px; font-size: 11px; letter-spacing: .06em; cursor: pointer; }
+    .btn:hover { border-color: #5BE87F; color: #9DF7B4; }
+    .btn.pri { background: #5BE87F; color: #071008; border-color: #5BE87F; }
+    .btn.warn { border-color: rgba(201,162,39,.5); color: #C9A227; }
+
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #05080A; padding: 22px; box-sizing: border-box; position: relative;">
+  <div style="width: 100%; height: 100%; background: #071008; border-radius: 26px; position: relative; overflow: hidden; box-shadow: inset 0 0 90px rgba(0,0,0,.9), inset 0 0 20px rgba(91,232,127,.06);">
+    <div class="glow" style="position: absolute; inset: 0; padding: 26px 32px; box-sizing: border-box; color: #5BE87F; font-size: 12.5px; display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: baseline; gap: 22px; padding-bottom: 6px;">
+        <span style="letter-spacing: .2em; color: #3E9E5A;">HELM</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ХОСТЫ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;SFTP · PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;DOCKER</span>
+        <span class="hi" style="letter-spacing: .1em;">▸ МОНИТОРИНГ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;КЛЮЧИ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ТЕМА</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;+</span>
+        <div style="flex-grow: 1;"></div>
+        <span class="dim" style="letter-spacing: .12em;">PROD-01 · V2BOX · TOUCH ID</span>
+      </div>
+      <div class="hr" style="margin-bottom: 14px;"></div>
+
+      <div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px;">
+        <div style="flex: 1.15 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+          <div class="lbl">ЯДРА · 8 · ПОСЛЕДНИЕ 60 С</div>
+          <div style="line-height: 1.85; font-size: 12px;">
+            <div style="display: flex; gap: 10px; align-items: baseline;"><span class="dim" style="width: 38px;">cpu0</span><span style="color: #5BE87F; letter-spacing: .5px;">▆▅▆▄▄▇▅▆▄▇▅▄▄▆▆▄▅▄▇▆▄▇▅▅▄▇▆▄</span><span style="color: #5BE87F; width: 40px; text-align: right;">62 %</span><span class="dim" style="font-size: 10.5px;">steal 3 %</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline;"><span class="dim" style="width: 38px;">cpu1</span><span style="color: #5BE87F; letter-spacing: .5px;">▂▁▃▁▂▃▁▃▁▃▂▃▁▁▃▁▂▁▃▁▃▁▂▃▃▃▂▃</span><span style="color: #5BE87F; width: 40px; text-align: right;">18 %</span><span class="dim" style="font-size: 10.5px;">steal 0 %</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline;"><span class="dim" style="width: 38px;">cpu2</span><span style="color: #5BE87F; letter-spacing: .5px;">▅▄▄▄▃▄▃▅▄▅▅▄▅▄▃▃▅▅▃▄▃▅▅▃▃▅▅▄</span><span style="color: #5BE87F; width: 40px; text-align: right;">44 %</span><span class="dim" style="font-size: 10.5px;">steal 0 %</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline;"><span class="dim" style="width: 38px;">cpu3</span><span style="color: #5BE87F; letter-spacing: .5px;">▁▂▂▂▁▁▁▂▁▁▁▃▂▁▂▂▁▂▂▁▁▂▁▁▁▁▁▂</span><span style="color: #5BE87F; width: 40px; text-align: right;">9 %</span><span class="dim" style="font-size: 10.5px;">steal 0 %</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline;"><span class="dim" style="width: 38px;">cpu4</span><span style="color: #C9A227; letter-spacing: .5px;">▇█▆▆▇▇█▇▆▇█▇▇▇▇▆▆▆▆▆▆▆▅█▆▇▇▅</span><span style="color: #C9A227; width: 40px; text-align: right;">77 %</span><span class="dim" style="font-size: 10.5px;">steal 3 %</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline;"><span class="dim" style="width: 38px;">cpu5</span><span style="color: #5BE87F; letter-spacing: .5px;">▂▃▄▃▄▃▂▃▁▃▄▃▃▃▃▁▃▃▁▂▁▂▃▂▁▃▁▁</span><span style="color: #5BE87F; width: 40px; text-align: right;">23 %</span><span class="dim" style="font-size: 10.5px;">steal 0 %</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline;"><span class="dim" style="width: 38px;">cpu6</span><span style="color: #5BE87F; letter-spacing: .5px;">▂▄▂▄▂▃▂▂▃▃▂▃▃▃▄▂▂▄▄▄▄▃▂▂▂▃▃▄</span><span style="color: #5BE87F; width: 40px; text-align: right;">31 %</span><span class="dim" style="font-size: 10.5px;">steal 0 %</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline;"><span class="dim" style="width: 38px;">cpu7</span><span style="color: #5BE87F; letter-spacing: .5px;">▁▃▁▁▃▂▁▃▁▃▂▁▁▃▂▁▂▁▃▃▃▂▁▁▁▂▁▁</span><span style="color: #5BE87F; width: 40px; text-align: right;">12 %</span><span class="dim" style="font-size: 10.5px;">steal 0 %</span></div>
+          </div>
+          <div class="lbl">НАГРУЗКА</div>
+          <div style="display: flex; gap: 22px;"><span>load <span class="hi">0.42 0.51 0.48</span></span><span>uptime <span class="hi">41д 6ч</span></span><span>процессы <span class="hi">184</span></span><span class="amb">steal 3 % на cpu0/cpu4 — сосед по гипервизору</span></div>
+        </div>
+        <div style="width: 1px; background: rgba(91,232,127,.18);"></div>
+        <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+          <div class="lbl">ПАМЯТЬ · MemAvailable</div>
+          <div style="line-height: 1.8;">
+            <div style="display: flex; justify-content: space-between;"><span>занято <span class="hi">11,4</span> из 32 ГБ</span><span class="dim">swap 0 / 2 ГБ</span></div>
+            <div style="height: 8px; background: rgba(91,232,127,.12); display: flex;"><div style="width: 36%; background: #5BE87F;"></div><div style="width: 9%; background: #2E7A45;"></div></div>
+            <div class="dim" style="font-size: 11px;">■ приложения 36 % &nbsp; ■ кэш 9 % &nbsp; свободно 55 %</div>
+          </div>
+          <div class="lbl">ДИСКИ</div>
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+            <div><div style="display: flex; justify-content: space-between;"><span>/ <span class="dim">ext4</span></span><span class="amb">188 / 220 ГБ · 85 %</span></div><div style="height: 5px; background: rgba(91,232,127,.12);"><div style="width: 85%; height: 5px; background: #C9A227;"></div></div></div>
+            <div><div style="display: flex; justify-content: space-between;"><span>/var/lib/docker <span class="dim">ext4</span></span><span>61 / 200 ГБ · 30 %</span></div><div style="height: 5px; background: rgba(91,232,127,.12);"><div style="width: 30%; height: 5px; background: #5BE87F;"></div></div></div>
+            <div><div style="display: flex; justify-content: space-between;"><span>/backups <span class="dim">nfs</span></span><span>1,1 / 2,0 ТБ · 55 %</span></div><div style="height: 5px; background: rgba(91,232,127,.12);"><div style="width: 55%; height: 5px; background: #5BE87F;"></div></div></div>
+          </div>
+          <div class="lbl">СЕТЬ · eth0</div>
+          <div style="line-height: 1.8; font-size: 12px;">
+            <div style="display: flex; gap: 12px; align-items: baseline;"><span class="dim" style="width: 24px;">↓</span><span style="color: #5BE87F; letter-spacing: .5px;">▂▃▂▃▄▄▄▅▅▅▅▆▆▅▅▅▄▄▅▄▄▄▄▄▄▄▄▄</span><span class="hi">3,1 МБ/с</span></div>
+            <div style="display: flex; gap: 12px; align-items: baseline;"><span class="dim" style="width: 24px;">↑</span><span style="color: #3E9E5A; letter-spacing: .5px;">▁▁▁▂▂▂▂▂▂▂▂▃▃▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂</span><span class="hi">1,1 МБ/с</span></div>
+          </div>
+          <div class="lbl">КОНТЕЙНЕРЫ</div>
+          <div style="font-size: 11.5px; line-height: 1.7;">
+            <div style="white-space: pre;"><span class="dim">имя               cpu    память      health</span></div>
+            <div style="white-space: pre;">worker-billing    31 %   640 МБ      <span class="amb">unhealthy</span></div>
+            <div style="white-space: pre;">api-gateway       12 %   412 МБ      healthy</div>
+            <div style="white-space: pre;">postgres-main      4 %   1,2 ГБ      healthy</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr" style="margin: 12px 0 8px;"></div>
+      <div style="display: flex; gap: 24px; color: #2E7A45; letter-spacing: .1em; font-size: 11px;">
+        <span>ОДИН КАНАЛ · СНИМОК КАЖДЫЕ 2 С</span><span>БУФЕР 1 Ч</span>
+        <div style="flex-grow: 1;"></div><span>КОТЯТА СПЯТ</span>
+      </div>
+    </div>
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+</div>
+
+</x-dc>
+
+</body>
+</html>

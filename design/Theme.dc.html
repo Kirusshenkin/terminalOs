@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .glow { text-shadow: 0 0 6px rgba(91,232,127,.45); }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.72) 100%); }
+    .card { border: 1px solid rgba(91,232,127,.22); background: rgba(91,232,127,.035); }
+    .card:hover { border-color: rgba(91,232,127,.5); }
+    .row:hover { background: rgba(91,232,127,.06); }
+    .dim { color: #2E7A45; } .mid { color: #3E9E5A; } .hi { color: #9DF7B4; } .amb { color: #C9A227; }
+    .lbl { font-size: 10.5px; letter-spacing: .16em; color: #2E7A45; }
+    .hr { height: 1px; background: rgba(91,232,127,.22); }
+    .btn { border: 1px solid rgba(91,232,127,.35); color: #5BE87F; padding: 3px 10px; font-size: 11px; letter-spacing: .06em; cursor: pointer; }
+    .btn:hover { border-color: #5BE87F; color: #9DF7B4; }
+    .btn.pri { background: #5BE87F; color: #071008; border-color: #5BE87F; }
+    .btn.warn { border-color: rgba(201,162,39,.5); color: #C9A227; }
+
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #05080A; padding: 22px; box-sizing: border-box; position: relative;">
+  <div style="width: 100%; height: 100%; background: #071008; border-radius: 26px; position: relative; overflow: hidden; box-shadow: inset 0 0 90px rgba(0,0,0,.9), inset 0 0 20px rgba(91,232,127,.06);">
+    <div class="glow" style="position: absolute; inset: 0; padding: 26px 32px; box-sizing: border-box; color: #5BE87F; font-size: 12.5px; display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: baseline; gap: 22px; padding-bottom: 6px;">
+        <span style="letter-spacing: .2em; color: #3E9E5A;">HELM</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ХОСТЫ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;SFTP · PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;DOCKER</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;МОНИТОРИНГ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;КЛЮЧИ</span>
+        <span class="hi" style="letter-spacing: .1em;">▸ ТЕМА</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;+</span>
+        <div style="flex-grow: 1;"></div>
+        <span class="dim" style="letter-spacing: .12em;">PROD-01 · V2BOX · TOUCH ID</span>
+      </div>
+      <div class="hr" style="margin-bottom: 14px;"></div>
+
+      <div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px;">
+        <div style="width: 190px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px;">
+          <div class="lbl" style="margin-bottom: 8px;">ТЕМЫ</div>
+          <sc-for list="{{themes}}" as="t" hint-placeholder-count="4">
+            <div class="row" onClick="{{ t.pick }}" style="display: flex; gap: 8px; align-items: center; padding: 4px 6px; cursor: pointer; background: {{t.bg}};"><span style="color: {{t.swatch}};">■</span><span style="color: {{t.fg}};">{{t.name}}</span></div>
+          </sc-for>
+          <div class="dim" style="font-size: 11px; margin-top: 12px;">импорт: .itermcolors · alacritty · base16</div>
+          <div style="flex-grow: 1;"></div>
+          <div class="lbl" style="margin-bottom: 6px;">ПРИВЯЗКА</div>
+          <div style="font-size: 11.5px; line-height: 1.7;"><div><span class="dim">по умолчанию</span> Фосфор</div><div><span class="dim">группа prod</span> <span style="color: #E0673F;">Рубин</span></div><div><span class="dim">группа games</span> Лёд</div></div>
+        </div>
+
+        <div style="flex-grow: 1; min-width: 0; border-left: 1px solid rgba(91,232,127,.18); padding-left: 22px; display: flex; gap: 22px;">
+          <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 14px;">
+            <div class="lbl">ПАЛИТРА ANSI · {{cur.name}}</div>
+            <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px;">
+              <sc-for list="{{cur.ansi}}" as="c" hint-placeholder-count="16"><div style="height: 26px; background: {{c}}; border: 1px solid rgba(255,255,255,.06);"></div></sc-for>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; font-size: 11.5px;">
+              <div class="card" style="padding: 7px 10px; display: flex; justify-content: space-between;"><span class="dim">текст</span><span style="color: {{cur.fg}};">{{cur.fg}}</span></div>
+              <div class="card" style="padding: 7px 10px; display: flex; justify-content: space-between;"><span class="dim">фон</span><span>{{cur.bgc}}</span></div>
+              <div class="card" style="padding: 7px 10px; display: flex; justify-content: space-between;"><span class="dim">курсор</span><span style="color: {{cur.cur}};">{{cur.cur}}</span></div>
+              <div class="card" style="padding: 7px 10px; display: flex; justify-content: space-between;"><span class="dim">выделение</span><span>{{cur.sel}}</span></div>
+            </div>
+            <div class="lbl">ШРИФТ</div>
+            <div style="display: flex; gap: 8px; font-size: 11.5px;"><div class="card" style="padding: 7px 10px; flex: 1;">IBM Plex Mono · 13</div><div class="card" style="padding: 7px 10px;">лигатуры ●</div><div class="card" style="padding: 7px 10px;">строка 1,4</div></div>
+            <div class="lbl">ФОН И СТЕКЛО</div>
+            <div style="font-size: 11.5px; display: flex; flex-direction: column; gap: 7px;">
+              <div style="display: flex; justify-content: space-between;"><span>картинка</span><span class="mid">нет · выбрать…</span></div>
+              <div style="display: flex; gap: 10px; align-items: center;"><span style="width: 110px;">скан-линии</span><div style="flex-grow: 1; height: 3px; background: rgba(91,232,127,.14);"><div style="width: 60%; height: 3px; background: #5BE87F;"></div></div><span class="dim">60 %</span></div>
+              <div style="display: flex; gap: 10px; align-items: center;"><span style="width: 110px;">свечение</span><div style="flex-grow: 1; height: 3px; background: rgba(91,232,127,.14);"><div style="width: 45%; height: 3px; background: #5BE87F;"></div></div><span class="dim">45 %</span></div>
+              <div style="display: flex; gap: 10px; align-items: center;"><span style="width: 110px;">виньетка</span><div style="flex-grow: 1; height: 3px; background: rgba(91,232,127,.14);"><div style="width: 70%; height: 3px; background: #5BE87F;"></div></div><span class="dim">70 %</span></div>
+              <div style="display: flex; gap: 10px; align-items: center;"><span style="width: 110px;">прозрачность окна</span><div style="flex-grow: 1; height: 3px; background: rgba(91,232,127,.14);"><div style="width: 0%; height: 3px; background: #5BE87F;"></div></div><span class="dim">0 %</span></div>
+            </div>
+          </div>
+
+          <div style="width: 330px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;">
+            <div class="lbl">ПРЕДПРОСМОТР</div>
+            <div style="flex-grow: 1; background: {{cur.bgc}}; border: 1px solid rgba(255,255,255,.08); padding: 14px; font-size: 12px; line-height: 1.7; color: {{cur.fg}}; text-shadow: 0 0 6px {{cur.glow}};">
+              <div><span style="color: {{cur.a2}};">root@prod-01</span>:<span style="color: {{cur.a4}};">~</span># ls -la</div>
+              <div><span style="color: {{cur.a4}};">drwxr-xr-x</span>  app  <span style="color: {{cur.a6}};">config</span>  <span style="color: {{cur.a3}};">deploy.sh</span></div>
+              <div><span style="color: {{cur.a2}};">root@prod-01</span>:<span style="color: {{cur.a4}};">~</span># docker compose ps</div>
+              <div><span style="color: {{cur.a2}};">●</span> api-gateway   <span style="opacity: .7;">Up 6 days</span></div>
+              <div><span style="color: {{cur.a3}};">○</span> migrator      <span style="color: {{cur.a3}};">Exited (0)</span></div>
+              <div><span style="color: {{cur.a1}};">ERROR</span> upstream billing unreachable</div>
+              <div><span style="color: {{cur.a2}};">root@prod-01</span>:<span style="color: {{cur.a4}};">~</span># <span style="display: inline-block; width: 8px; height: 13px; background: {{cur.cur}}; vertical-align: -2px;"></span></div>
+            </div>
+            <div class="dim" style="font-size: 11px;">меняется живьём — нажми тему слева</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr" style="margin: 12px 0 8px;"></div>
+      <div style="display: flex; gap: 24px; color: #2E7A45; letter-spacing: .1em; font-size: 11px;">
+        <span>ТЕМА — ОТКРЫТЫЙ JSON В themes/</span><span>МОЖНО ДЕРЖАТЬ В GIT</span>
+        <div style="flex-grow: 1;"></div><span>КОТЯТА СПЯТ</span>
+      </div>
+    </div>
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const id = this.state.theme ?? 'phosphor';
+    const T = {
+      phosphor: { name:'Фосфор', bgc:'#071008', fg:'#5BE87F', cur:'#5BE87F', sel:'#1E5C33', glow:'rgba(91,232,127,.45)', swatch:'#5BE87F',
+        ansi:['#0B1A0F','#C4703A','#3E9E5A','#C9A227','#2E7A86','#7C5FA0','#2F8A86','#8DB894','#1E5C33','#E0673F','#5BE87F','#E2C15A','#4FA9C4','#AC84C0','#58ABA3','#9DF7B4'] },
+      amber:    { name:'Янтарь', bgc:'#100B03', fg:'#E8A33D', cur:'#F2BC6A', sel:'#4A3410', glow:'rgba(232,163,61,.45)', swatch:'#E8A33D',
+        ansi:['#1A1208','#C4433A','#7C8F3B','#E8A33D','#8A6A2E','#A06A7C','#8A8A3E','#D9B98A','#4A3410','#E0673F','#B0C060','#F2BC6A','#C09A5A','#C08AA0','#B0B060','#F4E3C0'] },
+      ice:      { name:'Лёд', bgc:'#070B12', fg:'#8FC7E8', cur:'#BFE3FF', sel:'#173048', glow:'rgba(143,199,232,.4)', swatch:'#8FC7E8',
+        ansi:['#0C1522','#C45A5A','#5AAE8C','#C4B26A','#4F8FCC','#8C7CC4','#4FB0C4','#A8C4D8','#22354A','#E07A7A','#7AD4AE','#E8D48C','#7AB4EC','#B0A0E8','#7AD0E8','#DCEEFF'] },
+      ruby:     { name:'Рубин · прод', bgc:'#12060A', fg:'#E88A9A', cur:'#FFB3C0', sel:'#4A1520', glow:'rgba(232,138,154,.4)', swatch:'#E0673F',
+        ansi:['#1E0A10','#E0483F','#7CA05A','#D9A03A','#8A5F9E','#B05A8C','#6E8AA0','#D8A8B0','#4A1520','#FF6B5C','#A0C47A','#F2C15A','#B08ACC','#D080B0','#8AB0C4','#FFD8DE'] },
+    };
+    const cur = T[id];
+    const a = cur.ansi;
+    return {
+      themes: Object.entries(T).map(([k, v]) => ({ name: v.name, swatch: v.swatch, fg: k === id ? '#9DF7B4' : '#5BE87F', bg: k === id ? 'rgba(91,232,127,.09)' : 'transparent', pick: () => this.setState({ theme: k }) })),
+      cur: { ...cur, a1: a[9], a2: a[10], a3: a[11], a4: a[12], a6: a[14] },
+    };
+  }
+}
+</script>
+</body>
+</html>

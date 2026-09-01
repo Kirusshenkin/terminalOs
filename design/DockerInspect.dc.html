@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .glow { text-shadow: 0 0 6px rgba(91,232,127,.45); }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.72) 100%); }
+    .card { border: 1px solid rgba(91,232,127,.22); background: rgba(91,232,127,.035); }
+    .card:hover { border-color: rgba(91,232,127,.5); }
+    .row:hover { background: rgba(91,232,127,.06); }
+    .dim { color: #2E7A45; } .mid { color: #3E9E5A; } .hi { color: #9DF7B4; } .amb { color: #C9A227; }
+    .lbl { font-size: 10.5px; letter-spacing: .16em; color: #2E7A45; }
+    .hr { height: 1px; background: rgba(91,232,127,.22); }
+    .btn { border: 1px solid rgba(91,232,127,.35); color: #5BE87F; padding: 3px 10px; font-size: 11px; letter-spacing: .06em; cursor: pointer; }
+    .btn:hover { border-color: #5BE87F; color: #9DF7B4; }
+    .btn.pri { background: #5BE87F; color: #071008; border-color: #5BE87F; }
+    .btn.warn { border-color: rgba(201,162,39,.5); color: #C9A227; }
+
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #05080A; padding: 22px; box-sizing: border-box; position: relative;">
+  <div style="width: 100%; height: 100%; background: #071008; border-radius: 26px; position: relative; overflow: hidden; box-shadow: inset 0 0 90px rgba(0,0,0,.9), inset 0 0 20px rgba(91,232,127,.06);">
+    <div class="glow" style="position: absolute; inset: 0; padding: 26px 32px; box-sizing: border-box; color: #5BE87F; font-size: 12.5px; display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: baseline; gap: 22px; padding-bottom: 6px;">
+        <span style="letter-spacing: .2em; color: #3E9E5A;">HELM</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ХОСТЫ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;SFTP · PROD-01</span>
+        <span class="hi" style="letter-spacing: .1em;">▸ DOCKER</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;МОНИТОРИНГ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;КЛЮЧИ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ТЕМА</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;+</span>
+        <div style="flex-grow: 1;"></div>
+        <span class="dim" style="letter-spacing: .12em;">PROD-01 · V2BOX · TOUCH ID</span>
+      </div>
+      <div class="hr" style="margin-bottom: 14px;"></div>
+
+      <div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px;">
+        <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px;">
+          <div class="lbl" style="margin-bottom: 6px;">КОНТЕЙНЕРЫ · PROD-01 · 6</div>
+          <sc-for list="{{list}}" as="c" hint-placeholder-count="6">
+            <div class="row" onClick="{{ c.pick }}" style="display: flex; gap: 8px; align-items: center; padding: 4px 6px; cursor: pointer; background: {{c.bg}};">
+              <span style="color: {{c.dot}};">{{c.mark}}</span><span style="color: {{c.fg}}; flex-grow: 1;">{{c.name}}</span><span class="dim" style="font-size: 11px;">{{c.cpu}}</span>
+            </div>
+          </sc-for>
+          <div style="flex-grow: 1;"></div>
+          <div class="dim" style="font-size: 11px;">стек: prod · compose v2</div>
+        </div>
+
+        <div style="flex-grow: 1; min-width: 0; border-left: 1px solid rgba(91,232,127,.18); padding-left: 22px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: baseline; gap: 14px;">
+            <span class="hi" style="font-size: 15px;">{{sel.name}}</span><span class="mid">{{sel.img}}</span><span class="amb">{{sel.state}}</span>
+            <div style="flex-grow: 1;"></div>
+            <div class="btn">RESTART</div><div class="btn">STOP</div><div class="btn warn">KILL</div><div class="btn warn">RM</div><div class="btn pri">EXEC ▸</div>
+          </div>
+          <div style="display: flex; gap: 18px;">
+            <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+              <span onClick="{{ t.pick }}" style="cursor: pointer; color: {{t.fg}}; border-bottom: 1px solid {{t.bar}}; padding-bottom: 3px; letter-spacing: .08em; font-size: 11.5px;">{{t.name}}</span>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{isLogs}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; gap: 10px; align-items: center; font-size: 11px;"><span class="hi">● follow</span><span class="dim">--tail 500 --timestamps</span><span class="dim">фильтр: WARN|ERROR</span><div style="flex-grow: 1;"></div><span class="dim">буфер 50 000 строк</span></div>
+            <div style="flex-grow: 1; overflow: hidden; line-height: 1.7; font-size: 12px;">
+              <sc-for list="{{logs}}" as="l" hint-placeholder-count="12"><div style="color: {{l.fg}}; white-space: pre;">{{l.t}}</div></sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{isOverview}}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+              <sc-for list="{{kv}}" as="k" hint-placeholder-count="9"><div class="card" style="padding: 10px 12px;"><div class="lbl">{{k.k}}</div><div class="hi" style="margin-top: 5px; word-break: break-all;">{{k.v}}</div></div></sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{isStats}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 10px; line-height: 1.9;">
+              <sc-for list="{{stats}}" as="s" hint-placeholder-count="5"><div style="white-space: pre; color: {{s.fg}};">{{s.t}}</div></sc-for>
+              <div class="dim" style="font-size: 11px;">health: {{sel.health}} · restarts: 0 · docker stats --no-stream каждые 3 с</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{isEnv}}" hint-placeholder-val="{{ false }}">
+            <div style="line-height: 1.9;"><sc-for list="{{env}}" as="e" hint-placeholder-count="6"><div style="white-space: pre;"><span class="mid">{{e.k}}</span><span class="dim">=</span><span>{{e.v}}</span></div></sc-for>
+            <div class="dim" style="font-size: 11px; margin-top: 8px;">секреты замаскированы: значения с PASS, KEY, TOKEN, SECRET в имени не показываются и не копируются в аудит</div></div>
+          </sc-if>
+          <sc-if value="{{isMounts}}" hint-placeholder-val="{{ false }}">
+            <div style="line-height: 1.9;"><sc-for list="{{mounts}}" as="m" hint-placeholder-count="3"><div style="white-space: pre;"><span class="hi">{{m.src}}</span><span class="dim"> → </span><span>{{m.dst}}</span><span class="dim">  {{m.mode}}</span></div></sc-for></div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div class="hr" style="margin: 12px 0 8px;"></div>
+      <div style="display: flex; gap: 24px; color: #2E7A45; letter-spacing: .1em; font-size: 11px;">
+        <span>DOCKER 27.1 · COMPOSE V2</span><span>5 RUNNING · 1 EXITED · 1 UNHEALTHY</span>
+        <div style="flex-grow: 1;"></div><span>КОТЯТА СПЯТ</span>
+      </div>
+    </div>
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const tab = this.state.tab ?? 'logs';
+    const selId = this.state.sel ?? 'worker-billing';
+    const cs = [
+      { name:'api-gateway', img:'api:2.14', cpu:'12%', state:'running · 6d', ok:1, health:'healthy' },
+      { name:'postgres-main', img:'pg:16', cpu:'4%', state:'running · 41d', ok:1, health:'healthy' },
+      { name:'redis-cache', img:'redis:7', cpu:'1%', state:'running · 41d', ok:1, health:'—' },
+      { name:'worker-billing', img:'wrk:2.1', cpu:'31%', state:'running · 2h · unhealthy', ok:1, health:'unhealthy (3/3 failed)' },
+      { name:'nginx-edge', img:'nginx:1.27', cpu:'2%', state:'running · 6d', ok:1, health:'healthy' },
+      { name:'migrator', img:'api:2.14', cpu:'0%', state:'exited (0) · 6d', ok:0, health:'—' },
+    ];
+    const sel = cs.find(c => c.name === selId) || cs[3];
+    const tabs = [['overview','ОБЗОР'],['logs','ЛОГИ'],['stats','STATS'],['env','ENV'],['mounts','MOUNTS']];
+    return {
+      sel,
+      list: cs.map(c => ({ ...c, mark: c.ok ? '●' : '○', dot: c.ok ? '#5BE87F' : '#C9A227',
+        fg: c.name === sel.name ? '#9DF7B4' : '#5BE87F', bg: c.name === sel.name ? 'rgba(91,232,127,.09)' : 'transparent',
+        pick: () => this.setState({ sel: c.name }) })),
+      tabs: tabs.map(([id, name]) => ({ id, name, fg: tab === id ? '#9DF7B4' : '#3E9E5A', bar: tab === id ? '#5BE87F' : 'transparent', pick: () => this.setState({ tab: id }) })),
+      isLogs: tab === 'logs', isOverview: tab === 'overview', isStats: tab === 'stats', isEnv: tab === 'env', isMounts: tab === 'mounts',
+      logs: [
+        ['2026-09-02T11:40:58Z  INFO  billing worker started, concurrency=8', '#3E9E5A'],
+        ['2026-09-02T11:41:02Z  INFO  job 88f1 charge 1 290 RUB ok 412ms', '#5BE87F'],
+        ['2026-09-02T11:41:05Z  INFO  job 88f2 charge 590 RUB ok 388ms', '#5BE87F'],
+        ['2026-09-02T11:41:09Z  WARN  upstream billing timeout after 2000ms, retry 1/3', '#C9A227'],
+        ['2026-09-02T11:41:12Z  WARN  upstream billing timeout after 2000ms, retry 2/3', '#C9A227'],
+        ['2026-09-02T11:41:15Z  ERROR upstream billing unreachable, job 88f3 deferred', '#E0673F'],
+        ['2026-09-02T11:41:15Z  INFO  healthcheck: failed (1/3)', '#3E9E5A'],
+        ['2026-09-02T11:41:45Z  INFO  healthcheck: failed (2/3)', '#3E9E5A'],
+        ['2026-09-02T11:42:15Z  INFO  healthcheck: failed (3/3) → unhealthy', '#C9A227'],
+        ['2026-09-02T11:42:20Z  INFO  job 88f4 charge 2 100 RUB ok 401ms', '#5BE87F'],
+        ['▮', '#5BE87F'],
+      ].map(([t, fg]) => ({ t, fg })),
+      kv: [
+        { k:'ID', v:'3f9a2c7e11b0' }, { k:'ОБРАЗ', v: sel.img + ' · sha256:9c1e…' }, { k:'СОЗДАН', v:'2 часа назад' },
+        { k:'СЕТИ', v:'prod_default 172.19.0.7' }, { k:'ПОРТЫ', v:'127.0.0.1:9100 → 9100' }, { k:'RESTART', v:'unless-stopped' },
+        { k:'CMD', v:'node worker.js' }, { k:'COMPOSE', v:'prod / worker' }, { k:'HEALTH', v: sel.health },
+      ],
+      stats: [
+        ['cpu    ████████░░░░░░░░░░░░░░░░░  31 %', '#5BE87F'],
+        ['память ████████████░░░░░░░░░░░░░  640 / 1024 МБ', '#5BE87F'],
+        ['сеть   ↓ 1,2 МБ/с  ↑ 0,4 МБ/с', '#3E9E5A'],
+        ['диск   ↓ 0 Б/с     ↑ 120 КБ/с', '#3E9E5A'],
+        ['pids   14', '#3E9E5A'],
+      ].map(([t, fg]) => ({ t, fg })),
+      env: [['NODE_ENV','production'],['BILLING_URL','https://billing.internal'],['CONCURRENCY','8'],['DATABASE_URL','••••••••'],['REDIS_URL','redis://redis-cache:6379'],['API_KEY','••••••••']].map(([k,v]) => ({k,v})),
+      mounts: [{src:'prod_worker_data', dst:'/data', mode:'rw'},{src:'/srv/prod/config', dst:'/app/config', mode:'ro'},{src:'/var/run/docker.sock', dst:'/var/run/docker.sock', mode:'ro'}],
+    };
+  }
+}
+</script>
+</body>
+</html>

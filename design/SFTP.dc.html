@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .glow { text-shadow: 0 0 6px rgba(91,232,127,.45); }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.72) 100%); }
+    .card { border: 1px solid rgba(91,232,127,.22); background: rgba(91,232,127,.035); }
+    .card:hover { border-color: rgba(91,232,127,.5); }
+    .row:hover { background: rgba(91,232,127,.06); }
+    .dim { color: #2E7A45; } .mid { color: #3E9E5A; } .hi { color: #9DF7B4; } .amb { color: #C9A227; }
+    .lbl { font-size: 10.5px; letter-spacing: .16em; color: #2E7A45; }
+    .hr { height: 1px; background: rgba(91,232,127,.22); }
+    .btn { border: 1px solid rgba(91,232,127,.35); color: #5BE87F; padding: 3px 10px; font-size: 11px; letter-spacing: .06em; cursor: pointer; }
+    .btn:hover { border-color: #5BE87F; color: #9DF7B4; }
+    .btn.pri { background: #5BE87F; color: #071008; border-color: #5BE87F; }
+    .btn.warn { border-color: rgba(201,162,39,.5); color: #C9A227; }
+
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #05080A; padding: 22px; box-sizing: border-box; position: relative;">
+  <div style="width: 100%; height: 100%; background: #071008; border-radius: 26px; position: relative; overflow: hidden; box-shadow: inset 0 0 90px rgba(0,0,0,.9), inset 0 0 20px rgba(91,232,127,.06);">
+    <div class="glow" style="position: absolute; inset: 0; padding: 26px 32px; box-sizing: border-box; color: #5BE87F; font-size: 12.5px; display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: baseline; gap: 22px; padding-bottom: 6px;">
+        <span style="letter-spacing: .2em; color: #3E9E5A;">HELM</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ХОСТЫ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;PROD-01</span>
+        <span class="hi" style="letter-spacing: .1em;">▸ SFTP · PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;DOCKER</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;МОНИТОРИНГ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;КЛЮЧИ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ТЕМА</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;+</span>
+        <div style="flex-grow: 1;"></div>
+        <span class="dim" style="letter-spacing: .12em;">PROD-01 · V2BOX · TOUCH ID</span>
+      </div>
+      <div class="hr" style="margin-bottom: 14px;"></div>
+
+      <div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px;">
+        <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+          <div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px;">
+        <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;"><span class="lbl">ЛОКАЛЬНО</span><div style="flex-grow: 1;"></div><span class="dim" style="font-size: 11px;">фильтр</span><span class="dim" style="font-size: 11px;">действия ▾</span></div>
+          <div style="display: flex; gap: 8px; align-items: center; font-size: 12px;"><span class="dim">‹ ›</span><span class="mid">~ › project › terminal</span></div>
+          <div class="lbl" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 0 8px 6px; border-bottom: 1px solid rgba(91,232,127,.18);"><span>ИМЯ</span><span>ИЗМЕНЁН</span><span>РАЗМЕР</span><span>ТИП</span></div>
+          <div style="overflow: hidden; display: flex; flex-direction: column;">
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="">..</div><div class="dim" style="font-size: 10.5px;"></div></div>
+              <div class="mid" style="font-size: 11.5px;"></div><div class="mid" style="font-size: 11.5px;"></div><div class="dim" style="font-size: 11.5px;"></div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="hi">Documents</div><div class="dim" style="font-size: 10.5px;">drwx------@</div></div>
+              <div class="mid" style="font-size: 11.5px;">27.02.2026 17:01</div><div class="mid" style="font-size: 11.5px;">—</div><div class="dim" style="font-size: 11.5px;">папка</div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="hi">Downloads</div><div class="dim" style="font-size: 10.5px;">drwx------@</div></div>
+              <div class="mid" style="font-size: 11.5px;">28.08.2026 16:19</div><div class="mid" style="font-size: 11.5px;">—</div><div class="dim" style="font-size: 11.5px;">папка</div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="hi">project</div><div class="dim" style="font-size: 10.5px;">drwxr-xr-x</div></div>
+              <div class="mid" style="font-size: 11.5px;">02.09.2026 01:12</div><div class="mid" style="font-size: 11.5px;">—</div><div class="dim" style="font-size: 11.5px;">папка</div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; background: rgba(91,232,127,.09);">
+              <div><div class="">deploy.tar.gz</div><div class="dim" style="font-size: 10.5px;">-rw-r--r--</div></div>
+              <div class="mid" style="font-size: 11.5px;">01.09.2026 23:40</div><div class="mid" style="font-size: 11.5px;">48,2 МБ</div><div class="dim" style="font-size: 11.5px;">архив</div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="">docker-compose.yml</div><div class="dim" style="font-size: 10.5px;">-rw-r--r--</div></div>
+              <div class="mid" style="font-size: 11.5px;">01.09.2026 22:18</div><div class="mid" style="font-size: 11.5px;">2,1 КБ</div><div class="dim" style="font-size: 11.5px;">yaml</div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="">.env.prod</div><div class="dim" style="font-size: 10.5px;">-rw-------</div></div>
+              <div class="mid" style="font-size: 11.5px;">30.08.2026 11:02</div><div class="mid" style="font-size: 11.5px;">640 Б</div><div class="dim" style="font-size: 11.5px;">env</div>
+            </div>
+          </div>
+        </div>
+        <div style="width: 1px; background: rgba(91,232,127,.18);"></div>
+        <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;"><span class="lbl">PROD-01 · ТО ЖЕ SSH-СОЕДИНЕНИЕ</span><div style="flex-grow: 1;"></div><span class="dim" style="font-size: 11px;">фильтр</span><span class="dim" style="font-size: 11px;">действия ▾</span></div>
+          <div style="display: flex; gap: 8px; align-items: center; font-size: 12px;"><span class="dim">‹ ›</span><span class="mid">/ › srv › prod</span></div>
+          <div class="lbl" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 0 8px 6px; border-bottom: 1px solid rgba(91,232,127,.18);"><span>ИМЯ</span><span>ИЗМЕНЁН</span><span>РАЗМЕР</span><span>ТИП</span></div>
+          <div style="overflow: hidden; display: flex; flex-direction: column;">
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="">..</div><div class="dim" style="font-size: 10.5px;"></div></div>
+              <div class="mid" style="font-size: 11.5px;"></div><div class="mid" style="font-size: 11.5px;"></div><div class="dim" style="font-size: 11.5px;"></div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="hi">app</div><div class="dim" style="font-size: 10.5px;">drwxr-xr-x root</div></div>
+              <div class="mid" style="font-size: 11.5px;">02.09.2026 01:40</div><div class="mid" style="font-size: 11.5px;">—</div><div class="dim" style="font-size: 11.5px;">папка</div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="hi">backups</div><div class="dim" style="font-size: 10.5px;">drwx------ root</div></div>
+              <div class="mid" style="font-size: 11.5px;">01.09.2026 03:00</div><div class="mid" style="font-size: 11.5px;">—</div><div class="dim" style="font-size: 11.5px;">папка</div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="">docker-compose.yml</div><div class="dim" style="font-size: 10.5px;">-rw-r--r-- root</div></div>
+              <div class="mid" style="font-size: 11.5px;">01.09.2026 22:20</div><div class="mid" style="font-size: 11.5px;">2,1 КБ</div><div class="dim" style="font-size: 11.5px;">yaml</div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; ">
+              <div><div class="">nginx.conf</div><div class="dim" style="font-size: 10.5px;">-rw-r--r-- root</div></div>
+              <div class="mid" style="font-size: 11.5px;">28.08.2026 14:11</div><div class="mid" style="font-size: 11.5px;">1,4 КБ</div><div class="dim" style="font-size: 11.5px;">conf</div>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 1fr 150px 70px 70px; gap: 8px; padding: 5px 8px; cursor: pointer; background: rgba(91,232,127,.09);">
+              <div><div class="">deploy.tar.gz</div><div class="dim" style="font-size: 10.5px;">-rw-r--r-- root</div></div>
+              <div class="mid" style="font-size: 11.5px;">загружается…</div><div class="mid" style="font-size: 11.5px;">31,7 / 48,2 МБ</div><div class="dim" style="font-size: 11.5px;">архив</div>
+            </div>
+          </div>
+        </div>
+          </div>
+          <div style="border-top: 1px solid rgba(91,232,127,.18); padding-top: 8px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px;">
+            <div style="display: flex; gap: 10px; align-items: center;"><span class="lbl">ОЧЕРЕДЬ</span><span class="mid">deploy.tar.gz → prod-01:/srv/prod</span><div style="flex-grow: 1;"></div><span class="hi">66 % · 4,1 МБ/с · 4 с</span></div>
+            <div style="height: 3px; background: rgba(91,232,127,.14);"><div style="height: 3px; width: 66%; background: #5BE87F;"></div></div>
+            <div class="dim">перетащи файл между панелями или из Finder — это и есть загрузка. Обрыв — докачка с места остановки.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr" style="margin: 12px 0 8px;"></div>
+      <div style="display: flex; gap: 24px; color: #2E7A45; letter-spacing: .1em; font-size: 11px;">
+        <span>SFTP · PROD-01</span><span>ЧЕРЕЗ V2BOX</span>
+        <div style="flex-grow: 1;"></div><span>КОТЯТА СПЯТ</span>
+      </div>
+    </div>
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+</div>
+
+</x-dc>
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .glow { text-shadow: 0 0 6px rgba(91,232,127,.45); }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.72) 100%); }
+    .card { border: 1px solid rgba(91,232,127,.22); background: rgba(91,232,127,.035); }
+    .card:hover { border-color: rgba(91,232,127,.5); }
+    .row:hover { background: rgba(91,232,127,.06); }
+    .dim { color: #2E7A45; } .mid { color: #3E9E5A; } .hi { color: #9DF7B4; } .amb { color: #C9A227; }
+    .lbl { font-size: 10.5px; letter-spacing: .16em; color: #2E7A45; }
+    .hr { height: 1px; background: rgba(91,232,127,.22); }
+    .btn { border: 1px solid rgba(91,232,127,.35); color: #5BE87F; padding: 3px 10px; font-size: 11px; letter-spacing: .06em; cursor: pointer; }
+    .btn:hover { border-color: #5BE87F; color: #9DF7B4; }
+    .btn.pri { background: #5BE87F; color: #071008; border-color: #5BE87F; }
+    .btn.warn { border-color: rgba(201,162,39,.5); color: #C9A227; }
+
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #05080A; padding: 22px; box-sizing: border-box; position: relative;">
+  <div style="width: 100%; height: 100%; background: #071008; border-radius: 26px; position: relative; overflow: hidden; box-shadow: inset 0 0 90px rgba(0,0,0,.9), inset 0 0 20px rgba(91,232,127,.06);">
+    <div class="glow" style="position: absolute; inset: 0; padding: 26px 32px; box-sizing: border-box; color: #5BE87F; font-size: 12.5px; display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: baseline; gap: 22px; padding-bottom: 6px;">
+        <span style="letter-spacing: .2em; color: #3E9E5A;">HELM</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ХОСТЫ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;PROD-01</span>
+        <span class="hi" style="letter-spacing: .1em;">▸ PROD-02 · НАСТРОЙКА</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;SFTP · PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;+</span>
+        <div style="flex-grow: 1;"></div>
+        <span class="dim" style="letter-spacing: .12em;">PROD-02 · V2BOX · ROOT</span>
+      </div>
+      <div class="hr" style="margin-bottom: 14px;"></div>
+
+      <div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px;">
+        <div style="width: 380px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: baseline; gap: 10px;"><span class="hi" style="font-size: 15px;">рецепт · базовый</span><span class="mid">prod-02 · ubuntu 24.04</span></div>
+          <div class="dim" style="font-size: 11.5px;">шаг 2 из 6 · идемпотентно · что уже стоит — пропускается</div>
+          <div class="hr"></div>
+          <div style="font-size: 12px;">
+            <div style="display: flex; gap: 10px; align-items: baseline; padding: 4px 0;"><span style="color: #3E9E5A; width: 14px;">✓</span><span style="color: #5BE87F; flex-grow: 1;">обновить пакеты и unattended-upgrades</span><span class="dim" style="font-size: 11px;">готово · 41 с</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline; padding: 4px 0;"><span style="color: #9DF7B4; width: 14px;">▸</span><span style="color: #9DF7B4; flex-grow: 1;">Docker + Compose, лимит логов docker и journald</span><span class="dim" style="font-size: 11px;">идёт · 28 с</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline; padding: 4px 0;"><span style="color: #2E7A45; width: 14px;">·</span><span style="color: #3E9E5A; flex-grow: 1;">nginx</span><span class="dim" style="font-size: 11px;">ожидает</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline; padding: 4px 0;"><span style="color: #2E7A45; width: 14px;">·</span><span style="color: #3E9E5A; flex-grow: 1;">certbot · prod.example.com</span><span class="dim" style="font-size: 11px;">ожидает · DNS проверен</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline; padding: 4px 0;"><span style="color: #2E7A45; width: 14px;">·</span><span style="color: #3E9E5A; flex-grow: 1;">UFW: только 22 80 443 · проверка портов compose</span><span class="dim" style="font-size: 11px;">ожидает</span></div>
+            <div style="display: flex; gap: 10px; align-items: baseline; padding: 4px 0;"><span style="color: #2E7A45; width: 14px;">·</span><span style="color: #3E9E5A; flex-grow: 1;">закрыть вход по паролю</span><span class="dim" style="font-size: 11px;">последним, после проверки ключа</span></div>
+          </div>
+          <div style="flex-grow: 1;"></div>
+          <div style="display: flex; gap: 8px;"><div class="btn warn">ОСТАНОВИТЬ ПОСЛЕ ШАГА</div><div class="btn">ПОКАЗАТЬ КОМАНДЫ</div></div>
+          <div class="card" style="padding: 8px 10px; font-size: 11px; border-color: rgba(201,162,39,.4);"><span class="amb">шаг 6</span> закроет вход по паролю только после того, как второе соединение по ключу успешно откроется. Самоблокировка исключена.</div>
+        </div>
+        <div style="flex-grow: 1; min-width: 0; border-left: 1px solid rgba(91,232,127,.18); padding-left: 22px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 10px; align-items: center; font-size: 11px;"><span class="hi">● живой лог</span><span class="dim">шаг 2 · Docker + Compose</span><div style="flex-grow: 1;"></div><span class="dim">sudo не нужен · root</span></div>
+          <div style="flex-grow: 1; overflow: hidden; font-size: 11.5px; line-height: 1.65;">
+            <div class="dim" style="white-space: pre;">$ install -m 0755 -d /etc/apt/keyrings</div>
+            <div class="dim" style="white-space: pre;">$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc</div>
+            <div class="dim" style="white-space: pre;">$ echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" &gt; /etc/apt/sources.list.d/docker.list</div>
+            <div class="dim" style="white-space: pre;">$ apt-get update -qq</div>
+            <div style="white-space: pre;">$ apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin</div>
+            <div class="mid" style="white-space: pre;">Reading package lists... Done</div>
+            <div class="mid" style="white-space: pre;">The following NEW packages will be installed:</div>
+            <div class="mid" style="white-space: pre;">  containerd.io docker-ce docker-ce-cli docker-compose-plugin</div>
+            <div class="mid" style="white-space: pre;">Get:1 https://download.docker.com/linux/ubuntu noble/stable amd64 containerd.io amd64 1.7.22-1 [29.5 MB]</div>
+            <div class="mid" style="white-space: pre;">Get:2 https://download.docker.com/linux/ubuntu noble/stable amd64 docker-ce-cli amd64 5:27.3.1-1 [15.0 MB]</div>
+            <div class="mid" style="white-space: pre;">Fetched 44.5 MB in 3s (14.8 MB/s)</div>
+            <div class="mid" style="white-space: pre;">Setting up containerd.io (1.7.22-1) ...</div>
+            <div class="mid" style="white-space: pre;">Setting up docker-ce (5:27.3.1-1) ...</div>
+            <div style="white-space: pre;">$ cat &gt; /etc/docker/daemon.json  <span class="dim"># log-driver json-file, max-size 10m, max-file 3</span></div>
+            <div style="white-space: pre;">$ systemctl enable --now docker</div>
+            <div class="hi" style="white-space: pre;">$ docker --version <span style="display: inline-block; width: 8px; height: 13px; background: #5BE87F; vertical-align: -2px;"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr" style="margin: 12px 0 8px;"></div>
+      <div style="display: flex; gap: 24px; color: #2E7A45; letter-spacing: .1em; font-size: 11px;">
+        <span>РЕЦЕПТ ЗАПУЩЕН 01:52</span><span>ВЫПОЛНЕНО 1 ИЗ 6</span>
+        <div style="flex-grow: 1;"></div><span>КОТЯТА СПЯТ</span>
+      </div>
+    </div>
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+</div>
+
+</x-dc>
+
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .glow { text-shadow: 0 0 6px rgba(91,232,127,.45); }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.72) 100%); }
+    .card { border: 1px solid rgba(91,232,127,.22); background: rgba(91,232,127,.035); }
+    .card:hover { border-color: rgba(91,232,127,.5); }
+    .row:hover { background: rgba(91,232,127,.06); }
+    .dim { color: #2E7A45; } .mid { color: #3E9E5A; } .hi { color: #9DF7B4; } .amb { color: #C9A227; }
+    .lbl { font-size: 10.5px; letter-spacing: .16em; color: #2E7A45; }
+    .hr { height: 1px; background: rgba(91,232,127,.22); }
+    .btn { border: 1px solid rgba(91,232,127,.35); color: #5BE87F; padding: 3px 10px; font-size: 11px; letter-spacing: .06em; cursor: pointer; }
+    .btn:hover { border-color: #5BE87F; color: #9DF7B4; }
+    .btn.pri { background: #5BE87F; color: #071008; border-color: #5BE87F; }
+    .btn.warn { border-color: rgba(201,162,39,.5); color: #C9A227; }
+
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 760px; background: #05080A; padding: 22px; box-sizing: border-box; position: relative;">
+  <div style="width: 100%; height: 100%; background: #071008; border-radius: 26px; position: relative; overflow: hidden; box-shadow: inset 0 0 90px rgba(0,0,0,.9), inset 0 0 20px rgba(91,232,127,.06);">
+    <div class="glow" style="position: absolute; inset: 0; padding: 26px 32px; box-sizing: border-box; color: #5BE87F; font-size: 12.5px; display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: baseline; gap: 22px; padding-bottom: 6px;">
+        <span style="letter-spacing: .2em; color: #3E9E5A;">HELM</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ХОСТЫ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;SFTP · PROD-01</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;DOCKER</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;МОНИТОРИНГ</span>
+        <span class="hi" style="letter-spacing: .1em;">▸ КЛЮЧИ</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;ТЕМА</span>
+        <span class="mid" style="letter-spacing: .1em;">&nbsp;&nbsp;+</span>
+        <div style="flex-grow: 1;"></div>
+        <span class="dim" style="letter-spacing: .12em;">PROD-01 · V2BOX · TOUCH ID</span>
+      </div>
+      <div class="hr" style="margin-bottom: 14px;"></div>
+
+      <div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px;">
+        <div style="width: 168px; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px;">
+          <div class="lbl" style="margin-bottom: 8px;">-- РАЗДЕЛ --</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; хосты</div>
+          <div class="hi" style="padding: 3px 0; cursor: pointer;">▸ ключи</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; проброс портов</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; сниппеты</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; известные хосты</div>
+          <div class="mid" style="padding: 3px 0; cursor: pointer;">&nbsp; журнал</div>
+        </div>
+        <div style="flex-grow: 1; min-width: 0; border-left: 1px solid rgba(91,232,127,.18); padding-left: 22px; display: flex; flex-direction: column; gap: 14px; overflow: hidden;">
+          <div style="display: flex; align-items: baseline; gap: 14px;"><span class="hi" style="font-size: 15px;">authorized_keys</span><span class="mid">root@prod-01</span><span class="dim">/root/.ssh/authorized_keys · 5 ключей</span><div style="flex-grow: 1;"></div><div class="btn pri">+ ДОБАВИТЬ</div><div class="btn">СКОПИРОВАТЬ МОЙ</div></div>
+          <div class="lbl" style="display: grid; grid-template-columns: 24px 1.4fr 2fr 1fr 90px; gap: 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(91,232,127,.18);"><span></span><span>КЛЮЧ</span><span>ОТПЕЧАТОК SHA256</span><span>ОПЦИИ</span><span></span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px; font-size: 12px;">
+            <div class="row" style="display: grid; grid-template-columns: 24px 1.4fr 2fr 1fr 90px; gap: 10px; padding: 7px 0; align-items: center; background: rgba(91,232,127,.06);">
+              <span class="hi">●</span><div><div class="hi">ed25519 · you@mac</div><div class="dim" style="font-size: 10.5px;">этим ключом ты подключён сейчас</div></div>
+              <span class="mid" style="font-size: 11px; word-break: break-all;">SHA256:q9Xf3…Lm2E</span><span class="dim">—</span><span class="dim" style="font-size: 11px;">твой</span>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 24px 1.4fr 2fr 1fr 90px; gap: 10px; padding: 7px 0; align-items: center;">
+              <span>●</span><div><div>ecdsa-p256 · secure-enclave · mbp</div><div class="dim" style="font-size: 10.5px;">Secure Enclave, только с Touch ID</div></div>
+              <span class="mid" style="font-size: 11px;">SHA256:Hh0p…9aQz</span><span class="dim">—</span><span class="dim" style="font-size: 11px;">твой</span>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 24px 1.4fr 2fr 1fr 90px; gap: 10px; padding: 7px 0; align-items: center;">
+              <span>●</span><div><div>ed25519 · deploy@ci</div><div class="dim" style="font-size: 10.5px;">добавлен 12.06.2026</div></div>
+              <span class="mid" style="font-size: 11px;">SHA256:Zt7v…C1kR</span><span class="dim" style="font-size: 11px;">command="deploy.sh", no-pty</span><span class="dim" style="font-size: 11px;">выкл · удалить</span>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 24px 1.4fr 2fr 1fr 90px; gap: 10px; padding: 7px 0; align-items: center;">
+              <span class="amb">▲</span><div><div class="amb">rsa-2048 · andrey@old-laptop</div><div class="dim" style="font-size: 10.5px;">RSA короче 3072 бит — слабый. Добавлен 03.2023</div></div>
+              <span class="mid" style="font-size: 11px;">SHA256:Bq2m…7xVd</span><span class="dim">—</span><span class="dim" style="font-size: 11px;">выкл · удалить</span>
+            </div>
+            <div class="row" style="display: grid; grid-template-columns: 24px 1.4fr 2fr 1fr 90px; gap: 10px; padding: 7px 0; align-items: center; opacity: .55;">
+              <span class="dim">○</span><div><div class="dim">ed25519 · temp-contractor</div><div class="dim" style="font-size: 10.5px;">отключён (закомментирован) 20.08.2026</div></div>
+              <span class="dim" style="font-size: 11px;">SHA256:Nn4a…Ue8L</span><span class="dim">from="10.0.0.0/8"</span><span class="dim" style="font-size: 11px;">вкл · удалить</span>
+            </div>
+          </div>
+          <div class="card" style="padding: 10px 12px; border-color: rgba(201,162,39,.45); font-size: 11.5px;">
+            <span class="amb">защита от самоблокировки:</span> удалить ключ, которым ты подключён сейчас, можно только с явным подтверждением. Запись атомарная, копия <span class="mid">authorized_keys.helm.bak</span> остаётся на сервере.
+          </div>
+          <div class="lbl" style="margin-top: 4px;">ЛОКАЛЬНЫЕ КЛЮЧИ · ~/.ssh</div>
+          <div style="display: flex; gap: 10px;">
+            <div class="card" style="padding: 8px 12px; flex: 1;"><div class="hi">id_ed25519.pub</div><div class="dim" style="font-size: 11px;">на 6 из 20 хостов</div></div>
+            <div class="card" style="padding: 8px 12px; flex: 1;"><div class="hi">secure-enclave (P-256)</div><div class="dim" style="font-size: 11px;">не покидает Мак · на 3 хостах</div></div>
+            <div class="card" style="padding: 8px 12px; flex: 1; display: flex; align-items: center; justify-content: center;"><span class="mid">+ сгенерировать новый</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr" style="margin: 12px 0 8px;"></div>
+      <div style="display: flex; gap: 24px; color: #2E7A45; letter-spacing: .1em; font-size: 11px;">
+        <span>ОТПЕЧАТКИ СЧИТАЮТСЯ ЛОКАЛЬНО</span><span>ssh-keygen НА СЕРВЕРЕ НЕ НУЖЕН</span>
+        <div style="flex-grow: 1;"></div><span>КОТЯТА СПЯТ</span>
+      </div>
+    </div>
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+</div>
+
+</x-dc>
+
+</body>
+</html>

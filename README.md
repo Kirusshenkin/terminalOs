@@ -147,29 +147,20 @@ hardcoded interface string — a linter checks.
 
 ## Status
 
-Early. The architecture is settled and written down in detail; the code is at
-the beginning. **There is nothing to install yet.** The screenshots above are
-the design, rendered from the artboards in [`design/`](design) — the app is
-being built to match them.
+Builds, runs, **138 tests green**. Nine screens: lock, hosts, terminal, files,
+Docker, monitor, keys, provisioning, AI activity. Interface in Russian and
+English.
 
-| | |
-|---|---|
-| Э0 | Project skeleton, packages, CI |
-| Э1 | Terminal core, tabs and splits, themes |
-| Э2 | SSH, hosts, encrypted profile, known_hosts |
-| Э3 | Proxies, SOCKS5, jump hosts |
-| Э4 | Touch ID, biometric lock, TOTP |
-| Э5 | Docker panel |
-| Э6 | Metrics and charts |
-| Э7 | Keys, SFTP, port forwards, snippets |
-| Э8 | Host probing and provisioning recipes |
-| Э9 | MCP server, tool policy, audit |
-| Э10 | Settings, signing, Sparkle updates, release pipeline |
+What works against a real server: SSH over one multiplexed connection per host,
+container listing with actions and streaming logs, `/proc` metrics, reading and
+editing `authorized_keys`, provisioning recipes, both file panes, and an
+interactive shell that rides the same socket.
 
-Updates will ship through Sparkle with EdDSA-signed appcasts, so the Gatekeeper
-warning is a first-install thing and never happens again.
+What is not built yet: the MCP stdio shim (the policy engine and audit trail
+are), the native Citadel transport, and the new-host form.
 
----
+Idle CPU is zero — no timers, polling pauses when the window is in the
+background.
 
 ## Install
 

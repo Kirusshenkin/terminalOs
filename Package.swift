@@ -63,6 +63,13 @@ let package = Package(
             swiftSettings: strict
         ),
 
+        // MCP tool catalogue, access policy and audit trail.
+        .target(
+            name: "MCPBridge",
+            dependencies: ["PhosphorCore", "HostsKit", "DockerKit", "SessionKit"],
+            swiftSettings: strict
+        ),
+
         // SwiftUI views.
         .target(
             name: "PhosphorUI",
@@ -77,7 +84,7 @@ let package = Package(
             name: "PhosphorTests",
             dependencies: ["PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit",
                            "DockerKit", "MetricsKit", "KeysKit", "ThemeKit",
-                           "ProvisionKit", "SessionKit", "PhosphorUI"],
+                           "ProvisionKit", "SessionKit", "MCPBridge", "PhosphorUI"],
             swiftSettings: strict
         ),
     ]

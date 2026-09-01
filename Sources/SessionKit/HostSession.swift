@@ -51,13 +51,14 @@ public struct SessionState: Sendable {
 /// notice that the host went away.
 /// Собирает строки в блок между разделителями `---`.
 ///
-/// Отдельный актор, потому что строки приходят из колбэка другого потока, а
-/// накопитель обязан быть один и защищённый.
-private actor BlockCollector {
+/// Простая структура без собственной конкурентности: порядок обеспечивает тот,
+/// кто её вызывает. Оборачивать каждую строку в отдельную задачу нельзя — они
+/// выполняются в произвольном порядке, и блоки перемешиваются.
+private struct BlockCollector {
     private var lines: [String] = []
 
     /// Возвращает готовый блок, когда он завершён.
-    func feed(_ line: String) -> String? {
+    mutating func feed(_ line: String) -> String? {
         guard line != "---" else {
             let block = lines.joined(separator: "\n")
             lines.removeAll(keepingCapacity: true)
@@ -192,17 +193,28 @@ public actor HostSession {
 
     /// One long-lived channel printing `/proc` snapshots, rather than a storm
     /// of exec calls.
+    ///
+    /// Строки проходят через поток с единственным потребителем: порядок здесь
+    /// не роскошь, а условие правильности — снимок, собранный из перемешанных
+    /// строк, даёт неверные дельты.
     private func startMetrics() {
         metricsTask?.cancel()
         metricsTask = Task { [weak self] in
             guard let self else { return }
-            let collector = BlockCollector()
-            try? await self.stream(ProcProbe.loop()) { line in
-                Task {
-                    if let block = await collector.feed(line) {
-                        await self.accept(block: block)
-                    }
+            let (lines, continuation) = AsyncStream<String>.makeStream(
+                bufferingPolicy: .bufferingNewest(4096))
+
+            let reader = Task {
+                try? await self.stream(ProcProbe.loop()) { line in
+                    continuation.yield(line)
                 }
+                continuation.finish()
+            }
+            defer { reader.cancel() }
+
+            var collector = BlockCollector()
+            for await line in lines {
+                if let block = collector.feed(line) { await self.accept(block: block) }
             }
         }
     }

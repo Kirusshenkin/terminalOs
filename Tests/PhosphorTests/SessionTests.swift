@@ -41,6 +41,23 @@ private func ok(_ stdout: String) -> CommandResult {
     CommandResult(status: 0, stdout: stdout, stderr: "")
 }
 
+/// Ждёт наступления условия, опрашивая его, а не засыпая на глазок.
+///
+/// Пауза «на всякий случай» делает тест плавающим ровно тогда, когда машина
+/// занята, — то есть в CI.
+private func waitUntil(
+    _ condition: @Sendable () async -> Bool,
+    deadline: Duration = .seconds(3),
+    interval: Duration = .milliseconds(20)
+) async -> Bool {
+    let started = ContinuousClock.now
+    while ContinuousClock.now - started < deadline {
+        if await condition() { return true }
+        try? await Task.sleep(for: interval)
+    }
+    return await condition()
+}
+
 @Suite("Сессия хоста")
 struct HostSessionTests {
     private let probeOutput = """
@@ -108,14 +125,17 @@ struct HostSessionTests {
         )
         let session = HostSession(host: host, transport: transport)
         await session.start()
-        // Дать задачам разбора добежать.
-        try await Task.sleep(for: .milliseconds(120))
+
+        // Загрузка существует только как разница, поэтому ждём именно второго
+        // снимка, а не «немножко».
+        let ready = await waitUntil { await session.current.previous != nil }
+        #expect(ready, "второй снимок так и не пришёл")
 
         let state = await session.current
         #expect(state.latest != nil)
-        #expect(state.previous != nil)
-        #expect(state.coreUsage.count == 1)
-        #expect(state.coreUsage[0] > 0 && state.coreUsage[0] < 1)
+        let usage = state.coreUsage
+        #expect(usage.count == 1)
+        #expect(usage.first.map { $0 > 0 && $0 < 1 } == true)
     }
 
     @Test("докер не опрашивается, если его на хосте нет")

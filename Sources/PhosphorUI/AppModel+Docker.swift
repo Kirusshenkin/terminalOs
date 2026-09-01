@@ -39,8 +39,19 @@ extension AppModel {
         logTask?.cancel()
         logs.removeAll()
         guard let session else { return }
-        logTask = await session.streamLogs(for: container) { [weak self] line in
-            Task { @MainActor in self?.logs.append(line) }
+        // Строки складываются в поток и разбираются одним потребителем:
+        // задача на строку выполняется в произвольном порядке, и лог
+        // перемешивается — незаметно и обидно.
+        let (lines, continuation) = AsyncStream<String>.makeStream(
+            bufferingPolicy: .bufferingNewest(4096))
+        let stream = await session.streamLogs(for: container) { line in
+            continuation.yield(line)
+        }
+        logTask = Task { [weak self] in
+            defer { stream.cancel() }
+            for await line in lines {
+                await MainActor.run { self?.logs.append(line) }
+            }
         }
     }
 

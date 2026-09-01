@@ -73,6 +73,21 @@ public final class AppModel {
     /// Что терминал просит подтвердить: запись в буфер, необычная ссылка.
     public var guardPrompt: GuardPrompt?
 
+    /// Разрушающее действие, ожидающее подтверждения.
+    public var pendingAction: PendingAction?
+    /// Итог последнего действия — одной строкой под списком.
+    public var lastOutcome: ActionOutcome?
+    /// Логи выбранного контейнера. Кольцевой: логи умеют идти мегабайтами.
+    public private(set) var logs = RingBuffer<String>(capacity: 5_000)
+    private var logTask: Task<Void, Never>?
+
+    /// Действие, которому нужно «да» от человека.
+    public struct PendingAction: Identifiable, Sendable {
+        public var id = UUID()
+        public var action: ContainerAction
+        public var container: Container
+    }
+
     /// Terminal scrollback, bounded on purpose.
     public var scrollback = RingBuffer<TerminalLine>(capacity: 50_000)
 
@@ -148,6 +163,46 @@ public final class AppModel {
         } catch {
             unlockError = "профиль не читается: \(error.localizedDescription)"
         }
+    }
+
+    /// Запускает действие: разрушающие — только через подтверждение.
+    public func request(_ action: ContainerAction, on container: Container) {
+        if action.isDestructive {
+            pendingAction = PendingAction(action: action, container: container)
+        } else {
+            Task { await perform(action, on: container) }
+        }
+    }
+
+    public func confirm(_ pending: PendingAction) {
+        pendingAction = nil
+        Task { await perform(pending.action, on: pending.container) }
+    }
+
+    private func perform(_ action: ContainerAction, on container: Container) async {
+        guard let session else {
+            lastOutcome = ActionOutcome(
+                action: action, containerName: container.name,
+                succeeded: false, message: "нет подключения к хосту"
+            )
+            return
+        }
+        lastOutcome = await session.perform(action, on: container)
+    }
+
+    /// Переключает поток логов на другой контейнер.
+    public func watchLogs(of container: Container) async {
+        logTask?.cancel()
+        logs.removeAll()
+        guard let session else { return }
+        logTask = await session.streamLogs(for: container) { [weak self] line in
+            Task { @MainActor in self?.logs.append(line) }
+        }
+    }
+
+    public func stopWatchingLogs() {
+        logTask?.cancel()
+        logTask = nil
     }
 
     /// Выполняет то, на что человек согласился в диалоге терминала.

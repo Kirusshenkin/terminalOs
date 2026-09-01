@@ -218,6 +218,43 @@ public actor HostSession {
         publish()
     }
 
+    /// Выполняет действие над контейнером и сразу обновляет список.
+    ///
+    /// Разрушающие действия сюда доходят только после подтверждения в
+    /// интерфейсе: решение принимает человек, а не эта функция.
+    public func perform(_ action: ContainerAction, on container: Container) async -> ActionOutcome {
+        let prefix = state.profile?.dockerPrefix ?? "docker"
+        do {
+            let result = try await transport.run(
+                action.command(id: container.id, prefix: prefix), timeout: .seconds(45))
+            let outcome = ActionOutcome.from(
+                result: result, action: action, container: container.name)
+            await refreshContainers()
+            return outcome
+        } catch {
+            return ActionOutcome(
+                action: action, containerName: container.name,
+                succeeded: false, message: Self.explain(error, host: host)
+            )
+        }
+    }
+
+    /// Поток логов контейнера.
+    ///
+    /// Буфер ограничен сверху: неограниченный — это утечка с отложенным сроком,
+    /// а логи умеют идти мегабайтами в секунду.
+    public func streamLogs(
+        for container: Container,
+        tail: Int = 500,
+        onLine: @escaping @Sendable (String) -> Void
+    ) -> Task<Void, Never> {
+        let prefix = state.profile?.dockerPrefix ?? "docker"
+        let command = DockerCLI.logs(id: container.id, tail: tail, prefix: prefix)
+        return Task { [transport] in
+            try? await transport.stream(command, onLine: onLine)
+        }
+    }
+
     public func run(_ command: String) async throws -> CommandResult {
         try await transport.run(command)
     }

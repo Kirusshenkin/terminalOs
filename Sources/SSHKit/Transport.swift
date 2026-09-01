@@ -16,14 +16,6 @@ public enum TransportError: Error, Equatable {
     case cancelled
 }
 
-/// Result of running one command.
-public struct CommandResult: Sendable, Equatable {
-    public var status: Int32
-    public var stdout: String
-    public var stderr: String
-    public var succeeded: Bool { status == 0 }
-}
-
 /// Anything that can carry commands to a host.
 ///
 /// The protocol exists so the SSH engine is a decision we can revisit: a

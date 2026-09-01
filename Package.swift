@@ -34,7 +34,7 @@ let package = Package(
         .target(name: "SSHKit", dependencies: ["PhosphorCore", "HostsKit"], swiftSettings: strict),
 
         // Container listing, stats and log streaming over SSH.
-        .target(name: "DockerKit", dependencies: ["PhosphorCore", "SSHKit"], swiftSettings: strict),
+        .target(name: "DockerKit", dependencies: ["PhosphorCore"], swiftSettings: strict),
 
         // /proc snapshot parsing and ring buffers.
         .target(name: "MetricsKit", dependencies: ["PhosphorCore", "SSHKit"], swiftSettings: strict),

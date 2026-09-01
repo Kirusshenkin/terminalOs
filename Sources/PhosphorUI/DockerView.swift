@@ -100,9 +100,13 @@ public struct DockerView: View {
                     Text(container.status).font(style.font(12))
                         .foregroundStyle(container.isUnhealthy ? style.warning : style.muted)
                     Spacer()
-                    PhButton(strings("docker.restart")) {}
-                    PhButton(strings("docker.stop")) {}
-                    PhButton(strings("docker.remove"), kind: .danger) {}
+                    // Предлагаем только то, что имеет смысл в этом состоянии:
+                    // команда, которую демон всё равно отвергнет, — это не кнопка.
+                    ForEach(ContainerAction.available(for: container.state), id: \.self) { action in
+                        PhButton(action.title, kind: action.isDestructive ? .danger : .normal) {
+                            model.request(action, on: container)
+                        }
+                    }
                 }
                 HStack(spacing: 18) {
                     ForEach(["docker.overview", "docker.logs", "docker.env"], id: \.self) { key in
@@ -121,6 +125,11 @@ public struct DockerView: View {
                     }
                 }
                 content(for: container)
+                if let outcome = model.lastOutcome {
+                    Text(outcome.message)
+                        .font(style.font(11.5))
+                        .foregroundStyle(outcome.succeeded ? style.muted : style.warning)
+                }
                 Spacer(minLength: 0)
             }
         } else {
@@ -169,6 +178,22 @@ public struct DockerView: View {
                 }
             }
         }
+    }
+
+    private func colour(level: Int) -> Color {
+        switch level {
+        case 1: style.warning
+        case 2: style.danger
+        default: style.text.opacity(0.85)
+        }
+    }
+
+    /// Подсветка по уровню, без разбора формата: строки бывают любые.
+    private static func level(of line: String) -> Int {
+        let upper = line.uppercased()
+        if upper.contains("ERROR") || upper.contains("FATAL") || upper.contains("PANIC") { return 2 }
+        if upper.contains("WARN") { return 1 }
+        return 0
     }
 
     private func overview(_ container: Container) -> [(String, String)] {

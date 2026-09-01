@@ -4,6 +4,7 @@ import Testing
 @testable import DockerKit
 @testable import HostsKit
 @testable import MetricsKit
+@testable import PhosphorCore
 @testable import ProvisionKit
 @testable import SSHKit
 @testable import SessionKit
@@ -149,5 +150,110 @@ struct HostSessionTests {
 
         // Разные причины дают разные подсказки — в этом весь смысл.
         #expect(Set([proxy, auth, changed]).count == 3)
+    }
+}
+
+@Suite("Действия над контейнерами")
+struct ContainerActionTests {
+    private let running = Container(
+        id: "3f9a", name: "api", image: "api:1", state: .running, status: "Up 6 days")
+    private let exited = Container(
+        id: "1c0d", name: "migrator", image: "api:1", state: .exited, status: "Exited (0)")
+
+    @Test("предлагаем только то, что имеет смысл в этом состоянии")
+    func availabilityMatchesState() {
+        let forRunning = ContainerAction.available(for: .running)
+        #expect(forRunning.contains(.stop))
+        #expect(!forRunning.contains(.start), "запускать уже запущенный нечего")
+
+        let forExited = ContainerAction.available(for: .exited)
+        #expect(forExited.contains(.start))
+        #expect(!forExited.contains(.stop))
+        #expect(!forExited.contains(.kill), "убивать остановленный бессмысленно")
+    }
+
+    @Test("разрушающие действия помечены как разрушающие")
+    func destructiveIsMarked() {
+        #expect(ContainerAction.remove.isDestructive)
+        #expect(ContainerAction.kill.isDestructive)
+        #expect(!ContainerAction.restart.isDestructive)
+        #expect(!ContainerAction.stop.isDestructive)
+    }
+
+    @Test("идентификатор экранируется в любой команде")
+    func quotesIdentifier() {
+        for action in ContainerAction.allCases {
+            let command = action.command(id: "evil; reboot")
+            #expect(command.contains("'evil; reboot'"), "\(action) не экранирует")
+            #expect(!command.hasSuffix("; reboot"))
+        }
+    }
+
+    @Test("ошибки докера превращаются в подсказку, а не в дамп stderr")
+    func explainsFailures() {
+        func outcome(_ stderr: String, _ action: ContainerAction = .remove) -> String {
+            ActionOutcome.from(
+                result: CommandResult(status: 1, stdout: "", stderr: stderr),
+                action: action, container: "api"
+            ).message
+        }
+        #expect(
+            outcome("Got permission denied while trying to connect to the Docker daemon socket")
+                .contains("sudo"))
+        #expect(outcome("Error: No such container: api").contains("уже нет"))
+        #expect(outcome("cannot remove container: container is running").contains("остановить"))
+    }
+
+    @Test("успех сообщает о себе тем же типом, что и ошибка")
+    func successIsUniform() {
+        let good = ActionOutcome.from(
+            result: CommandResult(status: 0, stdout: "3f9a", stderr: ""),
+            action: .restart, container: "api"
+        )
+        #expect(good.succeeded)
+        #expect(good.containerName == "api")
+    }
+
+    @Test("действие уходит на сервер и список обновляется")
+    func performsAndRefreshes() async throws {
+        let host = ServerHost(name: "prod", address: "10.0.0.1")
+        let probe = """
+            OS ubuntu 24.04
+            UP 1000
+            ID 0
+            SUDO yes
+            DOCKER /usr/bin/docker
+            PODMAN -
+            DOCKEROK yes
+            NGINX -
+            CERTBOT -
+            UFW -
+            PKG apt
+            CONTAINERS 1
+            KEYS 1
+            """
+        let transport = FakeTransport(
+            host: host,
+            answers: [
+                ("os-release", ok(probe)),
+                ("docker restart", ok("3f9a")),
+                (
+                    "docker ps",
+                    ok(
+                        #"{"ID":"3f9a","Names":"api","Image":"api:1","State":"running","Status":"Up 1 second","Ports":"","Labels":""}"#
+                    )
+                ),
+                ("docker stats", ok("")),
+            ]
+        )
+        let session = HostSession(host: host, transport: transport)
+        await session.start()
+        let outcome = await session.perform(.restart, on: running)
+        #expect(outcome.succeeded)
+
+        let executed = await transport.executed
+        #expect(executed.contains { $0 == "/usr/bin/docker restart '3f9a'" })
+        // После действия список обязан обновиться сам: иначе панель врёт.
+        #expect(executed.contains(DockerCLI.list(prefix: "/usr/bin/docker")))
     }
 }

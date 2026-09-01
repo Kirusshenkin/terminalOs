@@ -25,6 +25,18 @@ public struct RootView: View {
         .frame(minWidth: 1_060, minHeight: 680)
         // Опрос замирает, когда на окно никто не смотрит: терминал открыт весь
         // день, и фоновому окну незачем будить процессор.
+        // Разрушающее действие называет контейнер по имени: «удалить» без
+        // имени — это как раз то, о чём потом жалеют.
+        .alert(item: $model.pendingAction) { pending in
+            Alert(
+                title: Text("\(pending.action.title) «\(pending.container.name)»?"),
+                message: Text(pending.container.image),
+                primaryButton: .destructive(Text(pending.action.title)) {
+                    model.confirm(pending)
+                },
+                secondaryButton: .cancel(Text("отмена"))
+            )
+        }
         .onChange(of: scenePhase) { _, phase in
             Task { await model.setWindowActive(phase == .active) }
         }

@@ -1,15 +1,24 @@
 import Foundation
 import Testing
 
+@testable import DockerKit
 @testable import HostsKit
 @testable import MCPBridge
 @testable import PhosphorCore
+@testable import SessionKit
 
 @Suite("Политика доступа MCP")
 struct AccessPolicyTests {
     private let host = UUID()
-    private var read: Tool { ToolCatalog.tool(named: "list_containers")! }
-    private var write: Tool { ToolCatalog.tool(named: "run_command")! }
+    private var read: Tool {
+        ToolCatalog.tool(named: "list_containers")
+            ?? Tool(name: "list_containers", summary: "", kind: .read)
+    }
+
+    private var write: Tool {
+        ToolCatalog.tool(named: "run_command")
+            ?? Tool(name: "run_command", summary: "", kind: .write)
+    }
 
     @Test("новый хост выключен: забыть настроить — не значит открыть")
     func defaultsToDisabled() async {
@@ -179,5 +188,165 @@ struct AuditLogTests {
         for index in 0..<5 { await log.record(entry("tool\(index)")) }
         #expect(await log.entries().count == 5)
         await log.close()
+    }
+}
+
+@Suite("Исполнитель инструментов MCP")
+struct ToolRunnerTests {
+    private func temporaryURL() -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("phosphor-\(UUID().uuidString)/audit.jsonl")
+    }
+
+    /// Собирает исполнителя с одним хостом и заданным режимом.
+    /// Собранное окружение для одного теста.
+    private struct Setup {
+        var runner: ToolRunner
+        var host: ServerHost
+        var policy: AccessPolicy
+        var audit: AuditLog
+    }
+
+    private func makeRunner(
+        mode: MCPMode,
+        confirmAnswer: Bool = true,
+        auditURL: URL
+    ) async -> Setup {
+        let host = ServerHost(name: "prod-01", address: "10.0.0.1")
+        let book = HostBook(hosts: [host])
+        let policy = AccessPolicy()
+        await policy.setMode(mode, for: host.id)
+        let audit = AuditLog(url: auditURL)
+        let runner = ToolRunner(
+            policy: policy, audit: audit,
+            book: { book },
+            sessions: { _ in nil },  // подключения нет: проверяем решения, не выполнение
+            confirm: { _, _ in confirmAnswer }
+        )
+        return Setup(runner: runner, host: host, policy: policy, audit: audit)
+    }
+
+    @Test("список хостов доступен без привязки к хосту")
+    func listsHosts() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let setup = await makeRunner(mode: .disabled, auditURL: url)
+        let result = await setup.runner.call("list_hosts", arguments: [:])
+        #expect(!result.isError)
+        #expect(result.text.contains("prod-01"))
+        await setup.audit.close()
+    }
+
+    @Test("выключенный хост отклоняет даже чтение")
+    func disabledDeniesEverything() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let setup = await makeRunner(mode: .disabled, auditURL: url)
+        let result = await setup.runner.call(
+            "list_containers", arguments: ["host": setup.host.id.uuidString])
+        #expect(result.isError)
+        #expect(result.text.contains("выключен"))
+        await setup.audit.close()
+    }
+
+    @Test("отказ человека останавливает запись")
+    func refusalStops() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let setup = await makeRunner(mode: .confirm, confirmAnswer: false, auditURL: url)
+        let result = await setup.runner.call(
+            "run_command",
+            arguments: [
+                "host": setup.host.id.uuidString, "command": "systemctl restart api",
+            ])
+        #expect(result.isError)
+        #expect(result.text.contains("отклонил"))
+        await setup.audit.close()
+
+        // Отказ тоже попадает в журнал: он часть истории.
+        let entries = await AuditLog(url: url).readAll()
+        #expect(entries.contains { $0.decision == "refused" })
+    }
+
+    @Test("сухой прогон рассказывает намерение и ничего не делает")
+    func dryRunDescribes() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let setup = await makeRunner(mode: .full, auditURL: url)
+        let result = await setup.runner.call(
+            "run_command",
+            arguments: ["host": setup.host.id.uuidString, "command": "rm -rf /srv/old"],
+            mode: .dryRun
+        )
+        #expect(!result.isError)
+        #expect(result.text.contains("выполнил бы"))
+        #expect(result.text.contains("/srv/old"))
+        await setup.audit.close()
+
+        let entries = await AuditLog(url: url).readAll()
+        #expect(entries.last?.decision == "dry-run")
+    }
+
+    @Test("запрещённая команда не проходит даже в полном режиме")
+    func denyListStillApplies() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let setup = await makeRunner(mode: .full, auditURL: url)
+        let result = await setup.runner.call(
+            "run_command",
+            arguments: [
+                "host": setup.host.id.uuidString, "command": "rm -rf /",
+            ])
+        #expect(result.isError)
+        #expect(result.text.contains("запрещена"))
+        await setup.audit.close()
+    }
+
+    @Test("каждый вызов оставляет запись в журнале")
+    func everythingIsLogged() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let setup = await makeRunner(mode: .readOnly, auditURL: url)
+        _ = await setup.runner.call("list_hosts", arguments: [:])
+        _ = await setup.runner.call(
+            "list_containers", arguments: ["host": setup.host.id.uuidString])
+        _ = await setup.runner.call(
+            "run_command",
+            arguments: [
+                "host": setup.host.id.uuidString, "command": "ls",
+            ])
+        await setup.audit.close()
+
+        let entries = await AuditLog(url: url).readAll()
+        #expect(entries.count == 3)
+        #expect(entries.map(\.tool) == ["list_hosts", "list_containers", "run_command"])
+    }
+
+    @Test("секреты в аргументах не попадают в журнал")
+    func secretsAreMaskedInAudit() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let setup = await makeRunner(mode: .readOnly, auditURL: url)
+        _ = await setup.runner.call(
+            "list_containers",
+            arguments: [
+                "host": setup.host.id.uuidString, "api_key": "sk-live-4471",
+            ])
+        await setup.audit.close()
+
+        let entries = await AuditLog(url: url).readAll()
+        let arguments = entries.last?.arguments ?? ""
+        #expect(!arguments.contains("sk-live-4471"))
+        #expect(arguments.contains(Redaction.mask))
+    }
+
+    @Test("неизвестный инструмент отвергается, а не угадывается")
+    func unknownToolRefused() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let setup = await makeRunner(mode: .full, auditURL: url)
+        let result = await setup.runner.call("delete_everything", arguments: [:])
+        #expect(result.isError)
+        await setup.audit.close()
     }
 }

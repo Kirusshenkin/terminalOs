@@ -35,6 +35,9 @@ public struct AnsiGuard: Sendable {
     /// a repeat count of ten million is a denial of service, not a layout.
     public static let parameterLimit = 65_535
 
+    // Восьмибитные формы C1 (0x9B как CSI, 0x9D как OSC) намеренно не
+    // распознаются: в UTF-8 эти байты — части многобайтных символов, и
+    // трактовать их как управляющие значит ломать текст.
     private enum State {
         case ground
         case escape
@@ -96,6 +99,10 @@ public struct AnsiGuard: Sendable {
             // DCS/SOS/PM/APC. DECRQSS lives in DCS; none of it is useful to us
             // and all of it can request a reply.
             state = .stringSequence
+        case UInt8(ascii: "Z"):
+            // DECID: старый запрос идентификации. Терминал на него отвечает —
+            // тот же answerback, только другой формы.
+            state = .ground
         case 0x1B:
             break
         default:

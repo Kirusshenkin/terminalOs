@@ -34,9 +34,7 @@ public enum Subprocess {
             try await Task.sleep(for: timeout)
             if process.isRunning { process.terminate() }
         }
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            process.terminationHandler = { _ in continuation.resume() }
-        }
+        await waitForExit(process)
         deadline.cancel()
         outPipe.fileHandleForReading.readabilityHandler = nil
         errPipe.fileHandleForReading.readabilityHandler = nil
@@ -75,13 +73,43 @@ public enum Subprocess {
         }
         try process.run()
         await withTaskCancellationHandler {
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                process.terminationHandler = { _ in continuation.resume() }
-            }
+            await waitForExit(process)
         } onCancel: {
             process.terminate()
         }
         pipe.fileHandleForReading.readabilityHandler = nil
+    }
+}
+
+/// Ждёт завершения процесса, не полагаясь на то, что он ещё жив.
+///
+/// `terminationHandler`, установленный после фактического выхода, может не
+/// сработать вовсе — и тогда быстрая команда подвешивает вызывающего навсегда.
+/// Защёлка гарантирует ровно одно возобновление, кто бы ни успел первым.
+private func waitForExit(_ process: Process) async {
+    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        let latch = ExitLatch()
+        process.terminationHandler = { _ in
+            if latch.claim() { continuation.resume() }
+        }
+        // Процесс мог завершиться между запуском и установкой обработчика.
+        if !process.isRunning, latch.claim() { continuation.resume() }
+    }
+}
+
+/// Одноразовая защёлка: продолжение нельзя возобновить дважды.
+private final class ExitLatch: @unchecked Sendable {
+    // Ручная синхронизация намеренная: обе стороны гонки — обычные колбэки
+    // Foundation, и единственное поле закрыто собственным замком.
+    private let lock = NSLock()
+    private var done = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if done { return false }
+        done = true
+        return true
     }
 }
 

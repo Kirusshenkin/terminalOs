@@ -384,3 +384,44 @@ struct AppearanceTests {
         #expect(AppearanceStore(url: temporaryURL()).load() == Appearance())
     }
 }
+
+@Suite("Фильтр: дополнительные векторы")
+struct AnsiGuardEdgeTests {
+    private func run(_ text: String) -> AnsiGuard.Output {
+        var guardian = AnsiGuard()
+        return guardian.filter(Array(text.utf8))
+    }
+
+    @Test("ESC Z не доходит до эмулятора: на него тоже отвечают")
+    func decidIsDropped() {
+        let output = run("до\u{1B}Zпосле")
+        #expect(String(decoding: output.bytes, as: UTF8.self) == "допосле")
+    }
+
+    @Test("кириллица и эмодзи проходят целыми")
+    func utf8Survives() {
+        // Байты 0x9B и 0x9D — части многобайтных символов, а не C1-управление.
+        let text = "привет 🌿 日本語 ✓"
+        let output = run(text)
+        #expect(String(decoding: output.bytes, as: UTF8.self) == text)
+    }
+
+    @Test("незакрытая последовательность не съедает весь дальнейший вывод")
+    func malformedRecovers() {
+        var guardian = AnsiGuard()
+        // Длинный мусор после CSI: буфер обязан сброситься и вернуться в текст.
+        let noise = "\u{1B}[" + String(repeating: "1;", count: 60)
+        _ = guardian.filter(Array(noise.utf8))
+        let after = guardian.filter(Array("виден".utf8))
+        #expect(String(decoding: after.bytes, as: UTF8.self) == "виден")
+    }
+
+    @Test("огромный OSC не копится бесконечно")
+    func hugeOSCIsDropped() {
+        var guardian = AnsiGuard()
+        let huge = "\u{1B}]0;" + String(repeating: "x", count: 9000)
+        _ = guardian.filter(Array(huge.utf8))
+        let after = guardian.filter(Array("\u{07}хвост".utf8))
+        #expect(String(decoding: after.bytes, as: UTF8.self).contains("хвост"))
+    }
+}

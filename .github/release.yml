@@ -1,0 +1,21 @@
+# Категории для автоматических заметок к релизу.
+# GitHub раскладывает по ним слитые PR — так получается раздел "What's Changed".
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - github-actions
+  categories:
+    - title: Features
+      labels: [feature, enhancement]
+    - title: Fixes
+      labels: [bug, fix]
+    - title: Performance
+      labels: [performance]
+    - title: Security
+      labels: [security]
+    - title: Dependencies
+      labels: [dependencies]
+    - title: Other
+      labels: ["*"]

@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.75) 100%); }
+
+    @keyframes cFp    { 0%, 14% { opacity: .5; transform: scale(1) } 22% { opacity: .9; transform: scale(.7) } 26%, 100% { opacity: 0; transform: scale(.4) } }
+    @keyframes cLine  { 0%, 18% { opacity: 0; transform: scaleX(.1) }
+                        24% { opacity: 1; transform: scaleX(1) }
+                        30% { opacity: 1; transform: scaleX(1) }
+                        36%, 100% { opacity: 0; transform: scaleX(1) } }
+    @keyframes cTube  { 0%, 27% { transform: scaleY(.006); opacity: 0 }
+                        29% { opacity: 1 }
+                        37% { transform: scaleY(1.07) }
+                        45%, 86% { transform: scaleY(1); opacity: 1 }
+                        96%, 100% { transform: scaleY(.006); opacity: 0 } }
+    @keyframes cBloom { 0%, 27% { opacity: 0 } 32% { opacity: .55 } 52%, 100% { opacity: 0 } }
+    @keyframes cRow   { 0%, 38% { opacity: 0 } 52%, 86% { opacity: .9 } 94%, 100% { opacity: 0 } }
+    @keyframes cWait3 { 0%, 16% { opacity: 1 } 22%, 100% { opacity: 0 } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+</helmet>
+
+<div style="width: 620px; height: 460px; background: #05080A; color: #5BE87F; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; font-size: 12px;">
+  <div style="display: flex; align-items: baseline; gap: 10px;">
+    <div style="font-size: 15px; color: #9DF7B4;">C · Кинескоп</div>
+    <div style="color: #2E7A45;">движение 1,6 с</div>
+  </div>
+  <div style="color: #3E9E5A; margin: 7px 0 13px; line-height: 1.55;">Отпечаток схлопывается в яркую горизонтальную линию, линия вспыхивает и растягивается на весь экран с перелётом — так включались настоящие ЭЛТ-мониторы. Единственный вариант, где анимация входа объясняет саму эстетику приложения.</div>
+
+  <div style="flex-grow: 1; background: #071008; border-radius: 14px; position: relative; overflow: hidden; box-shadow: inset 0 0 60px rgba(0,0,0,.85);">
+    <!-- отпечаток схлопывается в линию -->
+    <svg width="88" height="88" viewBox="0 0 88 88" fill="none" stroke="#5BE87F" stroke-width="1.8" stroke-linecap="round"
+         style="position: absolute; left: 50%; top: 50%; margin: -44px 0 0 -44px; animation: cFp 4.2s cubic-bezier(.5,0,.7,1) infinite;"><path d="M30 44 C30 36.3 36.3 30 44 30 C51.7 30 58 36.3 58 44 C58 52 57.4 58 56 63" /><path d="M22 52 C22 40 31.9 30 44 30 C56.1 30 66 40 66 52 C66 58 65.4 63 64 68" /><path d="M38 62 C37 56 36.6 50 36.6 44 C36.6 40 39.9 37 44 37 C48.1 37 51.4 40 51.4 44 C51.4 52 50.6 58 49 64" /></svg>
+
+    <!-- вспыхнувшая горизонтальная линия -->
+    <div style="position: absolute; left: 8%; right: 8%; top: 50%; height: 2px; background: #EAFFF0; box-shadow: 0 0 22px 4px rgba(234,255,240,.7); animation: cLine 4.2s cubic-bezier(.2,.9,.3,1) infinite;"></div>
+
+    <!-- экран растягивается по вертикали -->
+    <div style="position: absolute; inset: 0; transform-origin: 50% 50%; animation: cTube 4.2s cubic-bezier(.16,1,.3,1) infinite;">
+      <div style="position: absolute; inset: 0; background: #0B1A0F;"></div>
+      <div style="position: absolute; left: 30px; right: 30px; top: 34px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="height: 6px; width: 76%; background: rgba(91,232,127,.32); animation: cRow 4.2s ease infinite; animation-delay: 0.00s;"></div>
+          <div style="height: 6px; width: 52%; background: rgba(91,232,127,.32); animation: cRow 4.2s ease infinite; animation-delay: 0.05s;"></div>
+          <div style="height: 6px; width: 64%; background: rgba(91,232,127,.32); animation: cRow 4.2s ease infinite; animation-delay: 0.10s;"></div>
+          <div style="height: 6px; width: 41%; background: rgba(91,232,127,.32); animation: cRow 4.2s ease infinite; animation-delay: 0.15s;"></div>
+          <div style="height: 6px; width: 70%; background: rgba(91,232,127,.32); animation: cRow 4.2s ease infinite; animation-delay: 0.20s;"></div>
+          <div style="height: 6px; width: 33%; background: rgba(91,232,127,.32); animation: cRow 4.2s ease infinite; animation-delay: 0.25s;"></div>
+          <div style="height: 6px; width: 58%; background: rgba(91,232,127,.32); animation: cRow 4.2s ease infinite; animation-delay: 0.30s;"></div>
+      </div>
+      <div style="position: absolute; left: 30px; bottom: 26px; font-size: 13px; color: #9DF7B4; animation: cRow 4.2s ease infinite; animation-delay: .35s;">открыто · prod-01</div>
+    </div>
+
+    <!-- послесвечение -->
+    <div style="position: absolute; inset: 0; background: radial-gradient(60% 40% at 50% 50%, rgba(154,247,180,.5), transparent 70%); animation: cBloom 4.2s ease infinite; pointer-events: none;"></div>
+
+    <div style="position: absolute; left: 0; right: 0; bottom: 26px; text-align: center; font-size: 14px; color: #3E9E5A; animation: cWait3 4.2s ease infinite;">приложи палец</div>
+
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+
+  <div style="display: flex; gap: 18px; color: #2E7A45; margin-top: 12px; font-size: 11px;"><span>схлопывание 340 мс</span><span>развёртка 420 мс</span><span>scaleX + scaleY, без фильтров</span></div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

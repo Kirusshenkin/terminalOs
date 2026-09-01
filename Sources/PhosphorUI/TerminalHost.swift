@@ -1,4 +1,5 @@
 import AppKit
+public import HostsKit
 public import PhosphorCore
 public import SwiftUI
 public import TerminalCore
@@ -9,11 +10,23 @@ public import ThemeKit
 /// The view is created once and kept: rebuilding it would throw away the shell
 /// and everything on screen. Only the theme is pushed on update.
 public struct TerminalHost: NSViewRepresentable {
+    /// Куда открывать шелл.
+    public enum Destination: Equatable {
+        case local
+        case remote(host: ServerHost, reach: Reach, controlPath: String)
+    }
+
     private let theme: Theme
+    private let destination: Destination
     private let onGuardRequest: (AnsiGuard.Request) -> Void
 
-    public init(theme: Theme, onGuardRequest: @escaping (AnsiGuard.Request) -> Void) {
+    public init(
+        theme: Theme,
+        destination: Destination,
+        onGuardRequest: @escaping (AnsiGuard.Request) -> Void
+    ) {
         self.theme = theme
+        self.destination = destination
         self.onGuardRequest = onGuardRequest
     }
 
@@ -21,13 +34,34 @@ public struct TerminalHost: NSViewRepresentable {
         let surface = TerminalSurface(frame: .zero)
         surface.apply(theme: theme)
         surface.onGuardRequest = onGuardRequest
-        surface.startLocalShell()
+        start(surface)
+        context.coordinator.destination = destination
         return surface
     }
 
     public func updateNSView(_ surface: TerminalSurface, context: Context) {
         surface.apply(theme: theme)
         surface.onGuardRequest = onGuardRequest
+        // Перезапускаем шелл, только если сменился адрес: пересоздавать его на
+        // каждой перерисовке значит выбрасывать всё, что на экране.
+        guard context.coordinator.destination != destination else { return }
+        context.coordinator.destination = destination
+        start(surface)
+    }
+
+    public func makeCoordinator() -> Coordinator { Coordinator() }
+
+    public final class Coordinator {
+        var destination: Destination?
+    }
+
+    private func start(_ surface: TerminalSurface) {
+        switch destination {
+        case .local:
+            surface.startLocalShell()
+        case .remote(let host, let reach, let controlPath):
+            surface.startRemoteShell(host: host, reach: reach, controlPath: controlPath)
+        }
     }
 }
 

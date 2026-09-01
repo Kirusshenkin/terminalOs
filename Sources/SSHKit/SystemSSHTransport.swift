@@ -19,41 +19,24 @@ public actor SystemSSHTransport: SSHTransport {
     private var proxyCheckedAt: ContinuousClock.Instant?
     private let proxyCheckLifetime: Duration = .seconds(30)
 
+    /// Путь к управляющему сокету этого хоста.
+    ///
+    /// Публичный, потому что интерактивный шелл в терминале обязан ехать по
+    /// тому же соединению: иначе будет второй логин и второй Touch ID.
+    public nonisolated let socketPath: String
+
     public init(host: ServerHost, reach: Reach) {
         self.host = host
         self.reach = reach
         // Socket names have a hard length limit, so the identifier is hashed.
         let short = String(host.id.uuidString.prefix(8))
         self.controlPath = NSTemporaryDirectory() + "phosphor-\(short).sock"
+        self.socketPath = controlPath
     }
 
-    /// Base arguments shared by every invocation.
-    ///
-    /// `StrictHostKeyChecking=yes` is deliberate: a changed host key is a block,
-    /// not a prompt. `BatchMode` keeps ssh from stopping on a hidden question.
+    /// Аргументы, общие для каждого вызова.
     private var baseArguments: [String] {
-        var arguments = [
-            "-o", "ControlMaster=auto",
-            "-o", "ControlPath=\(controlPath)",
-            "-o", "ControlPersist=120",
-            "-o", "StrictHostKeyChecking=yes",
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=8",
-            // Terrapin (CVE-2023-48795) applies to ChaCha20-Poly1305 and to CBC
-            // with Encrypt-then-MAC. Preferring AES-GCM sidesteps it entirely
-            // on servers that support it.
-            "-o", "Ciphers=aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr",
-            // Agent forwarding stays off: on a compromised host it signs
-            // anything in your name.
-            "-o", "ForwardAgent=no",
-            "-p", String(host.port),
-        ]
-        if case .socks(let proxyHost, let proxyPort) = reach {
-            // Hand the *name* to the proxy so DNS resolves on its side: no leak,
-            // and no "that domain does not resolve here".
-            arguments += ["-o", "ProxyCommand=/usr/bin/nc -x \(proxyHost):\(proxyPort) -X 5 %h %p"]
-        }
-        return arguments
+        SSHInvocation.arguments(host: host, reach: reach, controlPath: controlPath)
     }
 
     public func run(_ command: String, timeout: Duration = .seconds(30)) async throws -> CommandResult {
@@ -62,9 +45,9 @@ public actor SystemSSHTransport: SSHTransport {
                 throw TransportError.proxyUnreachable(host: proxyHost, port: proxyPort)
             }
         }
-        let target = "\(host.user)@\(host.address)"
+        let target = SSHInvocation.target(host)
         let result = try await Subprocess.run(
-            executable: "/usr/bin/ssh",
+            executable: SSHInvocation.executable,
             arguments: baseArguments + [target, command],
             timeout: timeout
         )
@@ -83,9 +66,9 @@ public actor SystemSSHTransport: SSHTransport {
 
     /// Runs a long-lived command, delivering output line by line.
     public func stream(_ command: String, onLine: @escaping @Sendable (String) -> Void) async throws {
-        let target = "\(host.user)@\(host.address)"
+        let target = SSHInvocation.target(host)
         try await Subprocess.stream(
-            executable: "/usr/bin/ssh",
+            executable: SSHInvocation.executable,
             arguments: baseArguments + [target, command],
             onLine: onLine
         )
@@ -108,9 +91,9 @@ public actor SystemSSHTransport: SSHTransport {
     }
 
     public func close() async {
-        let target = "\(host.user)@\(host.address)"
+        let target = SSHInvocation.target(host)
         _ = try? await Subprocess.run(
-            executable: "/usr/bin/ssh",
+            executable: SSHInvocation.executable,
             arguments: ["-o", "ControlPath=\(controlPath)", "-O", "exit", target],
             timeout: .seconds(5)
         )

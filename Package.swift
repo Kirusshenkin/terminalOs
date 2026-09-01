@@ -51,7 +51,8 @@ let package = Package(
         // Terminal emulator wiring: local PTY and remote channels.
         .target(
             name: "TerminalCore",
-            dependencies: ["PhosphorCore", "ThemeKit", .product(name: "SwiftTerm", package: "SwiftTerm")],
+            dependencies: ["PhosphorCore", "ThemeKit", "HostsKit", "SSHKit",
+                           .product(name: "SwiftTerm", package: "SwiftTerm")],
             swiftSettings: strict
         ),
 

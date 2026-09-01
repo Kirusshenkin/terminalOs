@@ -58,6 +58,8 @@ public final class AppModel {
     /// Живая сессия выбранного хоста, если он подключён.
     public internal(set) var session: HostSession?
     public internal(set) var sessionState = SessionState()
+    /// Управляющий сокет текущей сессии: терминал едет по нему же.
+    public internal(set) var sessionSocketPath: String?
     private var observerToken: UUID?
 
     public var selectedContainer: String?
@@ -104,6 +106,15 @@ public final class AppModel {
     }
 
     public var strings: Strings { Strings(language: language) }
+
+    /// Куда смотрит терминал: на локальный шелл или на выбранный сервер.
+    public var terminalDestination: TerminalHost.Destination {
+        guard let id = selectedHost,
+            let host = book.hosts.first(where: { $0.id == id }),
+            let socket = sessionSocketPath
+        else { return .local }
+        return .remote(host: host, reach: book.reach(for: host), controlPath: socket)
+    }
 
     /// Theme for the current context: a host's group can override the default,
     /// which is how production ends up unmistakably red.
@@ -220,7 +231,9 @@ public final class AppModel {
             await session.stop()
         }
         selectedHost = host.id
-        let fresh = HostSession(host: host, reach: book.reach(for: host))
+        let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
+        sessionSocketPath = transport.socketPath
+        let fresh = HostSession(host: host, transport: transport)
         session = fresh
         sessionState = SessionState()
         observerToken = await fresh.observe { [weak self] state in
@@ -248,6 +261,7 @@ public final class AppModel {
         session = nil
         observerToken = nil
         sessionState = SessionState()
+        sessionSocketPath = nil
     }
 
     /// Приостанавливает опрос, когда окно ушло на второй план.

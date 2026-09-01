@@ -1,5 +1,7 @@
 public import AppKit
+public import HostsKit
 public import PhosphorCore
+public import SSHKit
 public import SwiftTerm
 public import ThemeKit
 
@@ -43,6 +45,18 @@ public final class TerminalSurface: LocalProcessTerminalView {
         let output = guardian.filter(bytes)
         for request in output.requests { onGuardRequest?(request) }
         if !output.bytes.isEmpty { feed(byteArray: ArraySlice(output.bytes)) }
+    }
+
+    /// Открывает интерактивный шелл на сервере.
+    ///
+    /// Идёт тем же `ssh` и по тому же управляющему сокету, что и остальные
+    /// команды: одно соединение, один логин, одно место, где видно обрыв.
+    public func startRemoteShell(host: ServerHost, reach: Reach, controlPath: String) {
+        startProcess(
+            executable: SSHInvocation.executable,
+            args: SSHInvocation.shellArguments(host: host, reach: reach, controlPath: controlPath),
+            environment: Terminal.getEnvironmentVariables(termName: "xterm-256color")
+        )
     }
 
     /// Starts a login shell in the user's home directory.

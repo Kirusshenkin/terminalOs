@@ -103,3 +103,61 @@ struct NetworkTests {
         await transport.close()
     }
 }
+
+@Suite("Аргументы ssh")
+struct SSHInvocationTests {
+    private let host = ServerHost(name: "prod", address: "10.0.0.1", port: 2222, user: "deploy")
+
+    @Test("команды и интерактивный шелл идут по одному сокету")
+    func sharesControlPath() {
+        let socket = "/tmp/phosphor-test.sock"
+        let forCommands = SSHInvocation.arguments(host: host, reach: .direct, controlPath: socket)
+        let forShell = SSHInvocation.shellArguments(host: host, reach: .direct, controlPath: socket)
+        // Иначе будет второй логин и второй Touch ID на ровном месте.
+        #expect(forShell.starts(with: forCommands))
+        #expect(forCommands.contains("ControlPath=\(socket)"))
+        #expect(forShell.last == "deploy@10.0.0.1")
+        #expect(forShell.contains("-t"), "интерактивному шеллу нужен PTY")
+    }
+
+    @Test("AES-GCM стоит впереди ChaCha20 — обход Terrapin")
+    func prefersAESGCM() throws {
+        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x")
+        let index = try #require(
+            arguments.firstIndex(
+                of: "Ciphers=aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr"))
+        #expect(index > 0)
+        let ciphers = arguments[index]
+        #expect(!ciphers.contains("chacha20"), "уязвимый к Terrapin шифр не предлагаем вовсе")
+        #expect(!ciphers.contains("cbc"), "CBC с Encrypt-then-MAC тоже уязвим")
+    }
+
+    @Test("смена ключа хоста блокирует подключение, а не спрашивает")
+    func strictHostKey() {
+        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x")
+        #expect(arguments.contains("StrictHostKeyChecking=yes"))
+        #expect(arguments.contains("ForwardAgent=no"), "агент не пробрасываем")
+    }
+
+    @Test("порт берётся из хоста, а не из умолчания")
+    func usesHostPort() {
+        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x")
+        #expect(arguments.contains("2222"))
+    }
+
+    @Test("через прокси имя хоста уходит целиком: DNS резолвит прокси")
+    func proxyResolvesName() throws {
+        let arguments = SSHInvocation.arguments(
+            host: host, reach: .socks(host: "127.0.0.1", port: 10_808), controlPath: "/tmp/x")
+        let command = try #require(arguments.first { $0.hasPrefix("ProxyCommand=") })
+        #expect(command.contains("127.0.0.1:10808"))
+        #expect(command.contains("%h"), "адрес подставляет ssh, а не мы")
+        #expect(command.contains("-X 5"), "SOCKS5, а не SOCKS4")
+    }
+
+    @Test("без прокси лишнего ProxyCommand нет")
+    func directHasNoProxy() {
+        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x")
+        #expect(!arguments.contains { $0.hasPrefix("ProxyCommand") })
+    }
+}

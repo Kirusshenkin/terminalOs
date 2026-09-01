@@ -18,7 +18,7 @@ public struct TerminalPane: View {
                         .foregroundStyle(isFailure ? style.warning : style.muted)
                         .padding(.bottom, 8)
                 }
-                TerminalHost(theme: style.theme) { request in
+                TerminalHost(theme: style.theme, destination: model.terminalDestination) { request in
                     Task { @MainActor in model.guardPrompt = GuardPrompt(request: request) }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -1,4 +1,5 @@
 public import DockerKit
+public import KeysKit
 public import Foundation
 public import HostsKit
 public import PhosphorCore
@@ -163,9 +164,67 @@ public actor ToolRunner {
             return await run(command, on: session)
         case "container_action":
             return await containerAction(state, session: session, arguments: arguments)
+        case "manage_authorized_key":
+            return await manageKey(session: session, arguments: arguments)
         default:
             return ToolResult(text: "инструмент пока не реализован", isError: true)
         }
+    }
+
+    /// Добавляет или убирает ключ в `authorized_keys` на сервере.
+    ///
+    /// Защита от самоблокировки живёт здесь, а не в вызывающем: человек может
+    /// осознанно снести ключ, которым подключён, — модель не может. Даже с
+    /// разрешением на запись она не должна оставить хост без единого рабочего
+    /// ключа, потому что назад её никто не пустит.
+    private func manageKey(
+        session: HostSession, arguments: [String: String]
+    ) async -> ToolResult {
+        guard let action = arguments["action"], action == "add" || action == "remove" else {
+            return ToolResult(text: "нужен action: add или remove", isError: true)
+        }
+        let read = await run("cat ~/.ssh/authorized_keys 2>/dev/null || true", on: session)
+        guard !read.isError else { return read }
+        let keys = AuthorizedKeysFile.parse(read.text == "(пусто)" ? "" : read.text)
+
+        let updated: [AuthorizedKey]
+        switch action {
+        case "add":
+            guard let line = arguments["key"], !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return ToolResult(text: "не указан ключ", isError: true)
+            }
+            let added = AuthorizedKeysFile.parse(line)
+            guard let key = added.first, added.count == 1 else {
+                return ToolResult(text: "строка не похожа на один ключ", isError: true)
+            }
+            guard !keys.contains(where: { $0.fingerprint == key.fingerprint }) else {
+                return ToolResult(text: "такой ключ уже есть: \(key.fingerprint)")
+            }
+            updated = keys + [key]
+        default:
+            guard let wanted = arguments["fingerprint"], !wanted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return ToolResult(text: "не указан отпечаток", isError: true)
+            }
+            let doomed = Set(keys.filter { $0.fingerprint == wanted }.map(\.id))
+            guard !doomed.isEmpty else {
+                return ToolResult(text: "ключа с таким отпечатком на сервере нет", isError: true)
+            }
+            guard
+                !AuthorizedKeysFile.wouldLockOut(
+                    keys: keys, removing: doomed, currentFingerprint: nil)
+            else {
+                return ToolResult(
+                    text: "после удаления не осталось бы ни одного рабочего ключа",
+                    isError: true)
+            }
+            updated = keys.filter { !doomed.contains($0.id) }
+        }
+
+        let write = await run(
+            AuthorizedKeysFile.writeCommand(content: AuthorizedKeysFile.render(updated)),
+            on: session)
+        guard !write.isError else { return write }
+        return ToolResult(text: "ключей на сервере: \(updated.count)")
     }
 
     private func metrics(_ state: SessionState) -> ToolResult {

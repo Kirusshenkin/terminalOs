@@ -187,9 +187,9 @@ hardcoded interface string — a linter checks.
 
 ## Status
 
-Builds, runs, **150 tests green**. Ten screens: lock, hosts, terminal, files,
-Docker, monitor, keys, provisioning, AI activity. Interface in Russian and
-English.
+Builds, runs, **179 tests green**. Eleven screens: lock, hosts, terminal with
+persistent sessions, files, Docker, monitor, keys, provisioning, AI activity and
+settings. Interface in Russian and English.
 
 What works against a real server: SSH over one multiplexed connection per host,
 container listing with actions and streaming logs, `/proc` metrics, reading and
@@ -202,8 +202,11 @@ starts disabled, writes need a decision from a person, a deny-list overrides
 every mode, and the audit log has no writing tool — the model can act but
 cannot erase its trail.
 
+Hosts import from `~/.ssh/config`, from `known_hosts` and from a Termius vault,
+whose plaintext dump is deleted once the hosts are inside the encrypted profile.
+
 What is not built yet: the native Citadel transport (the process-based one is
-tested and works) and importing hosts from Termius.
+tested and works), the pet in the corner, and in-app updates through Sparkle.
 
 Idle CPU is zero — no timers, polling pauses when the window is in the
 background.

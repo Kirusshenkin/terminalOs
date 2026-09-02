@@ -558,7 +558,11 @@ struct HostEditToolTests {
     ) -> ToolRunner {
         ToolRunner(
             policy: AccessPolicy(),
-            audit: AuditLog(),
+            // Журнал во временный файл: тест не имеет права дописывать
+            // строки в настоящий аудит человека.
+            audit: AuditLog(
+                url: FileManager.default.temporaryDirectory
+                    .appendingPathComponent("phosphor-test-\(UUID().uuidString).jsonl")),
             book: { book },
             sessions: { _ in nil },
             edit: applied,

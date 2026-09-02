@@ -6,11 +6,18 @@ public struct HostBook: Codable, Sendable {
     public var groups: [HostGroup]
     public var hosts: [ServerHost]
     public var snippets: [Snippet]
+    /// Сохранённые пробросы. Хранятся здесь, потому что привязаны к хосту и
+    /// должны переживать перезапуск вместе с ним.
+    public var forwards: [ForwardSpec]
 
-    public init(groups: [HostGroup] = [], hosts: [ServerHost] = [], snippets: [Snippet] = []) {
+    public init(
+        groups: [HostGroup] = [], hosts: [ServerHost] = [],
+        snippets: [Snippet] = [], forwards: [ForwardSpec] = []
+    ) {
         self.groups = groups
         self.hosts = hosts
         self.snippets = snippets
+        self.forwards = forwards
     }
 
     public func group(for host: ServerHost) -> HostGroup? {
@@ -58,6 +65,33 @@ public struct HostBook: Codable, Sendable {
             result[id, default: 0] += 1
         }
         return result
+    }
+}
+
+/// Проброс в том виде, в каком он лежит в профиле.
+///
+/// Отдельный от рабочего типа: профиль не должен зависеть от того, как устроен
+/// слой соединений.
+public struct ForwardSpec: Codable, Identifiable, Hashable, Sendable {
+    public var id: UUID
+    public var direction: String
+    public var listenPort: Int
+    public var targetHost: String
+    public var targetPort: Int
+    public var hostID: ServerHost.ID
+    public var autoStart: Bool
+
+    public init(
+        id: UUID, direction: String, listenPort: Int, targetHost: String,
+        targetPort: Int, hostID: ServerHost.ID, autoStart: Bool
+    ) {
+        self.id = id
+        self.direction = direction
+        self.listenPort = listenPort
+        self.targetHost = targetHost
+        self.targetPort = targetPort
+        self.hostID = hostID
+        self.autoStart = autoStart
     }
 }
 

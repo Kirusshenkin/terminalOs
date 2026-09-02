@@ -67,8 +67,8 @@ public struct RootView: View {
             )
         }
         .task { await model.startBridge() }
-        .onChange(of: model.screen) { _, screen in
-            if screen == .keys { Task { await model.loadKeys() } }
+        .onChange(of: model.page) { _, page in
+            if page == .keys { Task { await model.loadKeys() } }
         }
         .onChange(of: scenePhase) { _, phase in
             Task { await model.setWindowActive(phase == .active) }
@@ -116,7 +116,8 @@ public struct RootView: View {
         [
             ("nav.hosts", .hosts), ("tab.terminal", .terminal), ("tab.files", .files),
             ("tab.docker", .docker), ("tab.monitor", .monitor),
-            ("nav.keys", .keys), ("tab.theme", .theme),
+            ("tab.provision", .provision), ("tab.activity", .activity),
+            ("tab.theme", .theme),
         ]
     }
 
@@ -134,7 +135,6 @@ public struct RootView: View {
         case .files: FilesView(model: model)
         case .docker: DockerView(model: model)
         case .monitor: MonitorView(model: model)
-        case .keys: KeysView(model: model)
         case .provision: ProvisionView(model: model)
         case .activity: ActivityView(model: model)
         case .theme: ThemeView(model: model)

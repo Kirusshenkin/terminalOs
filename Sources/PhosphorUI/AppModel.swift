@@ -14,7 +14,7 @@ public import ThemeKit
 
 /// Which screen the window is showing.
 public enum Section: String, CaseIterable, Sendable {
-    case hosts, terminal, files, docker, monitor, keys, provision, activity, theme
+    case hosts, terminal, files, docker, monitor, provision, activity, theme
 }
 
 /// Кто живёт в углу.
@@ -69,6 +69,24 @@ public final class AppModel {
 
     /// Что терминал просит подтвердить: запись в буфер, необычная ссылка.
     public var guardPrompt: GuardPrompt?
+
+    /// Страница внутри раздела «Хосты».
+    public var page: HostsPage = .hosts
+
+    /// Пробросы портов и их состояние.
+    public var forwards: [PortForward] = []
+    public internal(set) var activeForwards: Set<UUID> = []
+    public internal(set) var forwardError: String?
+
+    /// Вывод последнего сниппета и отсылка, если он ушёл на группу.
+    public internal(set) var snippetOutput = ""
+    public internal(set) var snippetEgg: String?
+
+    /// Известные хосты и журнал подключений.
+    public internal(set) var knownHosts: [KnownHost] = []
+    public internal(set) var knownHostsError: String?
+    public internal(set) var connectionEvents: [ConnectionEvent] = []
+    let connections = ConnectionLog()
 
     /// Файловые панели.
     public var localPath = NSHomeDirectory()
@@ -213,6 +231,7 @@ public final class AppModel {
     private func loadProfile() async {
         do {
             book = try await profiles.load(HostBook.self, reason: "открыть профиль Phosphor")
+            syncForwardsFromBook()
         } catch ProfileStoreError.empty {
             // Первый запуск: показываем что-то живое, но ничего не сохраняем,
             // пока человек сам не заведёт хост.
@@ -261,6 +280,17 @@ public final class AppModel {
             }
         }
         await fresh.start()
+
+        // Журнал пишет факт, а не содержимое: куда, когда и через что.
+        switch await fresh.current.phase {
+        case .ready:
+            await record(.connected, host: host)
+            await startAutoForwards()
+        case .failed(let reason):
+            await record(.failed, host: host, detail: reason)
+        default:
+            break
+        }
     }
 
     /// Переносит данные сессии в поля, из которых рисуются панели.
@@ -274,6 +304,9 @@ public final class AppModel {
     }
 
     public func disconnect() async {
+        if let host = book.hosts.first(where: { $0.id == selectedHost }), session != nil {
+            await record(.disconnected, host: host)
+        }
         if let session, let observerToken { await session.stopObserving(observerToken) }
         await session?.stop()
         session = nil

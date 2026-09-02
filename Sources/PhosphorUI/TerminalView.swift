@@ -96,7 +96,7 @@ public struct PetCorner: View {
                 }
             }
             scene
-                .frame(width: 240, height: 130)
+                .frame(width: 300, height: 150)
                 .allowsHitTesting(false)
                 .opacity(0.62)
         }
@@ -106,74 +106,239 @@ public struct PetCorner: View {
 
     @ViewBuilder private var scene: some View {
         Canvas { context, size in
-            let line = Path(CGRect(x: 8, y: size.height - 26, width: size.width - 40, height: 1))
-            context.fill(line, with: .color(style.text.opacity(0.16)))
-
+            let ink = style.text.opacity(0.34)
+            let line = style.muted
             switch pet {
-            case .cat:
-                // A box, a ball and a cat on the floor.
-                context.stroke(
-                    Path(CGRect(x: 22, y: size.height - 74, width: 46, height: 30)),
-                    with: .color(style.muted), lineWidth: 1.5)
-                context.stroke(
-                    Path(ellipseIn: CGRect(x: 168, y: size.height - 46, width: 12, height: 12)),
-                    with: .color(style.muted), lineWidth: 1.5)
-                context.fill(
-                    catBody(at: CGPoint(x: 100, y: size.height - 26)), with: .color(style.text.opacity(0.28)))
-            case .glider:
-                // A hollow in a trunk, two branches, no floor at all: a sugar
-                // glider does not walk, it glides between them.
-                context.fill(
-                    Path(CGRect(x: 8, y: 4, width: 26, height: size.height - 12)),
-                    with: .color(style.text.opacity(0.14)))
-                context.stroke(
-                    Path(ellipseIn: CGRect(x: 12, y: size.height - 76, width: 18, height: 24)),
-                    with: .color(style.muted), lineWidth: 1.4)
-                var upper = Path()
-                upper.move(to: CGPoint(x: 34, y: 44))
-                upper.addCurve(
-                    to: CGPoint(x: 160, y: 36),
-                    control1: CGPoint(x: 80, y: 40), control2: CGPoint(x: 120, y: 42))
-                context.stroke(upper, with: .color(style.muted), lineWidth: 2)
-                var lower = Path()
-                lower.move(to: CGPoint(x: 36, y: size.height - 30))
-                lower.addCurve(
-                    to: CGPoint(x: 200, y: size.height - 34),
-                    control1: CGPoint(x: 90, y: size.height - 28),
-                    control2: CGPoint(x: 150, y: size.height - 26))
-                context.stroke(lower, with: .color(style.muted), lineWidth: 2)
-                context.fill(gliderBody(at: CGPoint(x: 96, y: 42)), with: .color(style.text.opacity(0.28)))
+            case .cat: drawCat(&context, size: size, ink: ink, line: line)
+            case .glider: drawGlider(&context, size: size, ink: ink, line: line)
             }
         }
     }
 
-    private func catBody(at base: CGPoint) -> Path {
-        var path = Path()
-        let body = CGRect(x: base.x, y: base.y - 38, width: 28, height: 38)
-        path.addRoundedRect(in: body, cornerSize: CGSize(width: 10, height: 12))
-        path.move(to: CGPoint(x: body.minX + 2, y: body.minY + 6))
-        path.addLine(to: CGPoint(x: body.minX, y: body.minY - 8))
-        path.addLine(to: CGPoint(x: body.minX + 9, y: body.minY + 2))
-        path.closeSubpath()
-        path.move(to: CGPoint(x: body.maxX - 2, y: body.minY + 6))
-        path.addLine(to: CGPoint(x: body.maxX, y: body.minY - 8))
-        path.addLine(to: CGPoint(x: body.maxX - 9, y: body.minY + 2))
-        path.closeSubpath()
-        return path
+    // MARK: - Котёнок
+
+    /// Кот сидит на полу спиной к нам вполоборота: голова, тело, хвост кольцом.
+    private func drawCat(
+        _ context: inout GraphicsContext, size: CGSize, ink: Color, line: Color
+    ) {
+        let floor = size.height - 24
+        context.stroke(
+            Path {
+                $0.move(to: CGPoint(x: 6, y: floor)); $0.addLine(to: CGPoint(x: size.width - 30, y: floor))
+            },
+            with: .color(style.text.opacity(0.16)), lineWidth: 1)
+
+        // Коробка: без неё это не коты.
+        let box = CGRect(x: 18, y: floor - 34, width: 48, height: 34)
+        context.stroke(Path(box), with: .color(line), lineWidth: 1.4)
+        context.stroke(
+            Path {
+                $0.move(to: CGPoint(x: box.minX, y: box.minY + 9));
+                $0.addLine(to: CGPoint(x: box.maxX, y: box.minY + 9))
+            },
+            with: .color(line), lineWidth: 1.4)
+
+        // Мячик.
+        context.stroke(
+            Path(ellipseIn: CGRect(x: size.width - 62, y: floor - 13, width: 13, height: 13)),
+            with: .color(line), lineWidth: 1.4)
+
+        let base = CGPoint(x: 108, y: floor)
+
+        // Хвост: обвивает лапы спереди — так сидят коты.
+        var tail = Path()
+        tail.move(to: CGPoint(x: base.x + 26, y: base.y - 6))
+        tail.addCurve(
+            to: CGPoint(x: base.x + 4, y: base.y - 2),
+            control1: CGPoint(x: base.x + 46, y: base.y + 4),
+            control2: CGPoint(x: base.x + 20, y: base.y + 8))
+        context.stroke(tail, with: .color(ink), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+
+        // Тело: сидящий силуэт — узкие плечи, широкий низ.
+        var body = Path()
+        body.move(to: CGPoint(x: base.x + 2, y: base.y))
+        body.addCurve(
+            to: CGPoint(x: base.x + 5, y: base.y - 30),
+            control1: CGPoint(x: base.x - 5, y: base.y - 12),
+            control2: CGPoint(x: base.x - 3, y: base.y - 26))
+        body.addLine(to: CGPoint(x: base.x + 23, y: base.y - 30))
+        body.addCurve(
+            to: CGPoint(x: base.x + 28, y: base.y),
+            control1: CGPoint(x: base.x + 31, y: base.y - 26),
+            control2: CGPoint(x: base.x + 33, y: base.y - 12))
+        body.closeSubpath()
+        context.fill(body, with: .color(ink))
+
+        // Голова с ушами.
+        let head = CGRect(x: base.x + 1, y: base.y - 52, width: 27, height: 24)
+        var skull = Path(roundedRect: head, cornerSize: CGSize(width: 11, height: 10))
+        skull.move(to: CGPoint(x: head.minX + 3, y: head.minY + 7))
+        skull.addLine(to: CGPoint(x: head.minX + 1, y: head.minY - 8))
+        skull.addLine(to: CGPoint(x: head.minX + 12, y: head.minY + 1))
+        skull.closeSubpath()
+        skull.move(to: CGPoint(x: head.maxX - 3, y: head.minY + 7))
+        skull.addLine(to: CGPoint(x: head.maxX - 1, y: head.minY - 8))
+        skull.addLine(to: CGPoint(x: head.maxX - 12, y: head.minY + 1))
+        skull.closeSubpath()
+        context.fill(skull, with: .color(ink))
+
+        // Глаза: спит — значит закрыты, две дужки.
+        for offset in [CGFloat(8), CGFloat(19)] {
+            var eye = Path()
+            eye.move(to: CGPoint(x: head.minX + offset - 3, y: head.minY + 12))
+            eye.addQuadCurve(
+                to: CGPoint(x: head.minX + offset + 3, y: head.minY + 12),
+                control: CGPoint(x: head.minX + offset, y: head.minY + 15))
+            context.stroke(eye, with: .color(style.accent), lineWidth: 1.4)
+        }
     }
 
-    private func gliderBody(at base: CGPoint) -> Path {
-        var path = Path()
-        let body = CGRect(x: base.x, y: base.y - 24, width: 34, height: 26)
-        path.addRoundedRect(in: body, cornerSize: CGSize(width: 14, height: 12))
-        path.move(to: CGPoint(x: body.minX + 3, y: body.minY + 6))
-        path.addLine(to: CGPoint(x: body.minX, y: body.minY - 6))
-        path.addLine(to: CGPoint(x: body.minX + 9, y: body.minY + 1))
-        path.closeSubpath()
-        path.move(to: CGPoint(x: body.maxX - 3, y: body.minY + 6))
-        path.addLine(to: CGPoint(x: body.maxX, y: body.minY - 6))
-        path.addLine(to: CGPoint(x: body.maxX - 9, y: body.minY + 1))
-        path.closeSubpath()
-        return path
+    // MARK: - Сахарный поссум
+
+    /// Поссум сидит на ветке: большие глаза, полоса по спине, расправленная
+    /// перепонка между запястьем и лодыжкой и длинный пушистый хвост. Пола в
+    /// его мире нет — только ветки и дупло.
+    private func drawGlider(
+        _ context: inout GraphicsContext, size: CGSize, ink: Color, line: Color
+    ) {
+        // Ствол эвкалипта: слегка сужается кверху, с бороздами коры.
+        var trunk = Path()
+        trunk.move(to: CGPoint(x: 10, y: size.height))
+        trunk.addLine(to: CGPoint(x: 14, y: 2))
+        trunk.addLine(to: CGPoint(x: 38, y: 2))
+        trunk.addLine(to: CGPoint(x: 42, y: size.height))
+        trunk.closeSubpath()
+        context.fill(trunk, with: .color(style.text.opacity(0.12)))
+        context.stroke(trunk, with: .color(line.opacity(0.7)), lineWidth: 1.2)
+        for x in [CGFloat(20), CGFloat(30)] {
+            context.stroke(
+                Path {
+                    $0.move(to: CGPoint(x: x, y: 12)); $0.addLine(to: CGPoint(x: x + 2, y: size.height - 6))
+                },
+                with: .color(line.opacity(0.35)), lineWidth: 1)
+        }
+
+        // Дупло, выстланное листьями: дом вместо коробки.
+        let hollow = CGRect(x: 16, y: size.height - 62, width: 20, height: 26)
+        context.fill(Path(ellipseIn: hollow), with: .color(.black.opacity(0.55)))
+        context.stroke(Path(ellipseIn: hollow), with: .color(line), lineWidth: 1.4)
+        context.stroke(
+            Path {
+                $0.move(to: CGPoint(x: hollow.minX + 3, y: hollow.maxY - 5))
+                $0.addQuadCurve(
+                    to: CGPoint(x: hollow.maxX - 3, y: hollow.maxY - 5),
+                    control: CGPoint(x: hollow.midX, y: hollow.maxY - 12))
+            },
+            with: .color(style.accent.opacity(0.5)), lineWidth: 1.6)
+
+        // Две ветки на разной высоте — по ним он и перелетает.
+        var upper = Path()
+        upper.move(to: CGPoint(x: 40, y: 46))
+        upper.addCurve(
+            to: CGPoint(x: size.width - 34, y: 38),
+            control1: CGPoint(x: 90, y: 42), control2: CGPoint(x: 140, y: 44))
+        context.stroke(upper, with: .color(line), lineWidth: 2.2)
+
+        var lower = Path()
+        lower.move(to: CGPoint(x: 42, y: size.height - 26))
+        lower.addCurve(
+            to: CGPoint(x: size.width - 16, y: size.height - 32),
+            control1: CGPoint(x: 100, y: size.height - 24), control2: CGPoint(x: 160, y: size.height - 22))
+        context.stroke(lower, with: .color(line), lineWidth: 2.2)
+
+        // Цветок эвкалипта на нижней ветке: его еда.
+        let flower = CGPoint(x: size.width - 44, y: size.height - 30)
+        for angle in stride(from: -70.0, through: 70.0, by: 35.0) {
+            let radians = angle * .pi / 180
+            context.stroke(
+                Path {
+                    $0.move(to: flower)
+                    $0.addLine(
+                        to: CGPoint(
+                            x: flower.x + sin(radians) * 9, y: flower.y - cos(radians) * 9))
+                },
+                with: .color(style.accent.opacity(0.55)), lineWidth: 1.2)
+        }
+
+        drawGliderBody(&context, perch: CGPoint(x: 96, y: 44), ink: ink, line: line)
+    }
+
+    /// Сам зверь, сидящий на ветке.
+    private func drawGliderBody(
+        _ context: inout GraphicsContext, perch: CGPoint, ink: Color, line: Color
+    ) {
+        // Хвост: длиннее тела и пушистый — у поссума он почти вдвое длиннее.
+        var tail = Path()
+        tail.move(to: CGPoint(x: perch.x + 30, y: perch.y - 12))
+        tail.addCurve(
+            to: CGPoint(x: perch.x + 74, y: perch.y - 40),
+            control1: CGPoint(x: perch.x + 58, y: perch.y - 6),
+            control2: CGPoint(x: perch.x + 74, y: perch.y - 18))
+        context.stroke(tail, with: .color(ink), style: StrokeStyle(lineWidth: 5.5, lineCap: .round))
+
+        // Перепонка: от запястья до лодыжки. Ради неё он и планирует.
+        var membrane = Path()
+        membrane.move(to: CGPoint(x: perch.x + 4, y: perch.y - 16))
+        membrane.addQuadCurve(
+            to: CGPoint(x: perch.x + 30, y: perch.y - 10),
+            control: CGPoint(x: perch.x + 17, y: perch.y + 2))
+        membrane.addLine(to: CGPoint(x: perch.x + 26, y: perch.y - 20))
+        membrane.closeSubpath()
+        context.fill(membrane, with: .color(ink.opacity(0.55)))
+
+        // Тело: вытянутое, а не круглое.
+        var body = Path()
+        body.move(to: CGPoint(x: perch.x + 6, y: perch.y - 14))
+        body.addCurve(
+            to: CGPoint(x: perch.x + 30, y: perch.y - 14),
+            control1: CGPoint(x: perch.x + 8, y: perch.y - 34),
+            control2: CGPoint(x: perch.x + 30, y: perch.y - 32))
+        body.addQuadCurve(
+            to: CGPoint(x: perch.x + 6, y: perch.y - 14),
+            control: CGPoint(x: perch.x + 18, y: perch.y - 6))
+        context.fill(body, with: .color(ink))
+
+        // Лапы на ветке.
+        for x in [perch.x + 10, perch.x + 24] {
+            context.stroke(
+                Path {
+                    $0.move(to: CGPoint(x: x, y: perch.y - 12))
+                    $0.addLine(to: CGPoint(x: x, y: perch.y - 1))
+                },
+                with: .color(ink), style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
+        }
+
+        // Голова: круглая, с чуть вытянутой мордочкой.
+        let head = CGRect(x: perch.x - 4, y: perch.y - 42, width: 24, height: 21)
+        context.fill(Path(ellipseIn: head), with: .color(ink))
+        // Нос.
+        context.fill(
+            Path(ellipseIn: CGRect(x: head.minX - 4, y: head.midY - 2, width: 8, height: 6)),
+            with: .color(ink))
+
+        // Уши: крупные, округлые, посажены высоко.
+        for x in [head.minX + 5, head.maxX - 9] {
+            context.fill(
+                Path(ellipseIn: CGRect(x: x, y: head.minY - 5, width: 8, height: 9)),
+                with: .color(ink))
+        }
+
+        // Тёмная полоса от носа через лоб — его примета.
+        context.stroke(
+            Path {
+                $0.move(to: CGPoint(x: head.minX - 1, y: head.midY - 1))
+                $0.addLine(to: CGPoint(x: head.maxX - 4, y: head.minY + 3))
+            },
+            with: .color(.black.opacity(0.5)), lineWidth: 2.6)
+
+        // Глаза: непропорционально большие — он ночной.
+        for x in [head.minX + 6, head.minX + 15] {
+            context.fill(
+                Path(ellipseIn: CGRect(x: x, y: head.midY - 4, width: 7, height: 7)),
+                with: .color(.black.opacity(0.75)))
+            context.fill(
+                Path(ellipseIn: CGRect(x: x + 4.4, y: head.midY - 3, width: 2.2, height: 2.2)),
+                with: .color(style.accent))
+        }
     }
 }

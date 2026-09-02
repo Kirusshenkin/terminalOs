@@ -14,8 +14,16 @@ public struct HostsView: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: 22) {
-            navigation
+            SectionNav(strings: strings, page: $model.page)
             Rectangle().fill(style.rule).frame(width: 1)
+            page
+        }
+    }
+
+    /// Содержимое выбранной страницы раздела.
+    @ViewBuilder private var page: some View {
+        switch model.page {
+        case .hosts:
             VStack(alignment: .leading, spacing: 16) {
                 searchRow
                 actionRow
@@ -23,26 +31,12 @@ public struct HostsView: View {
                 hosts
                 Spacer(minLength: 0)
             }
+        case .keys: KeysView(model: model)
+        case .forwarding: ForwardingView(model: model)
+        case .snippets: SnippetsView(model: model)
+        case .known: KnownHostsView(model: model).task { model.loadKnownHosts() }
+        case .log: ConnectionLogView(model: model).task { await model.loadConnectionLog() }
         }
-    }
-
-    private var navigation: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label2("— \(strings("nav.hosts")) —")
-                .padding(.bottom, 6)
-            ForEach(
-                ["nav.hosts", "nav.keys", "nav.forwarding", "nav.snippets", "nav.known", "nav.log"],
-                id: \.self
-            ) { key in
-                HStack(spacing: 6) {
-                    Text(key == "nav.hosts" ? "▸" : " ")
-                    Text(strings(key))
-                }
-                .font(style.font(12.5))
-                .foregroundStyle(key == "nav.hosts" ? style.bright : style.text)
-            }
-        }
-        .frame(width: 168, alignment: .leading)
     }
 
     private var searchRow: some View {

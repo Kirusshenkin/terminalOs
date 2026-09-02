@@ -41,7 +41,7 @@ a shell would give it. That trade is the whole point.
 
 ## Setup
 
-Registry name: **`io.github.kirusshenkin/phosphor`** — every release publishes a
+Registry name: **`io.github.Kirusshenkin/phosphor`** — every release publishes a
 `server.json` and a `phosphor-mcp-<version>.mcpb` bundle with its SHA-256, so a
 client that installs from the [MCP registry](https://registry.modelcontextprotocol.io)
 gets the shim verified before it runs.

@@ -62,13 +62,3 @@ jobs:
             dist/latest.json \
             dist/phosphor-mcp-${{ steps.ver.outputs.short }}.mcpb \
             dist/server.json
-
-      # Публикация в реестр MCP — после релиза: server.json ссылается на
-      # ассет по постоянному адресу, и он должен уже существовать.
-      - name: Реестр MCP
-        run: |
-          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz" \
-            | tar xz mcp-publisher
-          cp dist/server.json server.json
-          ./mcp-publisher login github-oidc
-          ./mcp-publisher publish

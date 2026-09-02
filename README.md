@@ -143,7 +143,7 @@ agent holds nothing.**
 claude mcp add phosphor /Applications/Phosphor.app/Contents/MacOS/phosphor-mcp
 ```
 
-In the MCP registry it is `io.github.kirusshenkin/phosphor`; every release also
+In the MCP registry it is `io.github.Kirusshenkin/phosphor`; every release also
 ships a `.mcpb` bundle with a published SHA-256 for clients that install that
 way.
 

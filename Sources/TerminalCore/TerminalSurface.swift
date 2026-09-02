@@ -30,10 +30,27 @@ public final class TerminalSurface: LocalProcessTerminalView {
         nativeBackgroundColor = NSColor(theme.background)
         caretColor = NSColor(theme.cursor)
         selectedTextBackgroundColor = NSColor(theme.selection)
-        if let font = NSFont(name: "IBMPlexMono", size: 13) ?? NSFont(name: "SF Mono", size: 13) {
-            self.font = font
-        }
+        font = Self.font(size: 13)
     }
+
+    /// Шрифт терминала: основной плюс запасной для иконок.
+    ///
+    /// `ls --icons`, powerline-разделители и статусные строки рисуются кодами из
+    /// приватной области Unicode. В обычном шрифте их нет, и вместо иконки
+    /// остаётся пустой прямоугольник. Каскад отправляет CoreText в Symbols Nerd
+    /// Font ровно за теми кодами, которых нет в основном шрифте, — метрики и
+    /// вид текста при этом не меняются.
+    static func font(size: CGFloat) -> NSFont {
+        let base =
+            NSFont(name: "IBMPlexMono", size: size)
+            ?? NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        let symbols = NSFontDescriptor(fontAttributes: [.family: symbolsFamily])
+        let cascading = base.fontDescriptor.addingAttributes([.cascadeList: [symbols]])
+        return NSFont(descriptor: cascading, size: size) ?? base
+    }
+
+    /// Начертание лежит в бандле и регистрируется через `ATSApplicationFontsPath`.
+    static let symbolsFamily = "Symbols Nerd Font Mono"
 
     /// Feeds bytes from a server through the guard before the emulator sees them.
     ///

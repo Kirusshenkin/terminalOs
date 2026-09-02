@@ -85,7 +85,7 @@ MCPB_SHA="$(shasum -a 256 "$MCPB" | cut -d' ' -f1)"
 cat > dist/server.json <<JSON
 {
   "\$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.kirusshenkin/phosphor",
+  "name": "io.github.${REPO%%/*}/phosphor",
   "title": "Phosphor",
   "description": "Hosts, metrics, Docker and authorized_keys over a macOS terminal's live SSH connections",
   "version": "$SHORT",

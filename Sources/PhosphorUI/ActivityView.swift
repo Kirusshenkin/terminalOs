@@ -64,6 +64,20 @@ public struct ActivityView: View {
 
             Spacer(minLength: 0)
 
+            VStack(alignment: .leading, spacing: 5) {
+                Label2("как подключить клиента")
+                Text(model.bridgeError ?? "мост поднят, пока открыто приложение")
+                    .font(style.font(11))
+                    .foregroundStyle(model.bridgeError == nil ? style.muted : style.warning)
+                Text(model.bridgeCommand)
+                    .font(style.font(10.5))
+                    .foregroundStyle(style.text.opacity(0.8))
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(style.surface)
+            }
+
             Text("запрещённые команды отклоняются в любом режиме, включая полный")
                 .font(style.font(11))
                 .foregroundStyle(style.warning)

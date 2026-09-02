@@ -13,12 +13,14 @@ SHORT="${MARKETING_VERSION:-0.1.0}"
 BUILD="${BUILD_NUMBER:-1}"
 
 swift build -c "$CONFIG"
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/Phosphor"
+BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
 APP="dist/Phosphor.app"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/Phosphor"
+cp "$BIN_DIR/Phosphor" "$APP/Contents/MacOS/Phosphor"
+# Шим лежит рядом: MCP-клиент запускает его по пути внутри бандла.
+cp "$BIN_DIR/phosphor-mcp" "$APP/Contents/MacOS/phosphor-mcp"
 sed -e "s|__SHORT_VERSION__|$SHORT|" -e "s|__BUILD_VERSION__|$BUILD|" \
     Resources/Info.plist > "$APP/Contents/Info.plist"
 

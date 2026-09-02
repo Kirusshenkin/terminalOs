@@ -12,6 +12,9 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .executable(name: "Phosphor", targets: ["Phosphor"]),
+        // Крошечный шим внутри бандла: говорит по stdio с MCP-клиентом и
+        // проксирует запросы приложению через локальный сокет.
+        .executable(name: "phosphor-mcp", targets: ["phosphor-mcp"]),
     ],
     dependencies: [
         // Готовый эмулятор VT100/xterm: писать свой — это год работы.
@@ -83,6 +86,8 @@ let package = Package(
         ),
 
         .executableTarget(name: "Phosphor", dependencies: ["PhosphorUI"], swiftSettings: strict),
+
+        .executableTarget(name: "phosphor-mcp", dependencies: ["MCPBridge"], swiftSettings: strict),
 
         .testTarget(
             name: "PhosphorTests",

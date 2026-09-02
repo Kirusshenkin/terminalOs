@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Testing
 
@@ -348,5 +349,143 @@ struct ToolRunnerTests {
         let result = await setup.runner.call("delete_everything", arguments: [:])
         #expect(result.isError)
         await setup.audit.close()
+    }
+}
+
+@Suite("Локальный мост", .serialized)
+struct SocketServerTests {
+    private func temporaryPaths() -> (socket: String, token: String) {
+        let directory = NSTemporaryDirectory() + "phosphor-\(UUID().uuidString)"
+        try? FileManager.default.createDirectory(
+            atPath: directory, withIntermediateDirectories: true)
+        return (directory + "/mcp.sock", directory + "/mcp.token")
+    }
+
+    /// Отправляет запрос по сокету так же, как это делает шим.
+    private func send(_ request: BridgeRequest, to path: String) -> BridgeResponse? {
+        let descriptor = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard descriptor >= 0 else { return nil }
+        defer { close(descriptor) }
+
+        var address = sockaddr_un()
+        address.sun_family = sa_family_t(AF_UNIX)
+        let maximum = MemoryLayout.size(ofValue: address.sun_path)
+        _ = withUnsafeMutablePointer(to: &address.sun_path) { pointer in
+            path.withCString { source in
+                strncpy(
+                    UnsafeMutableRawPointer(pointer).assumingMemoryBound(to: CChar.self),
+                    source, maximum - 1)
+            }
+        }
+        let size = socklen_t(MemoryLayout<sockaddr_un>.size)
+        let connected = withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                connect(descriptor, $0, size)
+            }
+        }
+        guard connected == 0, var payload = try? JSONEncoder().encode(request) else { return nil }
+        payload.append(0x0A)
+        _ = payload.withUnsafeBytes { write(descriptor, $0.baseAddress, $0.count) }
+
+        var buffer = [UInt8]()
+        var byte: UInt8 = 0
+        while read(descriptor, &byte, 1) == 1 {
+            if byte == 0x0A { break }
+            buffer.append(byte)
+        }
+        return try? JSONDecoder().decode(BridgeResponse.self, from: Data(buffer))
+    }
+
+    @Test("запрос с верным токеном доходит до обработчика")
+    func acceptsValidToken() async throws {
+        let paths = temporaryPaths()
+        defer {
+            try? FileManager.default.removeItem(
+                atPath: (paths.socket as NSString).deletingLastPathComponent)
+        }
+
+        let server = SocketServer(path: paths.socket, tokenPath: paths.token) { request in
+            BridgeResponse(ok: true, text: "получено: \(request.tool ?? "—")")
+        }
+        try await server.start()
+        defer { Task { try? await server.stop() } }
+
+        let token = try String(contentsOfFile: paths.token, encoding: .utf8)
+        let response = send(
+            BridgeRequest(token: token, method: "call", tool: "list_hosts"), to: paths.socket)
+        #expect(response?.ok == true)
+        #expect(response?.text.contains("list_hosts") == true)
+    }
+
+    @Test("без верного токена сокет не отдаёт ничего")
+    func rejectsWrongToken() async throws {
+        let paths = temporaryPaths()
+        defer {
+            try? FileManager.default.removeItem(
+                atPath: (paths.socket as NSString).deletingLastPathComponent)
+        }
+
+        let server = SocketServer(path: paths.socket, tokenPath: paths.token) { _ in
+            BridgeResponse(ok: true, text: "не должно случиться")
+        }
+        try await server.start()
+        defer { Task { try? await server.stop() } }
+
+        let response = send(
+            BridgeRequest(token: "подобранный", method: "call", tool: "run_command"),
+            to: paths.socket)
+        #expect(response?.ok == false)
+        #expect(response?.text.contains("токен") == true)
+    }
+
+    @Test("сокет и токен доступны только владельцу")
+    func filePermissions() async throws {
+        let paths = temporaryPaths()
+        defer {
+            try? FileManager.default.removeItem(
+                atPath: (paths.socket as NSString).deletingLastPathComponent)
+        }
+
+        let server = SocketServer(path: paths.socket, tokenPath: paths.token) { _ in
+            BridgeResponse(ok: true, text: "")
+        }
+        try await server.start()
+        defer { Task { try? await server.stop() } }
+
+        for path in [paths.socket, paths.token] {
+            let attributes = try FileManager.default.attributesOfItem(atPath: path)
+            let mode = (attributes[.posixPermissions] as? NSNumber)?.int16Value ?? 0
+            #expect(mode == 0o600, "\(path) доступен не только владельцу: \(String(mode, radix: 8))")
+        }
+    }
+
+    @Test("токен новый при каждом запуске")
+    func tokenRotates() {
+        let first = SocketServer.freshToken()
+        let second = SocketServer.freshToken()
+        #expect(first != second)
+        #expect(first.count >= 40, "32 байта в base64")
+    }
+
+    @Test("сравнение токенов не зависит от совпавшего префикса")
+    func constantTimeComparison() {
+        let token = SocketServer.freshToken()
+        #expect(SocketServer.constantTimeEquals(token, token))
+        #expect(!SocketServer.constantTimeEquals(token, String(token.dropLast()) + "x"))
+        #expect(!SocketServer.constantTimeEquals(token, ""))
+        #expect(!SocketServer.constantTimeEquals("", ""))
+    }
+
+    @Test("описания инструментов совпадают с каталогом")
+    func descriptionsMatchCatalog() {
+        let descriptions = BridgeLocation.descriptions()
+        #expect(descriptions.count == ToolCatalog.all.count)
+        // Пишущие инструменты обязаны быть помечены: клиент должен видеть, что
+        // вызов изменит сервер.
+        let write = descriptions.first { $0.name == "run_command" }
+        #expect(write?.description.contains("изменяет сервер") == true)
+        let read = descriptions.first { $0.name == "list_containers" }
+        #expect(read?.description.contains("изменяет") == false)
+        #expect(descriptions.first { $0.name == "run_command" }?.arguments.contains("command") == true)
     }
 }

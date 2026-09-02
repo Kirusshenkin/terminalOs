@@ -50,6 +50,23 @@ public struct RootView: View {
             )
         }
         .sheet(isPresented: $model.isAddingHost) { HostEditor(model: model) }
+        // Вопрос от MCP: показываем ровно то, что собираются сделать, и на
+        // каком хосте. Согласиться вслепую здесь нельзя.
+        .alert(item: $model.mcpConfirmation) { request in
+            Alert(
+                title: Text("ии просит выполнить на «\(request.host)»"),
+                message: Text(request.what),
+                primaryButton: .destructive(Text("разрешить")) {
+                    request.answer(true)
+                    model.mcpConfirmation = nil
+                },
+                secondaryButton: .cancel(Text("отклонить")) {
+                    request.answer(false)
+                    model.mcpConfirmation = nil
+                }
+            )
+        }
+        .task { await model.startBridge() }
         .onChange(of: model.screen) { _, screen in
             if screen == .keys { Task { await model.loadKeys() } }
         }

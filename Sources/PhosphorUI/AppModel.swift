@@ -82,6 +82,10 @@ public final class AppModel {
     public internal(set) var mcpModes: [ServerHost.ID: MCPMode] = [:]
     let policy = AccessPolicy()
     let audit = AuditLog()
+    /// Локальный сокет для MCP-клиентов; живёт, пока открыто приложение.
+    var bridge: SocketServer?
+    public internal(set) var bridgeError: String?
+    public var mcpConfirmation: ConfirmationRequest?
 
     /// Ключи на выбранном сервере.
     public internal(set) var serverKeys: [AuthorizedKey] = []
@@ -113,6 +117,13 @@ public final class AppModel {
     }
 
     public var strings: Strings { Strings(language: language) }
+
+    /// Строка для конфигурации MCP-клиента.
+    public var bridgeCommand: String {
+        let shim = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/MacOS/phosphor-mcp").path
+        return #"{"mcpServers":{"phosphor":{"command":"\#(shim)"}}}"#
+    }
 
     /// Куда смотрит терминал: на локальный шелл или на выбранный сервер.
     public var terminalDestination: TerminalHost.Destination {

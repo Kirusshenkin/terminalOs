@@ -7,6 +7,10 @@ on:
 
 permissions:
   contents: write
+  # Релиз, созданный токеном прогона, не поднимает событие release:published —
+  # GitHub так защищается от рекурсии. Поэтому публикацию в реестр запускаем
+  # явным диспатчем, а для этого нужно право писать в Actions.
+  actions: write
   # Реестр MCP пускает публиковаться по OIDC-токену прогона: ни секретов
   # в репозитории, ни ручного логина.
   id-token: write
@@ -62,3 +66,10 @@ jobs:
             dist/latest.json \
             dist/phosphor-mcp-${{ steps.ver.outputs.short }}.mcpb \
             dist/server.json
+
+      # Публикация в реестр MCP — отдельным прогоном, чтобы её можно было
+      # повторить, не пересобирая приложение.
+      - name: Реестр MCP
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run registry.yml -f tag="$GITHUB_REF_NAME"

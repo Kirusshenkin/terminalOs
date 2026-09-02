@@ -39,7 +39,7 @@ public struct HostPicker: View {
                         .font(style.font(11.5))
                         .foregroundStyle(style.bright)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
                 .padding(.top, 2)
             } else {
                 ForEach(model.book.hosts) { host in
@@ -71,6 +71,6 @@ public struct HostPicker: View {
             .padding(.vertical, 3)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedback())
     }
 }

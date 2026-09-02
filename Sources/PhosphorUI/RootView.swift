@@ -3,7 +3,14 @@ public import SwiftUI
 /// Окно: экран входа, пока не разблокировано, затем разделы.
 public struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
+    /// «Уменьшить движение» — не украшение, а конечный кадр сразу.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model = AppModel()
+    /// Маркер раздела один на всю шапку: он переезжает, а не гаснет и
+    /// зажигается в другом месте. Один главный объект — на нём и держится
+    /// движение.
+    @Namespace private var marker
+    @State private var hovered: Section?
 
     public init() {}
 
@@ -155,6 +162,13 @@ public struct RootView: View {
                 header
                 Rule().padding(.top, 6).padding(.bottom, 14)
                 screenBody
+                    .id(model.screen)
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity.combined(with: .offset(y: 6)),
+                            removal: .opacity
+                        )
+                    )
                 Rule().padding(.top, 12).padding(.bottom, 8)
                 footer
             }
@@ -168,16 +182,29 @@ public struct RootView: View {
                 .foregroundStyle(model.style.muted)
             ForEach(Array(tabs.enumerated()), id: \.element.0) { index, tab in
                 Button {
-                    model.screen = tab.1
+                    select(tab.1)
                 } label: {
                     HStack(spacing: 5) {
-                        Text(model.screen == tab.1 ? "▸" : " ")
+                        // Место под маркер занято всегда, поэтому строка не
+                        // дёргается, когда он приезжает.
+                        Text(" ")
+                            .overlay(alignment: .leading) {
+                                if model.screen == tab.1 {
+                                    Text("▸")
+                                        .matchedGeometryEffect(id: "screenMarker", in: marker)
+                                }
+                            }
                         Text(model.strings(tab.0).uppercased())
                     }
                     .font(model.style.font(11)).tracking(1.2)
-                    .foregroundStyle(model.screen == tab.1 ? model.style.bright : model.style.muted)
+                    .foregroundStyle(colour(for: tab.1))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
+                .onHover { inside in
+                    // Подсветка под курсором мгновенная: это отклик, а не
+                    // анимация, и ждать его нельзя.
+                    hovered = inside ? tab.1 : (hovered == tab.1 ? nil : hovered)
+                }
                 // ⌘1…⌘8 по порядку разделов: рука на клавиатуре и остаётся
                 // на клавиатуре. Больше девяти разделов не будет — в этом и
                 // смысл закрытого списка.
@@ -190,6 +217,26 @@ public struct RootView: View {
             Text(headerRight)
                 .font(model.style.font(11)).tracking(1.2)
                 .foregroundStyle(model.style.muted)
+        }
+    }
+
+    /// Выбранный ярче всех, под курсором — на полпути, остальные приглушены.
+    private func colour(for section: Section) -> Color {
+        if model.screen == section { return model.style.bright }
+        return hovered == section ? model.style.text : model.style.muted
+    }
+
+    /// Переключение раздела — одно движение: маркер переезжает, содержимое
+    /// сменяется. Пружина короткая и почти без раскачки: это навигация, а не
+    /// празднование.
+    private func select(_ section: Section) {
+        guard model.screen != section else { return }
+        guard !reduceMotion else {
+            model.screen = section
+            return
+        }
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+            model.screen = section
         }
     }
 

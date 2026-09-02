@@ -169,7 +169,7 @@ public struct PhButton: View {
                 .background(fill)
                 .overlay(Rectangle().stroke(border, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedback())
     }
 
     private var foreground: Color {

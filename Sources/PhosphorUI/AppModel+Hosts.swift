@@ -50,8 +50,13 @@ extension AppModel {
     public func importTermiusHistory() -> ImportReport {
         // Если рядом лежит расшифрованное хранилище Termius (реальные хосты с
         // именами и юзерами) — берём его; иначе довольствуемся историей IP.
-        if let vault = readTermiusVault() {
-            return appendNew(vault, source: strings("hosts.termius"))
+        if let (vault, url) = readTermiusVault() {
+            let report = appendNew(vault, source: strings("hosts.termius"))
+            // Хосты теперь в шифрованном профиле — плейнтекст-дамп больше не
+            // нужен и не должен лежать на диске (см. §8 плана: секреты живут
+            // в Keychain и шифрованном профиле, а не в открытом файле).
+            try? FileManager.default.removeItem(at: url)
+            return report
         }
         let entries = TermiusHistory.scan()
         return appendNew(
@@ -70,18 +75,19 @@ extension AppModel {
     /// Читает расшифрованные хосты Termius, если дамп подготовлен рядом с
     /// профилем. Пустой или отсутствующий файл — не ошибка: тогда работает
     /// импорт истории.
-    private func readTermiusVault() -> [ServerHost]? {
+    private func readTermiusVault() -> (hosts: [ServerHost], url: URL)? {
         let base = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first
         guard let url = base?.appendingPathComponent("Phosphor/termius-hosts.json"),
             let data = try? Data(contentsOf: url),
             let decoded = try? JSONDecoder().decode([TermiusVaultHost].self, from: data)
         else { return nil }
-        return decoded.map {
+        let hosts = decoded.map {
             ServerHost(
                 name: $0.name, address: $0.address, port: $0.port,
                 user: $0.user, tags: $0.tags)
         }
+        return (hosts, url)
     }
 
     public func addHost(_ host: ServerHost) {

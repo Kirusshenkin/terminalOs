@@ -194,6 +194,14 @@ public final class AppModel {
     /// Черновик имени при создании новой сессии.
     public var newSessionName = ""
 
+    /// Открытые «спейсы» — хосты, к которым в этой сессии подключались, в
+    /// порядке открытия. Рейл терминала показывает их сверху; между ними
+    /// переключаются, не теряя того, что крутится на сервере в tmux.
+    public internal(set) var spaces: [ServerHost.ID] = []
+    /// Какая сессия была открыта в каждом спейсе — чтобы вернуться в неё, а не
+    /// в «main», когда переключаешься обратно.
+    var spaceSessions: [ServerHost.ID: String] = [:]
+
     /// Одна tmux-сессия на сервере: имя, сколько окон, подключён ли кто-то.
     public struct TmuxSession: Identifiable, Sendable, Equatable {
         public var id: String { name }
@@ -442,6 +450,10 @@ public final class AppModel {
             await session.stop()
         }
         selectedHost = host.id
+        // Хост становится спейсом при первом подключении; порядок сохраняем.
+        if !spaces.contains(host.id) { spaces.append(host.id) }
+        // Возвращаемся в ту сессию, что была открыта в этом спейсе.
+        terminalSession = spaceSessions[host.id]
         let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
         sessionSocketPath = transport.socketPath
         let fresh = HostSession(host: host, transport: transport)

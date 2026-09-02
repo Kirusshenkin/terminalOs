@@ -1,3 +1,4 @@
+public import HostsKit
 public import SwiftUI
 
 /// Рейл постоянных сессий во вкладке «Терминал».
@@ -14,6 +15,29 @@ struct SessionRail: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // Спейсы: открытые хосты. Между ними переключаешься, tmux на каждом
+            // продолжает работать — herdr-мысль «несколько рабочих мест сразу».
+            HStack {
+                Label2(model.strings("term.spaces"))
+                Spacer()
+                Button { model.screen = .hosts } label: {
+                    Image(systemName: "plus").font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(style.muted)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12).padding(.top, 12)
+
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(spaces) { host in
+                    spaceRow(host)
+                }
+            }
+            .padding(.horizontal, 8)
+
+            Rectangle().fill(style.rule.opacity(0.5)).frame(height: 1)
+                .padding(.horizontal, 12)
+
             HStack {
                 Label2(model.strings("term.sessions"))
                 Spacer()
@@ -23,7 +47,7 @@ struct SessionRail: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 12).padding(.top, 12)
+            .padding(.horizontal, 12)
 
             if adding { editor }
 
@@ -52,6 +76,41 @@ struct SessionRail: View {
         .background(style.surface.opacity(0.4))
         .task(id: model.selectedHost) { await model.loadSessions() }
         .task(id: model.terminalSession) { await model.loadSessions() }
+    }
+
+    /// Открытые спейсы как хосты; неизвестные id (хост удалили) отсеиваем.
+    private var spaces: [ServerHost] {
+        model.spaces.compactMap { id in model.book.hosts.first { $0.id == id } }
+    }
+
+    private func spaceRow(_ host: ServerHost) -> some View {
+        let active = host.id == model.selectedHost
+        return Button {
+            model.switchSpace(host.id)
+        } label: {
+            HStack(spacing: 8) {
+                // Активный спейс — яркая точка; остальные откреплены, но их
+                // tmux жив, поэтому не гаснут в ноль.
+                Circle()
+                    .fill(active ? style.bright : style.muted.opacity(0.6))
+                    .frame(width: 7, height: 7)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(host.name)
+                        .font(style.font(12.5))
+                        .foregroundStyle(active ? style.bright : style.text)
+                        .lineLimit(1)
+                    Text("\(host.user)@\(host.address)")
+                        .font(style.font(10)).foregroundStyle(style.muted).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8).padding(.vertical, 6)
+            .background(active ? style.text.opacity(0.08) : .clear)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button(model.strings("term.closeSpace")) { model.closeSpace(host.id) }
+        }
     }
 
     /// Сессии с сервера плюс гарантированная текущая, без повторов.

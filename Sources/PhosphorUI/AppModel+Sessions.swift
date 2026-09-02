@@ -1,5 +1,6 @@
 public import Foundation
 public import PhosphorCore
+public import HostsKit
 public import SSHKit
 
 /// Постоянные tmux-сессии на сервере: список, подключение, создание, снятие.
@@ -44,7 +45,29 @@ extension AppModel {
     public func attachSession(_ name: String) {
         guard terminalSession != name else { return }
         terminalSession = name
+        if let host = selectedHost { spaceSessions[host] = name }
         screen = .terminal
+    }
+
+    /// Переключает фокус на другой спейс (хост). tmux на прежнем хосте
+    /// продолжает работать — мы просто отводим от него взгляд.
+    public func switchSpace(_ id: ServerHost.ID) {
+        guard id != selectedHost, let host = book.hosts.first(where: { $0.id == id }) else { return }
+        screen = .terminal
+        Task { await connect(to: host) }
+    }
+
+    /// Убирает спейс из рейла. Если это текущий — отключаемся от него и
+    /// переводим фокус на соседний. Сессии на сервере при этом не трогаются.
+    public func closeSpace(_ id: ServerHost.ID) {
+        spaces.removeAll { $0 == id }
+        spaceSessions[id] = nil
+        guard id == selectedHost else { return }
+        if let next = spaces.first, let host = book.hosts.first(where: { $0.id == next }) {
+            Task { await connect(to: host) }
+        } else {
+            Task { await disconnect() }
+        }
     }
 
     /// Заводит новую сессию с введённым именем и сразу подключается.
@@ -52,6 +75,7 @@ extension AppModel {
         let name = SSHInvocation.tmuxSessionName(newSessionName) ?? "main"
         newSessionName = ""
         terminalSession = name
+        if let host = selectedHost { spaceSessions[host] = name }
         screen = .terminal
         // Список обновится по факту подключения; но покажем её сразу, чтобы рейл
         // не выглядел пустым, пока идёт attach.

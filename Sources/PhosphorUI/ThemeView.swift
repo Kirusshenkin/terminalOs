@@ -110,6 +110,36 @@ public struct ThemeView: View {
                 Text(strings("set.petNote"))
                     .font(style.font(11)).foregroundStyle(style.muted)
 
+                Label2(strings("set.motion"))
+                HStack(spacing: 8) {
+                    ForEach(MotionAmount.allCases, id: \.self) { amount in
+                        toggleChip(strings(amount.key), on: model.motion == amount) {
+                            model.motion = amount
+                            model.saveAppearance()
+                        }
+                    }
+                }
+                Label2(strings("set.connectMotion"))
+                HStack(spacing: 8) {
+                    ForEach(ConnectMotion.allCases, id: \.self) { kind in
+                        toggleChip(strings(kind.key), on: model.connectMotion == kind) {
+                            model.connectMotion = kind
+                            model.saveAppearance()
+                        }
+                    }
+                }
+                Label2(strings("set.logMotion"))
+                HStack(spacing: 8) {
+                    ForEach(LogMotion.allCases, id: \.self) { kind in
+                        toggleChip(strings(kind.key), on: model.logMotion == kind) {
+                            model.logMotion = kind
+                            model.saveAppearance()
+                        }
+                    }
+                }
+                Text(strings("set.motionNote"))
+                    .font(style.font(11)).foregroundStyle(style.muted)
+
                 Label2(strings("set.poll"))
                 HStack(spacing: 8) {
                     stepper(

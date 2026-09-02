@@ -6,6 +6,7 @@ public import SwiftUI
 /// Container list with the inspector beside it.
 public struct DockerView: View {
     @Environment(\.style) private var style
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Bindable var model: AppModel
     @State private var tab = "docker.logs"
 
@@ -237,16 +238,35 @@ public struct DockerView: View {
                     Text(model.session == nil ? strings("dock.pickShort") : strings("dock.noLogs"))
                         .font(style.font(11.5)).foregroundStyle(style.muted)
                 } else {
-                    ForEach(Array(live.enumerated()), id: \.offset) { _, line in
-                        Text(line)
+                    // Появление новой строки — по выбору человека: подъём,
+                    // проявление или ничего. Двигается только сама строка.
+                    ForEach(live) { line in
+                        Text(line.text)
                             .font(style.font(12))
-                            .foregroundStyle(colour(level: Self.level(of: line)))
+                            .foregroundStyle(colour(level: Self.level(of: line.text)))
                             .textSelection(.enabled)
+                            .transition(arrival)
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .animation(arrivalAnimation, value: live.last?.id)
         }
+    }
+
+    /// Как приходит новая строка.
+    private var arrival: AnyTransition {
+        guard !reduceMotion, model.motion != .off else { return .identity }
+        switch model.logMotion {
+        case .rise: return .opacity.combined(with: .offset(y: 5))
+        case .fade: return .opacity
+        case .none: return .identity
+        }
+    }
+
+    private var arrivalAnimation: Animation? {
+        guard !reduceMotion, model.motion != .off, model.logMotion != .none else { return nil }
+        return .easeOut(duration: 0.18 * model.motion.scale)
     }
 
     private func colour(level: Int) -> Color {

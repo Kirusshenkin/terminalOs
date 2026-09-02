@@ -232,7 +232,9 @@ public struct HostsView: View {
             .background(style.surface)
             .overlay(
                 Rectangle().stroke(
-                    connected ? style.accent : style.text.opacity(0.22), lineWidth: 1))
+                    connected ? style.accent : style.text.opacity(0.22), lineWidth: 1)
+            )
+            .connecting(model.isConnecting(host), model: model)
         }
         .buttonStyle(.plain)
         .phContextMenu(

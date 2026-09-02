@@ -230,11 +230,12 @@ public struct RootView: View {
     /// празднование.
     private func select(_ section: Section) {
         guard model.screen != section else { return }
-        guard !reduceMotion else {
+        let scale = model.motion.scale
+        guard !reduceMotion, scale > 0 else {
             model.screen = section
             return
         }
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+        withAnimation(.spring(response: 0.28 * scale, dampingFraction: 0.82)) {
             model.screen = section
         }
     }

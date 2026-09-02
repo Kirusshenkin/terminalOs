@@ -70,6 +70,7 @@ public struct HostPicker: View {
             }
             .padding(.vertical, 3)
             .contentShape(Rectangle())
+            .connecting(model.isConnecting(host), model: model)
         }
         .buttonStyle(PressFeedback())
     }

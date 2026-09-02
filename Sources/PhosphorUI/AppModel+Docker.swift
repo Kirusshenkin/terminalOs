@@ -44,7 +44,7 @@ extension AppModel {
     /// Меняет глубину буфера логов. Старые строки при уменьшении отбрасываются:
     /// буфер на то и кольцевой.
     public func applyLogCapacity() {
-        var fresh = RingBuffer<String>(capacity: logLines)
+        var fresh = RingBuffer<LogLine>(capacity: logLines)
         for line in logs.elements.suffix(logLines) { fresh.append(line) }
         logs = fresh
     }
@@ -129,7 +129,11 @@ extension AppModel {
         logTask = Task { [weak self] in
             defer { stream.cancel() }
             for await line in lines {
-                await MainActor.run { self?.logs.append(line) }
+                await MainActor.run {
+                    guard let self else { return }
+                    self.logCounter += 1
+                    self.logs.append(LogLine(id: self.logCounter, text: line))
+                }
             }
         }
     }

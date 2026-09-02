@@ -27,6 +27,11 @@ public struct Appearance: Codable, Sendable, Equatable {
     public var petVisible: Bool?
     public var pollSeconds: Double?
     public var logLines: Int?
+    /// Движение: сколько его вообще, чем показывать подключение и приход
+    /// строки лога. Необязательные — профиль прошлой версии читается как есть.
+    public var motion: String?
+    public var connectMotion: String?
+    public var logMotion: String?
 
     public init(
         themeID: String = BuiltInThemes.phosphor.id,
@@ -41,7 +46,10 @@ public struct Appearance: Codable, Sendable, Equatable {
         vignette: Double? = nil,
         petVisible: Bool? = nil,
         pollSeconds: Double? = nil,
-        logLines: Int? = nil
+        logLines: Int? = nil,
+        motion: String? = nil,
+        connectMotion: String? = nil,
+        logMotion: String? = nil
     ) {
         self.themeID = themeID
         self.language = language
@@ -56,6 +64,9 @@ public struct Appearance: Codable, Sendable, Equatable {
         self.petVisible = petVisible
         self.pollSeconds = pollSeconds
         self.logLines = logLines
+        self.motion = motion
+        self.connectMotion = connectMotion
+        self.logMotion = logMotion
     }
 }
 

@@ -50,6 +50,10 @@ public final class AppModel {
     public var ligatures = true
     public var lineHeight: Double = 1.4
     /// Питомец в углу, интервал опроса и глубина буфера логов.
+    /// Движение интерфейса — выбор человека, а не наш.
+    public var motion = MotionAmount.full
+    public var connectMotion = ConnectMotion.sweep
+    public var logMotion = LogMotion.rise
     public var petVisible = true
     public var pollSeconds: Double = 4
     public var logLines = 5_000
@@ -209,7 +213,10 @@ public final class AppModel {
     /// Итог последнего действия — одной строкой под списком.
     public var lastOutcome: ActionOutcome?
     /// Логи выбранного контейнера. Кольцевой: логи умеют идти мегабайтами.
-    public internal(set) var logs = RingBuffer<String>(capacity: 5_000)
+    public internal(set) var logs = RingBuffer<LogLine>(capacity: 5_000)
+    /// Счётчик строк лога. Номер нужен только для анимации появления: по
+    /// смещению в кольцевом буфере строку не опознать — оно сдвигается.
+    var logCounter: UInt64 = 0
     var logTask: Task<Void, Never>?
 
     /// Действие, которому нужно «да» от человека.
@@ -266,7 +273,20 @@ public final class AppModel {
         if let scanlines { theme.scanlines = scanlines }
         if let glow { theme.glow = glow }
         if let vignette { theme.vignette = vignette }
-        return Style(theme: theme, fontSize: fontSize, lineHeight: lineHeight)
+        return Style(
+            theme: theme, fontSize: fontSize, lineHeight: lineHeight, motion: motion.scale)
+    }
+
+    /// Хост, к которому прямо сейчас идёт соединение или прощупывание.
+    ///
+    /// Именно этот отрезок и стоит показывать: он длится секунды, а всё
+    /// остальное время состояние либо «готов», либо «отказ с причиной».
+    public func isConnecting(_ host: ServerHost) -> Bool {
+        guard selectedHost == host.id else { return false }
+        switch sessionState.phase {
+        case .connecting, .probing: return true
+        case .idle, .ready, .failed: return false
+        }
     }
 
     public var visibleHosts: [ServerHost] {
@@ -302,6 +322,9 @@ public final class AppModel {
         pollSeconds = saved.pollSeconds ?? 4
         logLines = saved.logLines ?? 5_000
         logs = RingBuffer(capacity: logLines)
+        motion = MotionAmount(rawValue: saved.motion ?? "") ?? .full
+        connectMotion = ConnectMotion(rawValue: saved.connectMotion ?? "") ?? .sweep
+        logMotion = LogMotion(rawValue: saved.logMotion ?? "") ?? .rise
     }
 
     /// Сохраняет внешний вид. Вызывается из представлений при изменении.
@@ -320,7 +343,10 @@ public final class AppModel {
                 vignette: vignette,
                 petVisible: petVisible,
                 pollSeconds: pollSeconds,
-                logLines: logLines
+                logLines: logLines,
+                motion: motion.rawValue,
+                connectMotion: connectMotion.rawValue,
+                logMotion: logMotion.rawValue
             ))
     }
 

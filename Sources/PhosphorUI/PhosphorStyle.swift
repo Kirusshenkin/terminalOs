@@ -18,15 +18,23 @@ public struct Style: Sendable {
     /// крупный шрифт не ломал вёрстку в одном месте и не менял её в другом.
     public var fontSize: Double
     public var lineHeight: Double
+    /// Множитель длительности анимаций. Ноль — движения нет.
+    ///
+    /// Живёт в стиле, а не в модели, потому что двигаются виды: кнопка
+    /// в глубине экрана не должна знать про `AppModel`, чтобы сжаться под
+    /// нажатием.
+    public var motion: Double
 
     public init(
         theme: Theme = BuiltInThemes.phosphor,
         fontSize: Double = 13,
-        lineHeight: Double = 1.4
+        lineHeight: Double = 1.4,
+        motion: Double = 1
     ) {
         self.theme = theme
         self.fontSize = fontSize
         self.lineHeight = lineHeight
+        self.motion = motion
     }
 
     public var background: Color { Color(theme.background) }

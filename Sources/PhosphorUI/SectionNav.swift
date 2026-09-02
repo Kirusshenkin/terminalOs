@@ -131,11 +131,13 @@ public struct SectionNav<Page: SectionPage>: View {
 
     private func select(_ item: Page) {
         guard page != item else { return }
-        guard !reduceMotion else {
+        guard !reduceMotion, style.motion > 0 else {
             page = item
             return
         }
-        withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) { page = item }
+        withAnimation(.spring(response: 0.26 * style.motion, dampingFraction: 0.82)) {
+            page = item
+        }
     }
 }
 
@@ -144,14 +146,29 @@ public struct PressFeedback: ButtonStyle {
     public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1, anchor: .leading)
-            .opacity(configuration.isPressed ? 0.7 : 1)
-            .animation(
-                configuration.isPressed
-                    ? .easeOut(duration: 0.10)
-                    : .spring(response: 0.24, dampingFraction: 0.6),
-                value: configuration.isPressed
-            )
+        Pressed(configuration: configuration)
+    }
+
+    /// Отдельный вид: сам стиль кнопки окружения не видит, а множитель
+    /// движения лежит именно там.
+    private struct Pressed: View {
+        @Environment(\.style) private var style
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        let configuration: Configuration
+
+        var body: some View {
+            let still = reduceMotion || style.motion == 0
+            return configuration.label
+                .scaleEffect(configuration.isPressed && !still ? 0.96 : 1, anchor: .leading)
+                .opacity(configuration.isPressed ? 0.7 : 1)
+                .animation(
+                    still
+                        ? nil
+                        : (configuration.isPressed
+                            ? .easeOut(duration: 0.10 * style.motion)
+                            : .spring(response: 0.24 * style.motion, dampingFraction: 0.6)),
+                    value: configuration.isPressed
+                )
+        }
     }
 }

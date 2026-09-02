@@ -7,6 +7,23 @@ public import Foundation
 extension Strings {
     static let table: [String: [Language: String]] = [
         // Настройки, темы, подвал и общие кнопки
+        "set.motion": [.russian: "движение", .english: "motion"],
+        "motion.full": [.russian: "полностью", .english: "full"],
+        "motion.brief": [.russian: "короче", .english: "brief"],
+        "motion.off": [.russian: "выключить", .english: "off"],
+        "set.connectMotion": [.russian: "подключение к хосту", .english: "connecting to a host"],
+        "motion.sweep": [.russian: "луч по строке", .english: "a sweep along the row"],
+        "motion.arc": [.russian: "дуга проверки", .english: "a checking arc"],
+        "motion.none": [.russian: "без движения", .english: "no motion"],
+        "set.logMotion": [.russian: "приход строки лога", .english: "a log line arriving"],
+        "motion.rise": [.russian: "подъём", .english: "rise"],
+        "motion.fade": [.russian: "проявление", .english: "fade in"],
+        "set.motionNote": [
+            .russian:
+                "движутся положение и прозрачность, больше ничего. При системной «уменьшить движение» сразу показывается конечный кадр.",
+            .english:
+                "position and opacity move, nothing else. With the system Reduce Motion on, the final frame shows at once.",
+        ],
         "menu.connect": [.russian: "подключиться", .english: "connect"],
         "menu.files": [.russian: "файлы", .english: "files"],
         "menu.edit": [.russian: "править…", .english: "edit…"],

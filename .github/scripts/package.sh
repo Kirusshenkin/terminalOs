@@ -59,7 +59,7 @@ cat > "$STAGE/manifest.json" <<JSON
   "display_name": "Phosphor",
   "version": "$SHORT",
   "description": "Hosts, metrics, Docker and authorized_keys over the SSH connections Phosphor already holds. Requires Phosphor.app on macOS.",
-  "author": { "name": "Kirusshenkin", "url": "https://github.com/$REPO" },
+  "author": { "name": "The Phosphor authors", "url": "https://github.com/$REPO" },
   "homepage": "https://github.com/$REPO",
   "documentation": "https://github.com/$REPO/blob/main/docs/MCP.md",
   "license": "MIT",

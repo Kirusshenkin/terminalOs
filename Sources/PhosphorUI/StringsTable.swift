@@ -252,7 +252,7 @@ extension Strings {
         "term.window": [.russian: "окно", .english: "window"],
         "term.windows": [.russian: "окон", .english: "windows"],
         "hosts.known": [.russian: "известные хосты", .english: "known hosts"],
-        "hosts.termius": [.russian: "история Termius", .english: "Termius history"],
+        "hosts.termius": [.russian: "импорт из Termius", .english: "import from Termius"],
         "hosts.noNew": [.russian: "новых нет", .english: "nothing new"],
         "hosts.added": [.russian: "добавлено", .english: "added"],
         "hosts.skipped": [.russian: "не распознано", .english: "not recognised"],

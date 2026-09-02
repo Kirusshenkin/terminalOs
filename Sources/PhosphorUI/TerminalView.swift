@@ -1,4 +1,5 @@
 public import PhosphorCore
+public import HostsKit
 public import SessionKit
 public import SwiftUI
 
@@ -12,6 +13,9 @@ public struct TerminalPane: View {
     public var body: some View {
         ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .leading, spacing: 0) {
+                if let offer = model.rememberOffer {
+                    rememberBanner(offer)
+                }
                 if let note = phaseNote {
                     Text(note)
                         .font(style.font(12))
@@ -36,6 +40,21 @@ public struct TerminalPane: View {
                 secondaryButton: .cancel(Text("отклонить"))
             )
         }
+    }
+
+    /// Тонкая полоса «запомнить этот сервер?» после подключения на лету.
+    /// Данные уже подставлены — человеку остаётся только согласиться.
+    private func rememberBanner(_ host: ServerHost) -> some View {
+        HStack(spacing: 10) {
+            Text("запомнить \(host.user)@\(host.address)?")
+                .font(style.font(12)).foregroundStyle(style.bright)
+            Spacer()
+            PhButton("запомнить", kind: .primary) { model.acceptRememberOffer() }
+            PhButton("не надо") { model.rememberOffer = nil }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(style.surface)
+        .padding(.bottom, 8)
     }
 
     /// Что сейчас с соединением — одной строкой, с причиной.

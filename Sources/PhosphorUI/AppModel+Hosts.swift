@@ -1,5 +1,6 @@
 public import Foundation
 public import HostsKit
+public import KeysKit
 
 /// Правка списка хостов. Любое изменение сразу планирует запись профиля.
 @MainActor
@@ -9,13 +10,105 @@ extension AppModel {
     /// Пропущенное показывается, а не замалчивается: непонятая директива должна
     /// быть видимой недоработкой, а не тихим сбоем в три часа ночи.
     public struct ImportReport: Sendable {
+        public var source: String
         public var added: Int
         public var skipped: [(directive: String, line: Int)]
+
+        public init(source: String, added: Int, skipped: [(directive: String, line: Int)] = []) {
+            self.source = source
+            self.added = added
+            self.skipped = skipped
+        }
+    }
+
+    /// Единый ключ, по которому хост считается «уже есть»: адрес, юзер и порт.
+    /// Импорт из любого источника не задваивает то, что уже в книге.
+    private func existingKeys() -> Set<String> {
+        Set(book.hosts.map { "\($0.user)@\($0.address):\($0.port)" })
+    }
+
+    private func appendNew(_ hosts: [ServerHost], source: String) -> ImportReport {
+        let known = existingKeys()
+        let fresh = hosts.filter { !known.contains("\($0.user)@\($0.address):\($0.port)") }
+        book.hosts.append(contentsOf: fresh)
+        if !fresh.isEmpty { scheduleSave() }
+        return ImportReport(source: source, added: fresh.count)
+    }
+
+    /// Хосты из `~/.ssh/known_hosts` — машины, которым ты уже доверился.
+    @discardableResult
+    public func importKnownHosts() -> ImportReport {
+        let text = (try? String(
+            contentsOfFile: KnownHostsFile.defaultPath(), encoding: .utf8)) ?? ""
+        return appendNew(KnownHostsFile.servers(text), source: "known_hosts")
+    }
+
+    /// Адреса из истории подключений Termius. Юзер и порт там были
+    /// зашифрованы — их проставит человек; ценно то, что адрес реальный.
+    @discardableResult
+    public func importTermiusHistory() -> ImportReport {
+        let entries = TermiusHistory.scan()
+        return appendNew(
+            TermiusHistory.hosts(from: entries, existing: book.hosts), source: "история Termius")
     }
 
     public func addHost(_ host: ServerHost) {
         book.hosts.append(host)
         scheduleSave()
+    }
+
+    /// Есть ли уже такой хост в списке — по юзеру, адресу и порту.
+    public func isSaved(_ host: ServerHost) -> Bool {
+        existingKeys().contains("\(host.user)@\(host.address):\(host.port)")
+    }
+
+    /// Сохраняет хост, который предложили запомнить после подключения.
+    public func acceptRememberOffer() {
+        guard let host = rememberOffer else { return }
+        if !isSaved(host) { addHost(host) }
+        rememberOffer = nil
+    }
+
+    /// Последние серверы, к которым реально подключались, новые сверху и без
+    /// повторов. Данные берём из журнала — те самые, что человек вводил.
+    public struct RecentTarget: Identifiable, Sendable {
+        public var id: String { "\(host.user)@\(host.address):\(host.port)" }
+        public var host: ServerHost
+        public var time: Date
+        public var saved: Bool
+    }
+
+    public func recentTargets(limit: Int = 8) -> [RecentTarget] {
+        var seen: Set<String> = []
+        var result: [RecentTarget] = []
+        for event in connectionEvents where event.kind == .connected {
+            guard let host = hostFromLogAddress(event.address, name: event.hostName) else { continue }
+            let key = "\(host.user)@\(host.address):\(host.port)"
+            guard seen.insert(key).inserted else { continue }
+            result.append(RecentTarget(host: host, time: event.time, saved: isSaved(host)))
+            if result.count >= limit { break }
+        }
+        return result
+    }
+
+    /// Разбирает `user@host:port` из журнала обратно в хост для подстановки.
+    private func hostFromLogAddress(_ address: String, name: String) -> ServerHost? {
+        guard let at = address.firstIndex(of: "@") else { return nil }
+        let user = String(address[..<at])
+        let rest = address[address.index(after: at)...]
+        let hostPart = rest.split(separator: ":", maxSplits: 1)
+        guard let hostname = hostPart.first, !user.isEmpty, !hostname.isEmpty else { return nil }
+        let port = hostPart.count > 1 ? Int(hostPart[1]) ?? 22 : 22
+        // Если хост сохранён — берём его целиком (с reach, тегами, группой),
+        // иначе собираем из того, что записано в журнале.
+        if let saved = book.hosts.first(where: {
+            $0.user == user && $0.address == hostname && $0.port == port
+        }) {
+            return saved
+        }
+        return ServerHost(
+            name: name.isEmpty ? String(hostname) : name,
+            address: String(hostname), port: port, user: user)
     }
 
     public func update(_ host: ServerHost) {
@@ -95,15 +188,11 @@ extension AppModel {
         from url: URL = URL(fileURLWithPath: NSHomeDirectory() + "/.ssh/config")
     ) -> ImportReport {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else {
-            return ImportReport(added: 0, skipped: [])
+            return ImportReport(source: "~/.ssh/config", added: 0)
         }
         let parsed = SSHConfigImport.parse(text)
-        let known = Set(book.hosts.map { "\($0.user)@\($0.address):\($0.port)" })
-        let fresh = SSHConfigImport.hosts(from: parsed).filter {
-            !known.contains("\($0.user)@\($0.address):\($0.port)")
-        }
-        book.hosts.append(contentsOf: fresh)
-        if !fresh.isEmpty { scheduleSave() }
-        return ImportReport(added: fresh.count, skipped: parsed.skipped)
+        var report = appendNew(SSHConfigImport.hosts(from: parsed), source: "~/.ssh/config")
+        report.skipped = parsed.skipped
+        return report
     }
 }

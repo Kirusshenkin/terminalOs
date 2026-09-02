@@ -1,3 +1,4 @@
+public import AppKit
 public import KeysKit
 public import SwiftUI
 
@@ -19,15 +20,64 @@ public struct KeysView: View {
 
     @ViewBuilder public var body: some View {
         if model.session == nil {
-            HostPicker(
-                model: model,
-                title: "authorized_keys",
-                note: "ключи читаются с сервера — выбери, с какого"
-            )
-            .frame(maxWidth: 320, alignment: .leading)
-            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 18) {
+                localKeys
+                HostPicker(
+                    model: model,
+                    title: "authorized_keys",
+                    note: strings("keys.pickNote")
+                )
+                .frame(maxWidth: 320, alignment: .leading)
+                Spacer(minLength: 0)
+            }
+            .task { model.loadLocalKeys() }
         } else {
             live
+        }
+    }
+
+    /// Ключи, которые лежат у тебя в ~/.ssh. Показываем публичную часть с
+    /// комментарием — обычно это и есть «юзер», под которым ключ выдан.
+    private var localKeys: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(strings("keys.local")).font(style.font(15)).foregroundStyle(style.bright)
+                Text("~/.ssh").font(style.font(11.5)).foregroundStyle(style.muted)
+            }
+            if model.localKeys.isEmpty {
+                Text(strings("keys.noPairs"))
+                    .font(style.font(12)).foregroundStyle(style.muted)
+            }
+            ForEach(model.localKeys) { key in
+                HStack(spacing: 10) {
+                    Text(key.name)
+                        .font(style.font(12.5)).foregroundStyle(style.text)
+                        .frame(width: 220, alignment: .leading).lineLimit(1)
+                    Text(key.algorithm + (key.bits.map { " · \($0)b" } ?? ""))
+                        .font(style.font(11)).foregroundStyle(style.muted)
+                        .frame(width: 150, alignment: .leading)
+                    Text(key.comment ?? "—")
+                        .font(style.font(11.5)).foregroundStyle(style.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading).lineLimit(1)
+                    if !key.hasPrivate {
+                        Text(strings("keys.noPrivate"))
+                            .font(style.font(10)).foregroundStyle(style.warning)
+                    }
+                    if let weakness = key.weakness {
+                        Text(weakness).font(style.font(10)).foregroundStyle(style.warning)
+                    }
+                }
+                .padding(.vertical, 4)
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(style.rule.opacity(0.4)).frame(height: 1)
+                }
+                .contextMenu {
+                    Button(strings("keys.copyPrint")) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(key.fingerprint, forType: .string)
+                    }
+                }
+            }
         }
     }
 
@@ -37,8 +87,8 @@ public struct KeysView: View {
                 Text("authorized_keys").font(style.font(15)).foregroundStyle(style.bright)
                 Text(target).font(style.font(12)).foregroundStyle(style.muted)
                 Spacer()
-                PhButton("обновить") { Task { await model.loadKeys() } }
-                PhButton("+ добавить", kind: .primary) { model.isAddingKey = true }
+                PhButton(strings("common.refresh")) { Task { await model.loadKeys() } }
+                PhButton("+ \(strings("common.add"))", kind: .primary) { model.isAddingKey = true }
             }
             header
             ForEach(keys) { key in row(key) }
@@ -62,9 +112,9 @@ public struct KeysView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Label2("ключ").frame(width: 240, alignment: .leading)
-            Label2("отпечаток").frame(maxWidth: .infinity, alignment: .leading)
-            Label2("опции").frame(width: 140, alignment: .leading)
+            Label2(strings("keys.key")).frame(width: 240, alignment: .leading)
+            Label2(strings("keys.fingerprint")).frame(maxWidth: .infinity, alignment: .leading)
+            Label2(strings("keys.options")).frame(width: 140, alignment: .leading)
             Label2("").frame(width: 80, alignment: .leading)
         }
         .padding(.bottom, 4)
@@ -97,7 +147,7 @@ public struct KeysView: View {
                 .frame(width: 140, alignment: .leading)
                 .lineLimit(1)
 
-            PhButton("удалить", kind: .danger) { model.requestKeyRemoval(key) }
+            PhButton(strings("common.delete"), kind: .danger) { model.requestKeyRemoval(key) }
                 .disabled(!isLive)
                 .opacity(isLive ? 1 : 0.4)
         }
@@ -110,7 +160,7 @@ public struct KeysView: View {
     /// не похожая на ключ, туда просто не поедет.
     private var keyEditor: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label2("вставь строку из id_ed25519.pub")
+            Label2(strings("keys.pasteHint"))
             TextField("ssh-ed25519 AAAA… comment", text: $model.newKeyLine, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(style.font(11.5))
@@ -123,11 +173,11 @@ public struct KeysView: View {
                     Text(preview).font(style.font(11)).foregroundStyle(style.muted)
                 }
                 Spacer()
-                PhButton("отмена") {
+                PhButton(strings("common.cancel")) {
                     model.isAddingKey = false
                     model.newKeyLine = ""
                 }
-                PhButton("добавить на сервер", kind: .primary) {
+                PhButton(strings("keys.addToServer"), kind: .primary) {
                     Task { await model.addKeyToServer() }
                 }
                 .disabled(model.newKeyPreview == nil)

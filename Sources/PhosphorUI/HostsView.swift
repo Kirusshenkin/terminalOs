@@ -28,10 +28,12 @@ public struct HostsView: View {
             VStack(alignment: .leading, spacing: 16) {
                 searchRow
                 actionRow
+                recent
                 groups
                 hosts
                 Spacer(minLength: 0)
             }
+            .task { await model.loadConnectionLog() }
         case .keys: KeysView(model: model)
         case .forwarding: ForwardingView(model: model)
         case .snippets: SnippetsView(model: model)
@@ -70,6 +72,8 @@ public struct HostsView: View {
         HStack(spacing: 10) {
             PhButton(strings("hosts.new")) { model.isAddingHost = true }
             PhButton(strings("hosts.import")) { model.importReport = model.importSSHConfig() }
+            PhButton(strings("hosts.known")) { model.importReport = model.importKnownHosts() }
+            PhButton(strings("hosts.termius")) { model.importReport = model.importTermiusHistory() }
             Spacer()
             if let report = model.importReport {
                 Text(importSummary(report))
@@ -88,10 +92,55 @@ public struct HostsView: View {
 
     /// Итог импорта словами: сколько взяли и сколько не поняли.
     private func importSummary(_ report: AppModel.ImportReport) -> String {
-        if report.added == 0, report.skipped.isEmpty { return "в ~/.ssh/config нечего импортировать" }
-        var text = "добавлено \(report.added)"
-        if !report.skipped.isEmpty { text += ", не распознано \(report.skipped.count)" }
+        if report.added == 0, report.skipped.isEmpty {
+            return "\(report.source): \(strings("hosts.noNew"))"
+        }
+        var text = "\(report.source): \(strings("hosts.added")) \(report.added)"
+        if !report.skipped.isEmpty { text += ", \(strings("hosts.skipped")) \(report.skipped.count)" }
         return text
+    }
+
+    /// Последние серверы, к которым подключались, с уже подставленными данными
+    /// из журнала. Клик — снова подключиться; сохранить можно, если ещё не.
+    @ViewBuilder private var recent: some View {
+        let targets = model.recentTargets()
+        if !targets.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Label2(strings("hosts.recent"))
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3),
+                    spacing: 10
+                ) {
+                    ForEach(targets) { target in
+                        Button {
+                            model.screen = .terminal
+                            Task { await model.connect(to: target.host) }
+                        } label: {
+                            HStack(spacing: 8) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(target.host.user)@\(target.host.address)")
+                                        .font(style.font(12.5)).foregroundStyle(style.text)
+                                        .lineLimit(1)
+                                    Text(target.saved ? strings("hosts.saved") : strings("hosts.notSaved"))
+                                        .font(style.font(10))
+                                        .foregroundStyle(target.saved ? style.muted : style.warning)
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .overlay(Rectangle().stroke(style.rule, lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            if !target.saved {
+                                Button(strings("hosts.remember")) { model.addHost(target.host) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private var groups: some View {

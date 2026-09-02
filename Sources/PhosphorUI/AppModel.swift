@@ -172,6 +172,11 @@ public final class AppModel {
 
     /// Ключи на выбранном сервере.
     public internal(set) var serverKeys: [AuthorizedKey] = []
+    /// Ключи на этой машине (~/.ssh) — их публичная половина.
+    public internal(set) var localKeys: [LocalKey] = []
+    /// Хост, к которому только что подключились «на лету» и который ещё не
+    /// сохранён. Повод предложить запомнить — но не сохранять втихую.
+    public var rememberOffer: ServerHost?
     public internal(set) var myFingerprint: String?
     public internal(set) var keysError: String?
     public var pendingKeyRemoval: AuthorizedKey?
@@ -351,9 +356,10 @@ public final class AppModel {
             book = try await profiles.load(HostBook.self, reason: "открыть профиль Phosphor")
             syncForwardsFromBook()
         } catch ProfileStoreError.empty {
-            // Первый запуск: показываем что-то живое, но ничего не сохраняем,
-            // пока человек сам не заведёт хост.
-            loadDemoData()
+            // Первый запуск: список пуст. Ничего не выдумываем — человек либо
+            // импортирует свои серверы (~/.ssh, известные хосты, история
+            // Termius), либо заводит хост руками. Экран хостов подсказывает как.
+            book = HostBook()
         } catch ProfileStoreError.keyLost {
             unlockError = "профиль на месте, но ключ утерян — восстанови из экспорта"
         } catch {
@@ -405,6 +411,9 @@ public final class AppModel {
         case .ready:
             await record(.connected, host: host)
             await startAutoForwards()
+            // Подключились к тому, чего нет в списке, — предлагаем запомнить.
+            // Именно предлагаем: список засоряется, только если человек согласен.
+            if !isSaved(host) { rememberOffer = host }
         case .failed(let reason):
             await record(.failed, host: host, detail: reason)
         default:
@@ -449,37 +458,5 @@ public final class AppModel {
         }
     }
 
-    /// Sample content so the window is not empty before a real connection.
-    public func loadDemoData() {
-        let prod = HostGroup(name: "prod", themeID: "ruby", guardLevel: .always, mcpMode: .readOnly)
-        let web = HostGroup(name: "web", themeID: "ice")
-        let lab = HostGroup(name: "lab")
-        book.groups = [prod, web, lab]
-        book.hosts = [
-            ServerHost(
-                name: "app-1", address: "192.0.2.11", groupID: prod.id, tags: ["ssh", "app"], osName: "ubuntu"
-            ),
-            ServerHost(
-                name: "worker-1", address: "192.0.2.12", groupID: prod.id, tags: ["ssh", "worker"],
-                osName: "ubuntu"),
-            ServerHost(
-                name: "worker-2", address: "192.0.2.13", groupID: prod.id, tags: ["ssh", "worker"],
-                osName: "ubuntu"),
-            ServerHost(
-                name: "lobby", address: "198.51.100.2", groupID: web.id, tags: ["ssh", "lobby"],
-                osName: "debian"),
-            ServerHost(
-                name: "web.dev", address: "198.51.100.3", groupID: web.id, tags: ["ssh", "dev"],
-                osName: "debian"),
-            ServerHost(
-                name: "sandbox", address: "203.0.113.5", groupID: lab.id, tags: ["ssh", "lab"],
-                osName: "debian"),
-            ServerHost(name: "203.0.113.9", address: "203.0.113.9", tags: ["ssh", "root"]),
-        ]
-        book.snippets = [
-            Snippet(name: "логи контейнера", command: "docker logs --tail 200 {{container}}"),
-            Snippet(name: "перезапуск стека", command: "cd {{path}} && docker compose restart"),
-        ]
-    }
 
 }

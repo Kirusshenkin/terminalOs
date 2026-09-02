@@ -23,6 +23,11 @@ extension AppModel {
         }
     }
 
+    /// Читает ключи из ~/.ssh. Только публичная часть; приватная не трогается.
+    public func loadLocalKeys() {
+        localKeys = LocalKeys.scan()
+    }
+
     /// Дописывает ключ в `authorized_keys` на сервере.
     public func addKeyToServer() async {
         guard let host = book.hosts.first(where: { $0.id == selectedHost }) else {

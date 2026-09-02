@@ -32,10 +32,19 @@ public struct MonitorView: View {
     @ViewBuilder private var page: some View {
         switch model.monitorPage {
         case .overview:
-            HStack(alignment: .top, spacing: 20) {
-                cores
-                Rectangle().fill(style.rule).frame(width: 1)
-                middle
+            if model.session == nil {
+                HostPicker(
+                    model: model,
+                    title: strings("tab.monitor"),
+                    note: "снимки /proc идут по тому же соединению — выбери сервер"
+                )
+                .frame(maxWidth: 320, alignment: .leading)
+            } else {
+                HStack(alignment: .top, spacing: 20) {
+                    cores
+                    Rectangle().fill(style.rule).frame(width: 1)
+                    middle
+                }
             }
         case .processes: processes
         case .storage: middle
@@ -153,10 +162,7 @@ public struct MonitorView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var usage: [Double] {
-        let live = model.sessionState.coreUsage
-        return live.isEmpty ? (isLive ? [] : Self.demoCores) : live
-    }
+    private var usage: [Double] { model.sessionState.coreUsage }
 
     private var steal: [Double] { model.sessionState.coreSteal }
 
@@ -166,7 +172,7 @@ public struct MonitorView: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
                 Label2("\(strings("monitor.memory")) · MemAvailable")
-                Bar(fraction: snapshot?.memoryUsage ?? 0.36, colour: style.accent)
+                Bar(fraction: snapshot?.memoryUsage ?? 0, colour: style.accent)
                 HStack {
                     Text(
                         snapshot.map {
@@ -230,9 +236,7 @@ public struct MonitorView: View {
     }
 
     private var disks: [(String, Double, String)] {
-        guard let snapshot, !snapshot.filesystems.isEmpty else {
-            return Self.demoDisks.map { ($0.0, $0.1, "—") }
-        }
+        guard let snapshot, !snapshot.filesystems.isEmpty else { return [] }
         return snapshot.filesystems.map {
             ($0.mount, $0.usage, "свободно \(ByteFormat.size($0.available))")
         }
@@ -305,10 +309,6 @@ public struct MonitorView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private static let demoCores: [Double] = [0.62, 0.18, 0.44, 0.09, 0.77, 0.23, 0.31, 0.12]
-    private static let demoDisks: [(String, Double)] = [
-        ("/", 0.85), ("/var/lib/docker", 0.30), ("/backups", 0.55),
-    ]
 }
 
 /// Тонкая полоса заполнения.

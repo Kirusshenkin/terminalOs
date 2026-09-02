@@ -655,3 +655,27 @@ struct ExtendedMetricsTests {
             !loop.contains("cpuinfo"), "модель процессора не меняется — не спрашиваем её каждые две секунды")
     }
 }
+
+@Suite("Переменные окружения контейнера")
+struct DockerEnvironmentTests {
+    @Test("значение со знаком равенства не обрезается")
+    func keepsValueWithEquals() {
+        let json = """
+            [{"Config":{"Env":["NODE_ENV=production","DSN=postgres://u:p@h/db?x=1","EMPTY="]}}]
+            """
+        let parsed = DockerCLI.parseEnvironment(json)
+        #expect(parsed.count == 3)
+        #expect(parsed[0] == ("NODE_ENV", "production"))
+        #expect(parsed[1].value == "postgres://u:p@h/db?x=1")
+        #expect(parsed[2].value == "")
+    }
+
+    @Test("строка без имени и мусор вместо json дают пустой список")
+    func survivesJunk() {
+        #expect(DockerCLI.parseEnvironment("не json").isEmpty)
+        #expect(DockerCLI.parseEnvironment("[]").isEmpty)
+        #expect(DockerCLI.parseEnvironment("""
+            [{"Config":{"Env":["=нет имени","без знака равенства"]}}]
+            """).isEmpty)
+    }
+}

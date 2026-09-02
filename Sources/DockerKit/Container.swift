@@ -98,6 +98,25 @@ public enum DockerCLI {
         "\(prefix) inspect \(Shell.quote(id))"
     }
 
+    /// Разбирает `.Config.Env` из ответа `docker inspect`.
+    ///
+    /// Значение может само содержать `=` — делим по первому и только по нему,
+    /// иначе `DSN=postgres://u:p@h/db?x=1` теряет хвост.
+    public static func parseEnvironment(_ output: String) -> [(name: String, value: String)] {
+        guard let data = output.data(using: .utf8),
+            let objects = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+            let config = objects.first?["Config"] as? [String: Any],
+            let lines = config["Env"] as? [String]
+        else { return [] }
+
+        return lines.compactMap { line in
+            guard let split = line.firstIndex(of: "=") else { return nil }
+            let name = String(line[line.startIndex..<split])
+            guard !name.isEmpty else { return nil }
+            return (name, String(line[line.index(after: split)...]))
+        }
+    }
+
     /// Parses `docker ps --format '{{json .}}'`, one object per line.
     ///
     /// Lines that do not parse are skipped rather than failing the batch: a

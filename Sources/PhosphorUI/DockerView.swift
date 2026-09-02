@@ -12,9 +12,9 @@ public struct DockerView: View {
     public init(model: AppModel) { self.model = model }
 
     private var strings: Strings { model.strings }
-    private var containers: [Container] {
-        model.sessionState.containers.isEmpty ? Self.demoContainers : model.sessionState.containers
-    }
+    /// Только то, что действительно ответил сервер. Ни одной придуманной строки:
+    /// пустой список честнее выдуманного.
+    private var containers: [Container] { model.sessionState.containers }
 
     private var selected: Container? {
         containers.first { $0.id == model.selectedContainer } ?? containers.first
@@ -23,7 +23,7 @@ public struct DockerView: View {
     /// Одна строка о том, что сейчас с хостом. Разные причины — разные подсказки.
     private var connectionNote: String? {
         switch model.sessionState.phase {
-        case .idle: "нет подключения — показаны примерные данные"
+        case .idle: "сервер не выбран"
         case .connecting, .probing: "подключаюсь…"
         case .ready: nil
         case .failed(let reason): reason
@@ -38,7 +38,20 @@ public struct DockerView: View {
         }
     }
 
-    private var list: some View {
+    @ViewBuilder private var list: some View {
+        if model.session == nil {
+            HostPicker(
+                model: model,
+                title: strings("docker.containers"),
+                note: "docker читается по тому же соединению — выбери сервер"
+            )
+            .frame(width: 250)
+        } else {
+            liveList
+        }
+    }
+
+    private var liveList: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label2("\(strings("docker.containers")) · \(containers.count)")
                 .padding(.bottom, 6)
@@ -196,7 +209,7 @@ public struct DockerView: View {
         VStack(alignment: .leading, spacing: 4) {
             // Значения переменных с секретными именами не покидают маску —
             // ни на экране, ни в ответе MCP.
-            ForEach(Redaction.apply(to: Self.demoEnvironment), id: \.name) { item in
+            ForEach(model.containerEnvironment, id: \.name) { item in
                 HStack(spacing: 0) {
                     Text(item.name).foregroundStyle(style.text)
                     Text("=").foregroundStyle(style.muted)
@@ -204,8 +217,15 @@ public struct DockerView: View {
                 }
                 .font(style.font(12))
             }
+            if let note = model.containerEnvironmentNote {
+                Text(note).font(style.font(11.5)).foregroundStyle(style.muted)
+            }
             Text(strings("docker.secretsHidden"))
                 .font(style.font(11)).foregroundStyle(style.muted).padding(.top, 6)
+        }
+        .task(id: selected?.id) {
+            guard let selected else { return }
+            await model.loadEnvironment(for: selected)
         }
     }
 
@@ -214,11 +234,8 @@ public struct DockerView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 2) {
                 if live.isEmpty {
-                    ForEach(Self.demoLogs, id: \.0) { line in
-                        Text(line.0).font(style.font(12)).foregroundStyle(colour(level: line.1))
-                    }
-                    Text("нет подключения — показан пример")
-                        .font(style.font(10.5)).foregroundStyle(style.muted).padding(.top, 6)
+                    Text(model.session == nil ? "выбери сервер" : "логов пока нет")
+                        .font(style.font(11.5)).foregroundStyle(style.muted)
                 } else {
                     ForEach(Array(live.enumerated()), id: \.offset) { _, line in
                         Text(line)
@@ -291,35 +308,6 @@ public struct DockerView: View {
         return "порт открыт наружу мимо UFW: " + published.joined(separator: ", ")
     }
 
-    private static let demoEnvironment: [(name: String, value: String)] = [
-        ("NODE_ENV", "production"),
-        ("BILLING_URL", "https://billing.internal"),
-        ("CONCURRENCY", "8"),
-        ("DATABASE_PASSWORD", "hunter2"),
-        ("API_KEY", "sk-live-4471"),
-    ]
 
-    /// Показывается, пока нет подключения, чтобы окно не было пустым.
-    /// Живые данные всегда важнее: как только сессия отвечает, витрина исчезает.
-    private static let demoContainers: [Container] = [
-        Container(
-            id: "3f9a2c7e11b0", name: "api-gateway", image: "api:2.14", state: .running,
-            status: "Up 6 days", ports: "127.0.0.1:8080->8080", project: "prod",
-            health: "healthy"),
-        Container(
-            id: "77aa31ff90de", name: "worker-billing", image: "wrk:2.1", state: .running,
-            status: "Up 2 hours (unhealthy)", project: "prod", health: "unhealthy"),
-        Container(
-            id: "1c0de55ab332", name: "migrator", image: "api:2.14", state: .exited,
-            status: "Exited (0) 6 days ago", project: "prod"),
-    ]
 
-    private static let demoLogs: [(String, Int)] = [
-        ("11:41:02Z  INFO  job 88f1 charge 1 290 RUB ok 412ms", 0),
-        ("11:41:05Z  INFO  job 88f2 charge 590 RUB ok 388ms", 0),
-        ("11:41:09Z  WARN  upstream billing timeout, retry 1/3", 1),
-        ("11:41:12Z  WARN  upstream billing timeout, retry 2/3", 1),
-        ("11:41:15Z  ERROR upstream billing unreachable, job deferred", 2),
-        ("11:42:15Z  INFO  healthcheck failed (3/3) → unhealthy", 1),
-    ]
 }

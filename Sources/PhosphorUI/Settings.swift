@@ -21,6 +21,12 @@ public struct Appearance: Codable, Sendable, Equatable {
     public var scanlines: Double?
     public var glow: Double?
     public var vignette: Double?
+    /// Поведение: показывать ли питомца, как часто опрашивать сервер и сколько
+    /// строк лога держать. Необязательные, чтобы профиль прошлой версии
+    /// прочитался без миграции.
+    public var petVisible: Bool?
+    public var pollSeconds: Double?
+    public var logLines: Int?
 
     public init(
         themeID: String = BuiltInThemes.phosphor.id,
@@ -32,7 +38,10 @@ public struct Appearance: Codable, Sendable, Equatable {
         lineHeight: Double = 1.4,
         scanlines: Double? = nil,
         glow: Double? = nil,
-        vignette: Double? = nil
+        vignette: Double? = nil,
+        petVisible: Bool? = nil,
+        pollSeconds: Double? = nil,
+        logLines: Int? = nil
     ) {
         self.themeID = themeID
         self.language = language
@@ -44,6 +53,9 @@ public struct Appearance: Codable, Sendable, Equatable {
         self.scanlines = scanlines
         self.glow = glow
         self.vignette = vignette
+        self.petVisible = petVisible
+        self.pollSeconds = pollSeconds
+        self.logLines = logLines
     }
 }
 

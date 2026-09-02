@@ -88,6 +88,56 @@ public struct ThemeView: View {
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        case .behaviour:
+            VStack(alignment: .leading, spacing: 14) {
+                Label2("питомец")
+                HStack(spacing: 8) {
+                    ForEach(Pet.allCases, id: \.self) { pet in
+                        toggleChip(pet.title.lowercased(), on: model.petVisible && model.pet == pet)
+                        {
+                            model.pet = pet
+                            model.petVisible = true
+                            model.saveAppearance()
+                        }
+                    }
+                    toggleChip("выключить", on: !model.petVisible) {
+                        model.petVisible.toggle()
+                        model.saveAppearance()
+                    }
+                }
+                Text("на продовых хостах питомца нет по умолчанию — на проде не играют")
+                    .font(style.font(11)).foregroundStyle(style.muted)
+
+                Label2("опрос сервера")
+                HStack(spacing: 8) {
+                    stepper(
+                        "интервал", value: model.pollSeconds, unit: "с", step: 1, range: 1...30
+                    ) {
+                        model.pollSeconds = $0
+                        model.saveAppearance()
+                        model.applyPollInterval()
+                    }
+                }
+                Text("опрос замирает, когда окно не на виду: интервал — это про то, "
+                    + "как часто спрашивать, пока смотришь")
+                    .font(style.font(11)).foregroundStyle(style.muted)
+
+                Label2("буфер логов контейнера")
+                HStack(spacing: 8) {
+                    ForEach([500, 2_000, 5_000, 20_000], id: \.self) { lines in
+                        toggleChip("\(lines)", on: model.logLines == lines) {
+                            model.logLines = lines
+                            model.saveAppearance()
+                            model.applyLogCapacity()
+                        }
+                    }
+                }
+                Text("буфер ограничен сверху всегда: неограниченный — это утечка "
+                    + "с отложенным сроком")
+                    .font(style.font(11)).foregroundStyle(style.muted)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         case .language:
             VStack(alignment: .leading, spacing: 14) {
                 Label2(strings("settings.language"))

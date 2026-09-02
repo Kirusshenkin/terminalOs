@@ -74,14 +74,15 @@ public struct Strings: Sendable {
         "nav.palette": [.russian: "палитра", .english: "palette"],
         "nav.glass": [.russian: "стекло", .english: "glass"],
         "nav.language": [.russian: "язык и отсылки", .english: "language and eggs"],
+        "nav.behaviour": [.russian: "поведение", .english: "behaviour"],
 
         // Tabs
         "tab.terminal": [.russian: "терминал", .english: "terminal"],
         "tab.docker": [.russian: "docker", .english: "docker"],
         "tab.files": [.russian: "файлы", .english: "files"],
         "tab.monitor": [.russian: "мониторинг", .english: "monitor"],
-        "tab.theme": [.russian: "тема", .english: "theme"],
-        "tab.provision": [.russian: "настройка", .english: "provision"],
+        "tab.theme": [.russian: "настройки", .english: "settings"],
+        "tab.provision": [.russian: "автонастройка", .english: "provisioning"],
         "tab.activity": [.russian: "активность ии", .english: "ai activity"],
 
         // Hosts

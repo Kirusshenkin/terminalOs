@@ -14,9 +14,21 @@ public struct ProvisionView: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: 22) {
-            steps
-            Rectangle().fill(style.rule).frame(width: 1)
-            output
+            if model.session == nil {
+                // Рецепт применяется к серверу, а не к приложению: без хоста
+                // это пустой список шагов, и честнее сказать это прямо.
+                HostPicker(
+                    model: model,
+                    title: strings("tab.provision"),
+                    note: "рецепт выполняется на сервере — выбери, на каком"
+                )
+                .frame(maxWidth: 320, alignment: .leading)
+                Spacer(minLength: 0)
+            } else {
+                steps
+                Rectangle().fill(style.rule).frame(width: 1)
+                output
+            }
         }
         .sheet(isPresented: $model.showsPlannedCommands) { plannedSheet }
     }

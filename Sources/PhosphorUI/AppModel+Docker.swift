@@ -34,6 +34,46 @@ extension AppModel {
         lastOutcome = await session.perform(action, on: container)
     }
 
+    /// Переносит новый интервал опроса в живую сессию, не дожидаясь
+    /// переподключения.
+    public func applyPollInterval() {
+        guard let session else { return }
+        Task { await session.setPollInterval(.seconds(pollSeconds)) }
+    }
+
+    /// Меняет глубину буфера логов. Старые строки при уменьшении отбрасываются:
+    /// буфер на то и кольцевой.
+    public func applyLogCapacity() {
+        var fresh = RingBuffer<String>(capacity: logLines)
+        for line in logs.elements.suffix(logLines) { fresh.append(line) }
+        logs = fresh
+    }
+
+    /// Читает переменные окружения контейнера с сервера.
+    ///
+    /// Значения секретных по имени переменных маскируются здесь же: между
+    /// сервером и экраном они не задерживаются ни в одном промежуточном виде.
+    public func loadEnvironment(for container: Container) async {
+        containerEnvironment = []
+        containerEnvironmentNote = nil
+        guard let session else {
+            containerEnvironmentNote = "нет подключения к хосту"
+            return
+        }
+        do {
+            let result = try await session.run(DockerCLI.inspect(id: container.id))
+            guard result.succeeded else {
+                containerEnvironmentNote = result.stderr.isEmpty ? "docker inspect не ответил" : result.stderr
+                return
+            }
+            let parsed = DockerCLI.parseEnvironment(result.stdout)
+            containerEnvironment = Redaction.apply(to: parsed)
+            if parsed.isEmpty { containerEnvironmentNote = "у контейнера нет переменных" }
+        } catch {
+            containerEnvironmentNote = "\(error)"
+        }
+    }
+
     /// Спрашивает перед удалением: у образов, томов и сетей отмены нет.
     public func request(_ action: ResourceAction) {
         pendingResource = PendingResource(action: action)

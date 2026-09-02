@@ -89,7 +89,14 @@ public actor HostSession {
     private var observers: [UUID: @Sendable (SessionState) -> Void] = [:]
 
     /// How often the container list is refreshed while the window is in front.
-    public var pollInterval: Duration = .seconds(4)
+    public private(set) var pollInterval: Duration = .seconds(4)
+
+    /// Меняет интервал опроса. Ниже секунды не опускаем: чаще секунды
+    /// `docker ps` на нагруженном хосте стоит дороже, чем данные, которые он
+    /// приносит.
+    public func setPollInterval(_ interval: Duration) {
+        pollInterval = max(interval, .seconds(1))
+    }
     /// Polling stops entirely when nobody is looking. A terminal is open all
     /// day; a background window has no business waking the CPU.
     public private(set) var isActive = true

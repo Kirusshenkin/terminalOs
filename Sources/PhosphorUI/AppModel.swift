@@ -49,6 +49,10 @@ public final class AppModel {
     public var fontSize: Double = 13
     public var ligatures = true
     public var lineHeight: Double = 1.4
+    /// Питомец в углу, интервал опроса и глубина буфера логов.
+    public var petVisible = true
+    public var pollSeconds: Double = 4
+    public var logLines = 5_000
     public var scanlines: Double?
     public var glow: Double?
     public var vignette: Double?
@@ -106,6 +110,10 @@ public final class AppModel {
     public internal(set) var sessionState = SessionState()
     /// Управляющий сокет текущей сессии: терминал едет по нему же.
     public internal(set) var sessionSocketPath: String?
+    /// Переменные окружения выбранного контейнера: читаются по требованию,
+    /// потому что `docker inspect` — отдельный вызов, а не часть опроса.
+    public internal(set) var containerEnvironment: [(name: String, value: String)] = []
+    public internal(set) var containerEnvironmentNote: String?
     private var observerToken: UUID?
 
     public var selectedContainer: String?
@@ -285,6 +293,10 @@ public final class AppModel {
         scanlines = saved.scanlines
         glow = saved.glow
         vignette = saved.vignette
+        petVisible = saved.petVisible ?? true
+        pollSeconds = saved.pollSeconds ?? 4
+        logLines = saved.logLines ?? 5_000
+        logs = RingBuffer(capacity: logLines)
     }
 
     /// Сохраняет внешний вид. Вызывается из представлений при изменении.
@@ -294,7 +306,16 @@ public final class AppModel {
                 themeID: themeID,
                 language: language.rawValue,
                 pet: pet.rawValue,
-                eggsEnabled: eggs.enabled
+                eggsEnabled: eggs.enabled,
+                fontSize: fontSize,
+                ligatures: ligatures,
+                lineHeight: lineHeight,
+                scanlines: scanlines,
+                glow: glow,
+                vignette: vignette,
+                petVisible: petVisible,
+                pollSeconds: pollSeconds,
+                logLines: logLines
             ))
     }
 
@@ -370,6 +391,7 @@ public final class AppModel {
         let fresh = HostSession(host: host, transport: transport)
         session = fresh
         sessionState = SessionState()
+        await fresh.setPollInterval(.seconds(pollSeconds))
         observerToken = await fresh.observe { [weak self] state in
             Task { @MainActor in
                 self?.sessionState = state

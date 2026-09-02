@@ -166,7 +166,7 @@ public struct RootView: View {
             Text("PHOSPHOR")
                 .font(model.style.font(11)).tracking(3)
                 .foregroundStyle(model.style.muted)
-            ForEach(tabs, id: \.0) { tab in
+            ForEach(Array(tabs.enumerated()), id: \.element.0) { index, tab in
                 Button {
                     model.screen = tab.1
                 } label: {
@@ -178,6 +178,13 @@ public struct RootView: View {
                     .foregroundStyle(model.screen == tab.1 ? model.style.bright : model.style.muted)
                 }
                 .buttonStyle(.plain)
+                // ⌘1…⌘8 по порядку разделов: рука на клавиатуре и остаётся
+                // на клавиатуре. Больше девяти разделов не будет — в этом и
+                // смысл закрытого списка.
+                .keyboardShortcut(
+                    KeyEquivalent(Character("\(index + 1)")),
+                    modifiers: .command
+                )
             }
             Spacer()
             Text(headerRight)
@@ -222,7 +229,11 @@ public struct RootView: View {
             Text("\(model.book.hosts.count) хостов · \(model.book.groups.count) групп")
             Text(model.style.theme.name)
             Spacer()
-            Text(model.pet == .cat ? "котёнок спит" : "поссум спит")
+            Text(
+                model.petVisible
+                    ? (model.pet == .cat ? "котёнок спит" : "поссум спит")
+                    : ""
+            )
         }
         .font(model.style.font(11)).tracking(1.1)
         .foregroundStyle(model.style.muted)

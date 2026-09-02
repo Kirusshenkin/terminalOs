@@ -13,59 +13,42 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Версия из тега
         id: ver
         run: |
-          SHORT="${GITHUB_REF_NAME#v}"          # 0.1.0 — то, что видит человек
-          BUILD="${GITHUB_RUN_NUMBER}"          # монотонный номер: по нему Sparkle сравнивает версии
+          SHORT="${GITHUB_REF_NAME#v}"   # 0.1.0 — то, что видит человек
           echo "short=$SHORT" >> "$GITHUB_OUTPUT"
-          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
 
-      - name: Сборка
-        run: |
-          xcodebuild -project *.xcodeproj -scheme App -configuration Release \
-            -derivedDataPath .build/dd \
-            MARKETING_VERSION=${{ steps.ver.outputs.short }} \
-            CURRENT_PROJECT_VERSION=${{ steps.ver.outputs.build }} \
-            CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=YES \
-            ENABLE_HARDENED_RUNTIME=YES \
-            build
+      - name: Проверки
+        run: swift test
 
-      - name: Архив
-        id: pack
-        run: |
-          APP=$(find .build/dd/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
-          NAME=$(basename "$APP" .app)
-          mkdir -p dist
-          ditto -c -k --keepParent --sequesterRsrc "$APP" "dist/$NAME-${{ steps.ver.outputs.short }}.zip"
-          echo "zip=dist/$NAME-${{ steps.ver.outputs.short }}.zip" >> "$GITHUB_OUTPUT"
-
-      - name: Инструменты Sparkle
-        run: |
-          curl -sL -o sparkle.tar.xz \
-            https://github.com/sparkle-project/Sparkle/releases/latest/download/Sparkle-for-Swift-Package-Manager.zip || true
-          # используем бинарники из checkout'а SPM-зависимости, если архив недоступен
-          find .build -name sign_update -o -name generate_appcast | head -5
-
-      - name: Подпись обновления и appcast
+      # Собирает и упаковывает тот же скрипт, что и локально: релиз, который
+      # нельзя повторить у себя на машине, отлаживать нечем.
+      - name: Сборка и упаковка
         env:
-          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          MARKETING_VERSION: ${{ steps.ver.outputs.short }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: ./scripts/package.sh
+
+      - name: Проверка бандла
         run: |
-          # EdDSA-подпись: именно она заменяет нам нотаризацию как механизм доверия.
-          echo "$SPARKLE_PRIVATE_KEY" > /tmp/eddsa_priv
-          ./bin/generate_appcast --ed-key-file /tmp/eddsa_priv dist/
-          rm -f /tmp/eddsa_priv
-          ls -la dist/
+          rm -rf /tmp/verify && mkdir -p /tmp/verify
+          ditto -x -k "dist/Phosphor-${{ steps.ver.outputs.short }}.zip" /tmp/verify
+          # Распакованный бандл должен пройти подпись: иначе у скачавшего
+          # приложение молча не откроется.
+          codesign --verify --deep --strict /tmp/verify/Phosphor.app
+          test -x /tmp/verify/Phosphor.app/Contents/MacOS/phosphor-mcp
 
       - name: Релиз
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
+            --title "Phosphor ${{ steps.ver.outputs.short }}" \
             --generate-notes \
-            dist/*.zip dist/appcast.xml dist/*.delta || \
-          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes dist/*.zip dist/appcast.xml
+            --notes-file .github/release-notes.md \
+            dist/Phosphor-${{ steps.ver.outputs.short }}.zip \
+            dist/Phosphor.zip \
+            dist/SHA256SUMS.txt \
+            dist/latest.json

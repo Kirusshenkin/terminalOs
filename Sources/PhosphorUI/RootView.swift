@@ -49,6 +49,12 @@ public struct RootView: View {
                 .sheet(item: $model.editingHost) { host in
                     HostEditor(model: model, editing: host)
                 }
+                .sheet(isPresented: $model.isAddingGroup) {
+                    GroupEditor(model: model)
+                }
+                .sheet(item: $model.editingGroup) { group in
+                    GroupEditor(model: model, editing: group)
+                }
         }
     }
 
@@ -73,6 +79,16 @@ public struct RootView: View {
                 }
                 // Разрушающее действие называет контейнер по имени: «удалить»
                 // без имени — это как раз то, о чём потом жалеют.
+                .alert(item: $model.pendingResource) { pending in
+                    Alert(
+                        title: Text("\(pending.action.title) «\(pending.action.subject)»?"),
+                        message: Text(pending.action.warning),
+                        primaryButton: .destructive(Text(pending.action.title)) {
+                            model.confirm(pending)
+                        },
+                        secondaryButton: .cancel(Text("отмена"))
+                    )
+                }
                 .alert(item: $model.pendingAction) { pending in
                     Alert(
                         title: Text("\(pending.action.title) «\(pending.container.name)»?"),

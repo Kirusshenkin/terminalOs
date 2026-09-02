@@ -28,10 +28,11 @@ public struct KeysView: View {
                         .font(style.font(10.5)).foregroundStyle(style.muted)
                 }
                 PhButton("обновить") { Task { await model.loadKeys() } }
-                PhButton("+ добавить", kind: .primary) {}
+                PhButton("+ добавить", kind: .primary) { model.isAddingKey = true }
             }
             header
             ForEach(keys) { key in row(key) }
+            if model.isAddingKey { keyEditor }
             if let error = model.keysError {
                 Text(error).font(style.font(11.5)).foregroundStyle(style.warning)
             }
@@ -84,6 +85,38 @@ public struct KeysView: View {
         .font(style.font(12))
         .padding(.vertical, 6)
         .opacity(key.isEnabled ? 1 : 0.55)
+    }
+
+    /// Ввод новой строки ключа. Проверка — до отправки на сервер: строка,
+    /// не похожая на ключ, туда просто не поедет.
+    private var keyEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label2("вставь строку из id_ed25519.pub")
+            TextField("ssh-ed25519 AAAA… comment", text: $model.newKeyLine, axis: .vertical)
+                .textFieldStyle(.plain)
+                .font(style.font(11.5))
+                .foregroundStyle(style.text)
+                .lineLimit(2...4)
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))
+            HStack(spacing: 8) {
+                if let preview = model.newKeyPreview {
+                    Text(preview).font(style.font(11)).foregroundStyle(style.muted)
+                }
+                Spacer()
+                PhButton("отмена") {
+                    model.isAddingKey = false
+                    model.newKeyLine = ""
+                }
+                PhButton("добавить на сервер", kind: .primary) {
+                    Task { await model.addKeyToServer() }
+                }
+                .disabled(model.newKeyPreview == nil)
+                .opacity(model.newKeyPreview == nil ? 0.4 : 1)
+            }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(style.surface)
     }
 
     private var warning: some View {

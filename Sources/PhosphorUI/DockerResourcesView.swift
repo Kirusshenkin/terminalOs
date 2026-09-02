@@ -1,5 +1,6 @@
 public import DockerKit
 public import PhosphorCore
+public import AppKit
 public import SwiftUI
 
 /// Образы, тома и сети — три простые таблицы.
@@ -32,11 +33,27 @@ public struct DockerResourcesView: View {
             Text(model.strings(page.key)).font(style.font(15)).foregroundStyle(style.bright)
             Text(count).font(style.font(12)).foregroundStyle(style.muted)
             Spacer()
+            if let message = model.resourcesMessage {
+                Text(message).font(style.font(11.5)).foregroundStyle(style.muted).lineLimit(1)
+            }
+            if model.session != nil, let prune = prune {
+                PhButton(prune.title) { model.request(prune) }
+            }
             if model.session == nil {
                 Text("нет подключения").font(style.font(11.5)).foregroundStyle(style.muted)
             } else {
                 PhButton("обновить") { Task { await model.loadResources() } }
             }
+        }
+    }
+
+    /// Общая чистка для текущей страницы.
+    private var prune: ResourceAction? {
+        switch page {
+        case .images: .pruneImages
+        case .volumes: .pruneVolumes
+        case .networks: .pruneNetworks
+        case .containers: nil
         }
     }
 
@@ -77,6 +94,14 @@ public struct DockerResourcesView: View {
                 .overlay(alignment: .bottom) {
                     Rectangle().fill(style.rule.opacity(0.4)).frame(height: 1)
                 }
+                .contentShape(Rectangle())
+                .contextMenu {
+                    Button("копировать id") { copy(image.id) }
+                    Divider()
+                    Button("удалить образ", role: .destructive) {
+                        model.request(.removeImage(id: image.id, name: image.name))
+                    }
+                }
             }
         }
     }
@@ -98,6 +123,14 @@ public struct DockerResourcesView: View {
                 .padding(.vertical, 4)
                 .overlay(alignment: .bottom) {
                     Rectangle().fill(style.rule.opacity(0.4)).frame(height: 1)
+                }
+                .contentShape(Rectangle())
+                .contextMenu {
+                    Button("копировать путь") { copy(volume.mountpoint) }
+                    Divider()
+                    Button("удалить том", role: .destructive) {
+                        model.request(.removeVolume(name: volume.name))
+                    }
                 }
             }
         }
@@ -122,8 +155,23 @@ public struct DockerResourcesView: View {
                 .overlay(alignment: .bottom) {
                     Rectangle().fill(style.rule.opacity(0.4)).frame(height: 1)
                 }
+                .contentShape(Rectangle())
+                .contextMenu {
+                    Button("копировать id") { copy(network.id) }
+                    Divider()
+                    // Три сети docker заводит сам, и без них он не работает.
+                    Button("удалить сеть", role: .destructive) {
+                        model.request(.removeNetwork(id: network.id, name: network.name))
+                    }
+                    .disabled(["bridge", "host", "none"].contains(network.name))
+                }
             }
         }
+    }
+
+    private func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     /// Шапка таблицы плюс её строки.

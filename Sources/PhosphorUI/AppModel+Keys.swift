@@ -23,6 +23,25 @@ extension AppModel {
         }
     }
 
+    /// Дописывает ключ в `authorized_keys` на сервере.
+    public func addKeyToServer() async {
+        guard let host = book.hosts.first(where: { $0.id == selectedHost }) else {
+            keysError = "хост не выбран"
+            return
+        }
+        let manager = KeyManager(
+            transport: SystemSSHTransport(host: host, reach: book.reach(for: host)))
+        do {
+            serverKeys = try await manager.add(
+                line: newKeyLine, to: serverKeys, currentFingerprint: myFingerprint)
+            newKeyLine = ""
+            isAddingKey = false
+            keysError = nil
+        } catch {
+            keysError = "не удалось добавить ключ: \(error)"
+        }
+    }
+
     /// Просит подтверждение, если удаляется ключ, которым ты подключён.
     public func requestKeyRemoval(_ key: AuthorizedKey) {
         if key.fingerprint == myFingerprint {

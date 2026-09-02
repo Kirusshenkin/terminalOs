@@ -34,6 +34,30 @@ extension AppModel {
         lastOutcome = await session.perform(action, on: container)
     }
 
+    /// Спрашивает перед удалением: у образов, томов и сетей отмены нет.
+    public func request(_ action: ResourceAction) {
+        pendingResource = PendingResource(action: action)
+    }
+
+    public func confirm(_ pending: PendingResource) {
+        pendingResource = nil
+        Task { await perform(pending.action) }
+    }
+
+    private func perform(_ action: ResourceAction) async {
+        guard let session else {
+            resourcesMessage = "нет подключения к хосту"
+            return
+        }
+        do {
+            let result = try await session.run(action.command())
+            resourcesMessage = "\(action.title): \(ResourceAction.explain(result))"
+        } catch {
+            resourcesMessage = "\(action.title): \(error)"
+        }
+        await loadResources()
+    }
+
     /// Подтягивает образы, тома и сети выбранного хоста.
     public func loadResources() async {
         guard let session else {

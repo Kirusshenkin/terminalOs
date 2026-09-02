@@ -45,6 +45,23 @@ public final class AppModel {
     public var screen: Section = .hosts
     public var language: Language = .system
     public var themeID = BuiltInThemes.phosphor.id
+    /// Настройки шрифта и стекла поверх выбранной темы.
+    public var fontSize: Double = 13
+    public var ligatures = true
+    public var lineHeight: Double = 1.4
+    public var scanlines: Double?
+    public var glow: Double?
+    public var vignette: Double?
+    /// Импортированные схемы живут рядом со встроенными.
+    public internal(set) var importedThemes: [Theme] = []
+    public internal(set) var themeImportNote: String?
+
+    /// Все доступные темы: встроенные плюс импортированные.
+    public var allThemes: [Theme] { BuiltInThemes.all + importedThemes }
+
+    func theme(id: String) -> Theme {
+        allThemes.first { $0.id == id } ?? BuiltInThemes.phosphor
+    }
     public var eggs = EasterEggs()
     public var pet: Pet = .cat
 
@@ -53,6 +70,9 @@ public final class AppModel {
     public var query = ""
     public var selectedHost: ServerHost.ID?
     public var isAddingHost = false
+    public var isAddingGroup = false
+    public var editingGroup: HostGroup?
+    public var groupNameDraft = ""
     /// Хост, открытый на правку, и хост, ожидающий подтверждения удаления.
     public var editingHost: ServerHost?
     public var pendingHostRemoval: ServerHost?
@@ -105,6 +125,8 @@ public final class AppModel {
 
     /// Образы, тома и сети выбранного хоста.
     public internal(set) var images: [DockerImage] = []
+    /// Итог последнего действия над ресурсами — показываем рядом с таблицей.
+    public internal(set) var resourcesMessage: String?
     public internal(set) var volumes: [DockerVolume] = []
     public internal(set) var networks: [DockerNetwork] = []
 
@@ -145,6 +167,14 @@ public final class AppModel {
     public internal(set) var myFingerprint: String?
     public internal(set) var keysError: String?
     public var pendingKeyRemoval: AuthorizedKey?
+    public var isAddingKey = false
+    public var newKeyLine = ""
+
+    /// Что мы поняли из вставленной строки. Пусто — значит это не ключ.
+    public var newKeyPreview: String? {
+        guard let key = AuthorizedKeysFile.parse(newKeyLine).first else { return nil }
+        return "\(key.algorithm) · \(key.fingerprint)"
+    }
 
     /// Настройка сервера.
     public internal(set) var provisionSteps: [StepProgress] = []
@@ -156,6 +186,13 @@ public final class AppModel {
 
     /// Разрушающее действие, ожидающее подтверждения.
     public var pendingAction: PendingAction?
+    public var pendingResource: PendingResource?
+
+    /// Разрушающее действие над образом, томом или сетью, ждущее ответа.
+    public struct PendingResource: Identifiable, Sendable {
+        public let id = UUID()
+        public var action: ResourceAction
+    }
     /// Итог последнего действия — одной строкой под списком.
     public var lastOutcome: ActionOutcome?
     /// Логи выбранного контейнера. Кольцевой: логи умеют идти мегабайтами.
@@ -202,7 +239,13 @@ public final class AppModel {
         {
             id = groupTheme
         }
-        return Style(theme: BuiltInThemes.theme(id: id))
+        var theme = theme(id: id)
+        // Личные настройки перекрывают тему: тема — общий пресет, а рябь и
+        // свечение зависят от монитора и от того, кто на него смотрит.
+        if let scanlines { theme.scanlines = scanlines }
+        if let glow { theme.glow = glow }
+        if let vignette { theme.vignette = vignette }
+        return Style(theme: theme, fontSize: fontSize, lineHeight: lineHeight)
     }
 
     public var visibleHosts: [ServerHost] {
@@ -228,6 +271,12 @@ public final class AppModel {
         language = Language(rawValue: saved.language) ?? .system
         pet = Pet(rawValue: saved.pet) ?? .cat
         eggs = EasterEggs(enabled: saved.eggsEnabled)
+        fontSize = saved.fontSize
+        ligatures = saved.ligatures
+        lineHeight = saved.lineHeight
+        scanlines = saved.scanlines
+        glow = saved.glow
+        vignette = saved.vignette
     }
 
     /// Сохраняет внешний вид. Вызывается из представлений при изменении.

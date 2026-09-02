@@ -170,7 +170,13 @@ background.
 
 ## Install
 
-Download `Phosphor.app.zip` from the release page, unzip it, move it to
+```sh
+curl -fsSL https://github.com/Kirusshenkin/terminalOs/releases/latest/download/Phosphor.zip -o Phosphor.zip
+unzip -q Phosphor.zip -d /Applications
+xattr -dr com.apple.quarantine /Applications/Phosphor.app
+```
+
+Or download `Phosphor.zip` from the release page and drag the app into
 Applications.
 
 **macOS will warn you the first time.** The app is ad-hoc signed — there is no
@@ -181,14 +187,71 @@ internet lands in quarantine. This is not damage:
 2. System Settings → Privacy & Security → scroll down → **Open Anyway**.
 3. Confirm. It never asks again.
 
-One command instead, if you prefer:
+The `xattr` command above does the same thing in one step.
 
-```
-xattr -dr com.apple.quarantine /Applications/Phosphor.app
+Every release ships `SHA256SUMS.txt`; verify with
+`shasum -a 256 -c SHA256SUMS.txt`.
+
+There is no in-app updater yet — check the releases page. The version you are
+running is in the About panel.
+
+### For AI agents
+
+Each release carries `latest.json`, so nothing has to be scraped:
+
+```sh
+curl -fsSL https://github.com/Kirusshenkin/terminalOs/releases/latest/download/latest.json
 ```
 
-Updates arrive through Sparkle and are installed by the app itself, so they are
-never quarantined: the warning happens exactly once, on first install.
+```json
+{
+  "version": "0.1.0",
+  "url": "https://github.com/.../Phosphor-0.1.0.zip",
+  "sha256": "…",
+  "mcp": { "command": "/Applications/Phosphor.app/Contents/MacOS/phosphor-mcp",
+           "transport": "stdio" }
+}
+```
+
+The bundle contains an MCP stdio shim. Register it and Phosphor exposes its
+tools:
+
+```json
+{
+  "mcpServers": {
+    "phosphor": {
+      "command": "/Applications/Phosphor.app/Contents/MacOS/phosphor-mcp"
+    }
+  }
+}
+```
+
+The shim talks to the running app over a Unix socket in the user's home
+directory; it carries no credentials of its own. If the app is closed or locked
+it says so and every tool call fails closed — MCP access is off by default and
+has to be granted in the app, per session, with a fingerprint.
+
+## Releasing
+
+Tag and push:
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+`.github/workflows/release.yml` runs the tests, then `scripts/package.sh` —
+which is the same script used locally, so a release can always be reproduced on
+your own machine:
+
+```sh
+MARKETING_VERSION=0.1.0 BUILD_NUMBER=1 ./scripts/package.sh
+```
+
+It produces `dist/Phosphor-<version>.zip`, a copy named `Phosphor.zip` (only an
+exact filename works behind `/releases/latest/download/`), `SHA256SUMS.txt` and
+`latest.json`. The workflow unzips the archive again and runs
+`codesign --verify` on it before publishing: a bundle whose signature does not
+survive the round trip will not open on anyone's machine.
 
 ## Build
 

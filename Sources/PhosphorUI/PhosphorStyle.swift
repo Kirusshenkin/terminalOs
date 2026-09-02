@@ -14,8 +14,20 @@ public extension Color {
 /// at once, and so a host's group can carry its own look.
 public struct Style: Sendable {
     public var theme: Theme
+    /// Базовый размер шрифта. Остальные размеры считаются от него, чтобы
+    /// крупный шрифт не ломал вёрстку в одном месте и не менял её в другом.
+    public var fontSize: Double
+    public var lineHeight: Double
 
-    public init(theme: Theme = BuiltInThemes.phosphor) { self.theme = theme }
+    public init(
+        theme: Theme = BuiltInThemes.phosphor,
+        fontSize: Double = 13,
+        lineHeight: Double = 1.4
+    ) {
+        self.theme = theme
+        self.fontSize = fontSize
+        self.lineHeight = lineHeight
+    }
 
     public var background: Color { Color(theme.background) }
     public var text: Color { Color(theme.foreground) }
@@ -41,6 +53,7 @@ public struct Style: Sendable {
     public static let mono = "IBMPlexMono"
 
     public func font(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let size = size * (fontSize / 13)
         let name =
             switch weight {
             case .semibold, .bold, .heavy, .black: "IBMPlexMono-SemiBold"

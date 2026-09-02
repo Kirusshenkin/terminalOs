@@ -8,7 +8,7 @@ public struct ThemeView: View {
 
     public init(model: AppModel) { self.model = model }
     private var strings: Strings { model.strings }
-    private var current: Theme { BuiltInThemes.theme(id: model.themeID) }
+    private var current: Theme { model.theme(id: model.themeID) }
 
     public var body: some View {
         HStack(alignment: .top, spacing: 22) {
@@ -26,7 +26,14 @@ public struct ThemeView: View {
         switch model.themePage {
         case .palette:
             VStack(alignment: .leading, spacing: 14) {
-                Label2("палитра ansi · \(current.name)")
+                HStack {
+                    Label2("палитра ansi · \(current.name)")
+                    Spacer()
+                    PhButton("импорт .itermcolors") { model.importTheme() }
+                }
+                if let note = model.themeImportNote {
+                    Text(note).font(style.font(11)).foregroundStyle(style.muted)
+                }
                 LazyVGrid(
                     columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 8),
                     spacing: 5
@@ -50,10 +57,23 @@ public struct ThemeView: View {
                 }
                 Label2("шрифт")
                 HStack(spacing: 8) {
-                    chip("IBM Plex Mono · 13")
-                    chip("лигатуры")
-                    chip("строка 1,4")
+                    stepper("размер", value: model.fontSize, unit: "пт", step: 1, range: 10...20) {
+                        model.fontSize = $0
+                        model.saveAppearance()
+                    }
+                    toggleChip("лигатуры", on: model.ligatures) {
+                        model.ligatures.toggle()
+                        model.saveAppearance()
+                    }
+                    stepper(
+                        "строка", value: model.lineHeight, unit: "", step: 0.1, range: 1.0...2.0
+                    ) {
+                        model.lineHeight = $0
+                        model.saveAppearance()
+                    }
                 }
+                Text("IBM Plex Mono едет в бандле — на систему не полагаемся")
+                    .font(style.font(10.5)).foregroundStyle(style.muted)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -120,18 +140,50 @@ public struct ThemeView: View {
         .background(style.surface)
     }
 
-    private func chip(_ title: String) -> some View {
-        Text(title)
-            .font(style.font(11.5)).foregroundStyle(style.text)
+    /// Значение с двумя кнопками: цифра, которую можно менять, а не подпись.
+    private func stepper(
+        _ title: String, value: Double, unit: String, step: Double,
+        range: ClosedRange<Double>, set: @escaping (Double) -> Void
+    ) -> some View {
+        HStack(spacing: 8) {
+            Text(title).font(style.font(11.5)).foregroundStyle(style.muted)
+            Button { set(max(range.lowerBound, value - step)) } label: {
+                Text("−").font(style.font(13)).foregroundStyle(style.text).frame(width: 16)
+            }
+            .buttonStyle(.plain)
+            Text(step < 1 ? String(format: "%.1f", value) : String(Int(value)) + unit)
+                .font(style.font(11.5)).foregroundStyle(style.bright)
+                .frame(width: 38)
+            Button { set(min(range.upperBound, value + step)) } label: {
+                Text("+").font(style.font(13)).foregroundStyle(style.text).frame(width: 16)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(style.surface)
+    }
+
+    private func toggleChip(
+        _ title: String, on: Bool, toggle: @escaping () -> Void
+    ) -> some View {
+        Button(action: toggle) {
+            HStack(spacing: 6) {
+                Text(on ? "●" : "○").foregroundStyle(on ? style.accent : style.muted)
+                Text(title).foregroundStyle(on ? style.text : style.muted)
+            }
+            .font(style.font(11.5))
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(style.surface)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     /// Список тем и куда они привязаны.
     private var themeList: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label2(strings("settings.theme")).padding(.bottom, 6)
-            ForEach(BuiltInThemes.all) { theme in
+            ForEach(model.allThemes) { theme in
                 Button {
                     model.themeID = theme.id
                     model.saveAppearance()
@@ -152,14 +204,23 @@ public struct ThemeView: View {
             Spacer(minLength: 0)
             Label2("привязка").padding(.bottom, 4)
             ForEach(model.book.groups) { group in
-                HStack(spacing: 6) {
-                    Text(group.name).foregroundStyle(style.muted)
-                    Spacer()
-                    Text(group.themeID.map { BuiltInThemes.theme(id: $0).name } ?? "по умолчанию")
-                        .foregroundStyle(style.text)
+                // Клик привязывает выбранную тему к группе: прод красный не
+                // ради красоты, а чтобы окно нельзя было перепутать.
+                Button { model.bindTheme(model.themeID, to: group) } label: {
+                    HStack(spacing: 6) {
+                        Text(group.name).foregroundStyle(style.muted)
+                        Spacer()
+                        Text(group.themeID.map { BuiltInThemes.theme(id: $0).name }
+                             ?? "по умолчанию")
+                            .foregroundStyle(style.text)
+                    }
+                    .font(style.font(11))
+                    .contentShape(Rectangle())
                 }
-                .font(style.font(11))
+                .buttonStyle(.plain)
             }
+            Text("клик привязывает выбранную тему к группе")
+                .font(style.font(10)).foregroundStyle(style.muted).padding(.top, 4)
         }
         .frame(width: 190, alignment: .leading)
     }
@@ -167,20 +228,51 @@ public struct ThemeView: View {
     private var sliders: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label2("фон и стекло")
-            row("скан-линии", current.scanlines)
-            row("свечение", current.glow)
-            row("виньетка", current.vignette)
-            row("прозрачность окна", 1 - current.windowOpacity)
+            row("скан-линии", current.scanlines) {
+                model.scanlines = $0
+                model.saveAppearance()
+            }
+            row("свечение", current.glow) {
+                model.glow = $0
+                model.saveAppearance()
+            }
+            row("виньетка", current.vignette) {
+                model.vignette = $0
+                model.saveAppearance()
+            }
+            PhButton("вернуть как в теме") {
+                model.scanlines = nil
+                model.glow = nil
+                model.vignette = nil
+                model.saveAppearance()
+            }
         }
     }
 
-    private func row(_ title: String, _ value: Double) -> some View {
+    /// Полоса, по которой можно кликать и тянуть: доля берётся из позиции
+    /// курсора. Показывать значение и не давать его менять — обман.
+    private func row(
+        _ title: String, _ value: Double, set: @escaping (Double) -> Void
+    ) -> some View {
         HStack(spacing: 10) {
-            Text(title).font(style.font(11.5)).foregroundStyle(style.text).frame(
-                width: 130, alignment: .leading)
-            Bar(fraction: value, colour: style.accent)
-            Text(percentLabel(value)).font(style.font(11)).foregroundStyle(style.muted).frame(
-                width: 44, alignment: .trailing)
+            Text(title).font(style.font(11.5)).foregroundStyle(style.text)
+                .frame(width: 150, alignment: .leading)
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(style.text.opacity(0.12))
+                    Rectangle().fill(style.accent)
+                        .frame(width: geometry.size.width * min(max(value, 0), 1))
+                }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0).onChanged { drag in
+                        set(min(max(drag.location.x / geometry.size.width, 0), 1))
+                    }
+                )
+            }
+            .frame(height: 7)
+            Text(percentLabel(value)).font(style.font(11)).foregroundStyle(style.muted)
+                .frame(width: 44, alignment: .trailing)
         }
     }
 

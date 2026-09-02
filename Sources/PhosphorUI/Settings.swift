@@ -10,17 +10,40 @@ public struct Appearance: Codable, Sendable, Equatable {
     public var language: String
     public var pet: String
     public var eggsEnabled: Bool
+    /// Размер шрифта, лигатуры и межстрочный интервал.
+    public var fontSize: Double
+    public var ligatures: Bool
+    public var lineHeight: Double
+    /// Стекло: сила скан-линий, свечения и виньетки поверх темы.
+    ///
+    /// Хранится отдельно от темы: тема — общий пресет, который хочется
+    /// обменивать, а насколько сильно рябит экран — дело вкуса и монитора.
+    public var scanlines: Double?
+    public var glow: Double?
+    public var vignette: Double?
 
     public init(
         themeID: String = BuiltInThemes.phosphor.id,
         language: String = Language.system.rawValue,
         pet: String = Pet.cat.rawValue,
-        eggsEnabled: Bool = true
+        eggsEnabled: Bool = true,
+        fontSize: Double = 13,
+        ligatures: Bool = true,
+        lineHeight: Double = 1.4,
+        scanlines: Double? = nil,
+        glow: Double? = nil,
+        vignette: Double? = nil
     ) {
         self.themeID = themeID
         self.language = language
         self.pet = pet
         self.eggsEnabled = eggsEnabled
+        self.fontSize = fontSize
+        self.ligatures = ligatures
+        self.lineHeight = lineHeight
+        self.scanlines = scanlines
+        self.glow = glow
+        self.vignette = vignette
     }
 }
 

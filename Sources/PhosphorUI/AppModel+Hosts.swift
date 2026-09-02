@@ -42,6 +42,26 @@ extension AppModel {
         scheduleSave()
     }
 
+    /// Удаляет группу, не трогая её хосты: они просто остаются без группы.
+    ///
+    /// Удалять сервер вместе с папкой, в которой он лежал, — не то, чего ждёшь
+    /// от удаления папки.
+    public func removeGroup(_ group: HostGroup) {
+        for index in book.hosts.indices where book.hosts[index].groupID == group.id {
+            book.hosts[index].groupID = nil
+        }
+        book.groups.removeAll { $0.id == group.id }
+        if selectedGroup == group.id { selectedGroup = nil }
+        scheduleSave()
+    }
+
+    public func renameGroup(_ group: HostGroup, to name: String) {
+        guard let index = book.groups.firstIndex(where: { $0.id == group.id }) else { return }
+        book.groups[index].name = name.trimmingCharacters(in: .whitespaces)
+        scheduleSave()
+    }
+
+    @discardableResult
     public func addGroup(named name: String) -> HostGroup {
         let group = HostGroup(name: name)
         book.groups.append(group)

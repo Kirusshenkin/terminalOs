@@ -38,7 +38,7 @@ Useful to know before answering questions about it:
 
 ## MCP tools
 
-- `list_hosts`, `host_metrics`, `list_containers`, `container_logs`, `container_inspect`, `list_authorized_keys`: read
+- `list_hosts`, `host_metrics`, `host_report`, `list_containers`, `container_logs`, `container_inspect`, `list_authorized_keys`: read
 - `run_command`, `container_action`, `manage_authorized_key`: write, gated by the per-host mode
 
 ## Optional

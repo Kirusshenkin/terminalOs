@@ -31,6 +31,10 @@ public enum ToolCatalog {
     public static let all: [Tool] = [
         Tool(name: "list_hosts", summary: "Серверы и статус подключения", kind: .read),
         Tool(name: "host_metrics", summary: "Ядра, память, диск, сеть, аптайм", kind: .read),
+        Tool(
+            name: "host_report",
+            summary: "Что с хостом не так: пороги уже применены",
+            kind: .read),
         Tool(name: "list_containers", summary: "Контейнеры с состоянием и метриками", kind: .read),
         Tool(name: "container_logs", summary: "Последние строки логов", kind: .read),
         Tool(name: "container_inspect", summary: "Подробности контейнера", kind: .read),

@@ -5,6 +5,7 @@ import Testing
 @testable import DockerKit
 @testable import HostsKit
 @testable import MCPBridge
+@testable import MetricsKit
 @testable import PhosphorCore
 @testable import SessionKit
 
@@ -487,5 +488,62 @@ struct SocketServerTests {
         let read = descriptions.first { $0.name == "list_containers" }
         #expect(read?.description.contains("изменяет") == false)
         #expect(descriptions.first { $0.name == "run_command" }?.arguments.contains("command") == true)
+    }
+}
+
+@Suite("Отчёт о хосте")
+struct HostReportTests {
+    /// Снимок, в котором всё хорошо: 8 ядер, половина памяти, диски свободны.
+    private func healthy() -> Snapshot {
+        Snapshot(
+            time: Date(), loadOne: 1.2, loadFive: 1.0, loadFifteen: 0.8, uptime: 86_400,
+            cores: (0..<8).map { _ in Snapshot.Core(index: 0, total: 100, idle: 60, steal: 0) },
+            memoryTotal: 32_000_000_000, memoryAvailable: 16_000_000_000,
+            swapTotal: 2_000_000_000, swapFree: 2_000_000_000,
+            filesystems: [
+                Snapshot.Filesystem(
+                    mount: "/", total: 220_000_000_000, used: 60_000_000_000,
+                    available: 160_000_000_000)
+            ],
+            interfaces: [], disks: [], processes: [],
+            runningProcesses: 2, totalProcesses: 184, openFiles: 1_200,
+            kernel: "6.8.0", cpuModel: "test")
+    }
+
+    @Test("здоровый хост не выдумывает проблем")
+    func quietWhenHealthy() {
+        var state = SessionState()
+        state.latest = healthy()
+        let text = HostReport.text(state)
+        #expect(text.hasPrefix("всё в порядке"))
+        #expect(!text.contains("не в порядке"))
+    }
+
+    @Test("забитый диск и мёртвый контейнер попадают в вердикт")
+    func namesTheTrouble() {
+        var snapshot = healthy()
+        snapshot.filesystems = [
+            Snapshot.Filesystem(
+                mount: "/", total: 220_000_000_000, used: 200_000_000_000,
+                available: 20_000_000_000)
+        ]
+        var state = SessionState()
+        state.latest = snapshot
+        state.containers = [
+            Container(
+                id: "a", name: "api", image: "api:1", state: .running, status: "Up",
+                health: "unhealthy"),
+            Container(id: "b", name: "worker", image: "wrk:1", state: .exited, status: "Exited"),
+        ]
+        let text = HostReport.text(state)
+        #expect(text.hasPrefix("не в порядке"))
+        #expect(text.contains("диск /"))
+        #expect(text.contains("нездоровы: api"))
+        #expect(text.contains("не работают: worker"))
+    }
+
+    @Test("без снимка отчёт говорит об этом, а не молчит")
+    func saysWhenEmpty() {
+        #expect(HostReport.text(SessionState()).contains("метрики ещё не собраны"))
     }
 }

@@ -152,6 +152,7 @@ public actor ToolRunner {
 
         switch tool.name {
         case "host_metrics": return metrics(state)
+        case "host_report": return ToolResult(text: HostReport.text(state))
         case "list_containers": return containerList(state)
         case "container_logs": return await logs(state, session: session, arguments: arguments)
         case "container_inspect": return await inspect(state, session: session, arguments: arguments)

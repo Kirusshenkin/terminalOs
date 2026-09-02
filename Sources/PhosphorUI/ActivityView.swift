@@ -108,6 +108,16 @@ public struct ActivityView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Label2(strings("act.howToConnect"))
+                // Три шага, а не одна команда: без режима на хосте мост
+                // отвечает отказом, и человек считает, что он сломан.
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(["act.step1", "act.step2", "act.step3"], id: \.self) { key in
+                        Text(strings(key))
+                            .font(style.font(11.5))
+                            .foregroundStyle(style.text)
+                    }
+                }
+                .padding(.bottom, 4)
                 Text(model.bridgeError ?? strings("act.bridgeUp"))
                     .font(style.font(11))
                     .foregroundStyle(model.bridgeError == nil ? style.muted : style.warning)

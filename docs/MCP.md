@@ -7,7 +7,7 @@ Desktop, Cursor or any other MCP client use those connections — without ever
 seeing a key, a password or a passphrase.
 
 - **Transport:** stdio shim → Unix socket → the running app
-- **Tools:** 9, closed catalogue (6 read, 3 write)
+- **Tools:** 10, closed catalogue (7 read, 3 write)
 - **Auth:** the app is unlocked by Touch ID; the agent inherits a session, not a credential
 - **Default:** every host is `disabled` until you say otherwise
 - **Audit:** every call is recorded, and no tool can erase the record
@@ -79,15 +79,59 @@ you pick a mode there.
 
 ---
 
+## Setting it up, step by step
+
+Five minutes, and four of them are the download.
+
+**1. Install and unlock.** Put Phosphor in `/Applications`, open it, unlock with
+Touch ID. The bridge only exists while the app runs and is unlocked — a locked
+app answers every call with "Phosphor is locked", which is the intended answer,
+not a bug.
+
+**2. Give a host a mode.** Hosts → pick one → MCP mode. Every host starts
+`disabled`, and that is deliberate: forgetting to configure a server must never
+be the same as opening it. Start with `read-only` — the model can look at
+metrics, containers and logs, and cannot change anything. Production is meant to
+stay there.
+
+**3. Register the bridge.** In Claude Code:
+
+```sh
+claude mcp add phosphor /Applications/Phosphor.app/Contents/MacOS/phosphor-mcp
+```
+
+In Claude Desktop, Cursor or anything else that reads a JSON config, use the
+snippet above. The app shows the exact line under **AI activity → how to
+register a client**, with the path already filled in.
+
+**4. Ask something.** Good first questions, in order of how much they tell you:
+
+- *"What is wrong with prod-01?"* — one `host_report` call: thresholds already
+  applied, so the answer names the full disk instead of reciting percentages.
+- *"Why is the billing worker unhealthy?"* — `container_logs` with a filter,
+  then `container_inspect`.
+- *"Restart it."* — a write tool. In `read-only` it is refused with a reason; in
+  `confirm` a dialog appears in the app with the exact command and host, and the
+  model waits for your answer.
+
+**5. Watch what happened.** **AI activity → action log** lists every call with
+its host, arguments, decision and result. There is no tool that writes to that
+log, so the record survives whatever the model does next.
+
+If a call is refused, the message says which of the five reasons it was — app
+closed, app locked, host disabled, host read-only, or a deny-listed command —
+so there is nothing to guess.
+
 ## Tools
 
-Nine tools, deliberately. Every one of them is a door into your infrastructure,
+Ten tools, deliberately. Every one of them is a door into your infrastructure,
 so "let's add one more" costs more than it looks.
 
 | Tool | What it returns or does | Class |
 |---|---|---|
 | `list_hosts` | Configured servers, groups, tags, connection state | read |
 | `host_metrics` | Per-core CPU, memory, disks, network, uptime, load | read |
+| `host_report` | What is wrong with the host, thresholds already applied | read |
 | `list_containers` | Containers with state, health, CPU and memory | read |
 | `container_logs` | Last N log lines, with a filter | read |
 | `container_inspect` | Full `docker inspect` for one container | read |

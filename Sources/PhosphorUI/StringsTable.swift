@@ -149,6 +149,18 @@ extension Strings {
             .russian: "новый хост выключен: забыть настроить не значит открыть",
             .english: "a new host is off: forgetting to set it up never means opening it",
         ],
+        "act.step1": [
+            .russian: "1 · выбери хост в разделе «Хосты» и поставь ему режим ниже",
+            .english: "1 · pick a host under Hosts and give it a mode below",
+        ],
+        "act.step2": [
+            .russian: "2 · зарегистрируй мост у клиента — команда ниже",
+            .english: "2 · register the bridge with your client — command below",
+        ],
+        "act.step3": [
+            .russian: "3 · спроси у модели «что с сервером» — вызовы появятся в журнале",
+            .english: "3 · ask the model what is wrong with the server — calls show up in the log",
+        ],
         "act.howToConnect": [.russian: "как подключить клиента", .english: "how to register a client"],
         "act.bridgeUp": [
             .russian: "мост поднят, пока открыто приложение",

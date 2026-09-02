@@ -197,6 +197,10 @@ extension Strings {
         ],
         "term.oddLink": [.russian: "ссылка с необычной схемой", .english: "a link with an unusual scheme"],
         "term.spaces": [.russian: "спейсы", .english: "spaces"],
+        "term.noSpaces": [
+            .russian: "нет открытых спейсов — нажми + и подключись к серверу",
+            .english: "no open spaces — press + and connect to a server",
+        ],
         "term.sessions": [.russian: "сессии", .english: "sessions"],
         "term.closeSpace": [.russian: "убрать спейс", .english: "close space"],
         "term.persist": [.russian: "постоянные сессии", .english: "persistent sessions"],

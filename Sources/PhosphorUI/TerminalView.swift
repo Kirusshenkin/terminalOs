@@ -13,12 +13,10 @@ public struct TerminalPane: View {
 
     public var body: some View {
         HStack(spacing: 0) {
-            // Рейл сессий показываем только на живом хосте: у локального шелла
-            // сервера нет, а значит и постоянных сессий тоже.
-            if model.session != nil, model.persistentSessions {
-                SessionRail(model: model)
-                Rectangle().fill(style.rule).frame(width: 1)
-            }
+            // Рейл спейсов виден всегда: это и есть «пульт» herdr. Пустой — с
+            // подсказкой подключиться, а не спрятанный, иначе фичу не найти.
+            SessionRail(model: model)
+            Rectangle().fill(style.rule).frame(width: 1)
             terminal
         }
         // Ничего не попадает в буфер обмена и не открывается, пока человек не

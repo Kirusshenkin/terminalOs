@@ -28,38 +28,51 @@ struct SessionRail: View {
             }
             .padding(.horizontal, 12).padding(.top, 12)
 
-            VStack(alignment: .leading, spacing: 2) {
-                ForEach(spaces) { host in
-                    spaceRow(host)
-                }
-            }
-            .padding(.horizontal, 8)
-
-            Rectangle().fill(style.rule.opacity(0.5)).frame(height: 1)
-                .padding(.horizontal, 12)
-
-            HStack {
-                Label2(model.strings("term.sessions"))
-                Spacer()
-                Button { adding.toggle() } label: {
-                    Image(systemName: "plus").font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(style.muted)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 12)
-
-            if adding { editor }
-
-            ScrollView {
+            if spaces.isEmpty {
+                // Ни одного открытого спейса: подсказываем, откуда они берутся,
+                // а не оставляем пустоту, в которой непонятно, что делать.
+                Text(model.strings("term.noSpaces"))
+                    .font(style.font(11)).foregroundStyle(style.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 12)
+            } else {
                 VStack(alignment: .leading, spacing: 2) {
-                    // «main» есть всегда: это сессия по умолчанию, даже если
-                    // список с сервера ещё не пришёл.
-                    ForEach(rows) { session in
-                        row(session)
+                    ForEach(spaces) { host in
+                        spaceRow(host)
                     }
                 }
                 .padding(.horizontal, 8)
+            }
+
+            // Сессии есть только у подключённого хоста: у локального шелла
+            // серверных tmux-сессий нет.
+            if model.session != nil {
+                Rectangle().fill(style.rule.opacity(0.5)).frame(height: 1)
+                    .padding(.horizontal, 12)
+
+                HStack {
+                    Label2(model.strings("term.sessions"))
+                    Spacer()
+                    Button { adding.toggle() } label: {
+                        Image(systemName: "plus").font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(style.muted)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+
+                if adding { editor }
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        // «main» есть всегда: это сессия по умолчанию, даже если
+                        // список с сервера ещё не пришёл.
+                        ForEach(rows) { session in
+                            row(session)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                }
             }
             Spacer(minLength: 0)
 

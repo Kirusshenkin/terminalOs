@@ -186,7 +186,13 @@ public struct HostsView: View {
                     connected ? style.accent : style.text.opacity(0.22), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .contextMenu { cardMenu(host) }
+        .phContextMenu(
+            isPresented: Binding(
+                get: { model.menuHost?.id == host.id },
+                set: { if $0 { model.menuHost = host } else { model.menuHost = nil } }
+            ),
+            point: $model.menuPoint
+        ) { [] }
     }
 
     private func cardHeader(
@@ -237,21 +243,4 @@ public struct HostsView: View {
         .font(style.font(10.5))
     }
 
-    /// Правка и удаление живут здесь: сама карточка — это кнопка
-    /// «подключиться», и путать одно с другим не стоит.
-    @ViewBuilder private func cardMenu(_ host: ServerHost) -> some View {
-        Button("подключиться") {
-            model.screen = .terminal
-            Task { await model.connect(to: host) }
-        }
-        Button("файлы") {
-            model.screen = .files
-            Task { await model.connect(to: host) }
-        }
-        Divider()
-        Button("править…") { model.editingHost = host }
-        Button("дублировать") { model.duplicate(host) }
-        Divider()
-        Button("удалить", role: .destructive) { model.pendingHostRemoval = host }
-    }
 }

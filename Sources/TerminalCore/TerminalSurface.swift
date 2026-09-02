@@ -30,7 +30,7 @@ public final class TerminalSurface: LocalProcessTerminalView {
         nativeBackgroundColor = NSColor(theme.background)
         caretColor = NSColor(theme.cursor)
         selectedTextBackgroundColor = NSColor(theme.selection)
-        if let font = NSFont(name: "IBM Plex Mono", size: 13) ?? NSFont(name: "SF Mono", size: 13) {
+        if let font = NSFont(name: "IBMPlexMono", size: 13) ?? NSFont(name: "SF Mono", size: 13) {
             self.font = font
         }
     }

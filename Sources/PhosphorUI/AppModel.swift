@@ -56,6 +56,29 @@ public final class AppModel {
     /// Хост, открытый на правку, и хост, ожидающий подтверждения удаления.
     public var editingHost: ServerHost?
     public var pendingHostRemoval: ServerHost?
+    /// Хост, для которого открыто своё контекстное меню, и точка, где кликнули.
+    public var menuHost: ServerHost?
+    public var menuPoint: CGPoint = .zero
+
+    /// Пункты меню карточки. Правка и удаление живут здесь: сама карточка —
+    /// это кнопка «подключиться», и путать одно с другим не стоит.
+    public func cardMenuItems(for host: ServerHost) -> [MenuItem] {
+        [
+            MenuItem("подключиться") { [self] in
+                screen = .terminal
+                Task { await connect(to: host) }
+            },
+            MenuItem("файлы") { [self] in
+                screen = .files
+                Task { await connect(to: host) }
+            },
+            .separator,
+            MenuItem("править…") { [self] in editingHost = host },
+            MenuItem("дублировать") { [self] in duplicate(host) },
+            .separator,
+            MenuItem("удалить", kind: .destructive) { [self] in pendingHostRemoval = host },
+        ]
+    }
     public var importReport: ImportReport?
 
     /// Живая сессия выбранного хоста, если он подключён.
@@ -147,6 +170,11 @@ public final class AppModel {
     }
 
     public var strings: Strings { Strings(language: language) }
+
+    /// Приветствие, которое открывает развёртка экрана входа.
+    public var welcome: Welcome {
+        Welcome(language: language, lastLogin: connectionEvents.first?.time)
+    }
 
     /// Строка для конфигурации MCP-клиента.
     public var bridgeCommand: String {

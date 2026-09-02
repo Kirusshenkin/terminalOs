@@ -14,6 +14,9 @@
     <!-- Одно окно, никаких фоновых агентов и иконки в строке меню. -->
     <key>LSUIElement</key><false/>
     <key>NSHumanReadableCopyright</key><string>Phosphor</string>
+    <!-- IBM Plex Mono едет с приложением: полагаться на то, что он окажется
+         в системе, нельзя, а системный SF Mono выглядит иначе. -->
+    <key>ATSApplicationFontsPath</key><string>Fonts</string>
     <!-- Sparkle: канал обновлений и открытый ключ EdDSA. Подпись обновления
          заменяет нам нотаризацию как доказательство подлинности. -->
     <key>SUFeedURL</key><string>https://github.com/__OWNER__/__REPO__/releases/latest/download/appcast.xml</string>

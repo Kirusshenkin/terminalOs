@@ -1,3 +1,4 @@
+public import AppKit
 public import SwiftUI
 public import ThemeKit
 
@@ -32,10 +33,25 @@ public struct Style: Sendable {
     /// Text glow strength, scaled by the theme's setting.
     public var glowRadius: CGFloat { 6 * theme.glow }
 
-    public static let mono = "IBM Plex Mono"
+    /// Шрифт интерфейса.
+    ///
+    /// IBM Plex Mono лежит в бандле и регистрируется при запуске: полагаться на
+    /// то, что он окажется в системе, нельзя, а системный SF Mono выглядит
+    /// заметно иначе — и весь экран вместе с ним.
+    public static let mono = "IBMPlexMono"
 
     public func font(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+        let name =
+            switch weight {
+            case .semibold, .bold, .heavy, .black: "IBMPlexMono-SemiBold"
+            case .medium: "IBMPlexMono-Medium"
+            default: "IBMPlexMono"
+            }
+        guard NSFont(name: name, size: size) != nil else {
+            // Шрифт не зарегистрировался — не рисовать же ничего.
+            return .system(size: size, weight: weight, design: .monospaced)
+        }
+        return .custom(name, size: size)
     }
 }
 

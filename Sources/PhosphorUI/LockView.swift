@@ -13,6 +13,7 @@ public import SwiftUI
 public struct LockView: View {
     @Environment(\.style) private var style
     private let strings: Strings
+    private let welcome: Welcome
     /// Что доступно на этом Маке — показываем только это.
     private let capability: String
     private let error: String?
@@ -32,11 +33,13 @@ public struct LockView: View {
 
     public init(
         strings: Strings,
+        welcome: Welcome,
         capability: String,
         error: String? = nil,
         onUnlock: @escaping () async -> Void
     ) {
         self.strings = strings
+        self.welcome = welcome
         self.capability = capability
         self.error = error
         self.onUnlock = onUnlock
@@ -109,28 +112,39 @@ public struct LockView: View {
         .shadow(color: style.accent.opacity(style.theme.glow * 0.5), radius: style.glowRadius)
     }
 
-    /// What the sweep reveals: the shape of the interface behind the lock.
+    /// То, что открывает развёртка: приветствие, а не полосы-заглушки.
     private var revealed: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("PHOSPHOR").font(style.font(11)).tracking(3).foregroundStyle(style.muted)
+                Text(welcome.title)
+                    .font(style.font(12)).foregroundStyle(style.muted)
                 Spacer()
                 Text(strings("lock.unlocked").uppercased())
                     .font(style.font(11)).tracking(2).foregroundStyle(style.bright)
             }
-            Rule()
-            ForEach([0.76, 0.52, 0.64, 0.41, 0.7, 0.33, 0.58], id: \.self) { width in
-                GeometryReader { geometry in
-                    Rectangle()
-                        .fill(style.accent.opacity(0.3))
-                        .frame(width: geometry.size.width * width, height: 6)
-                }
-                .frame(height: 6)
+            Rule().padding(.top, 8).padding(.bottom, 18)
+
+            Text(welcome.greeting)
+                .font(style.font(17))
+                .foregroundStyle(style.bright)
+                .padding(.bottom, 12)
+
+            ForEach(Array(welcome.lines.enumerated()), id: \.offset) { _, line in
+                Text(line.isEmpty ? " " : line)
+                    .font(style.font(13))
+                    .foregroundStyle(line.hasPrefix("  ") ? style.text.opacity(0.8) : style.text)
             }
+
             Spacer()
+
+            Text(welcome.footer)
+                .font(style.font(11.5))
+                .foregroundStyle(style.muted)
             Text(strings("lock.vault").uppercased())
                 .font(style.font(10.5)).tracking(1.6).foregroundStyle(style.muted)
+                .padding(.top, 4)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Choreography

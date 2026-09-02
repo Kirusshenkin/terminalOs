@@ -10,7 +10,7 @@ public struct TerminalPane: View {
     public init(model: AppModel) { self.model = model }
 
     public var body: some View {
-        ZStack(alignment: .bottomLeading) {
+        ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .leading, spacing: 0) {
                 if let note = phaseNote {
                     Text(note)
@@ -75,7 +75,7 @@ public struct PetCorner: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .trailing, spacing: 6) {
             HStack(spacing: 6) {
                 ForEach(Pet.allCases, id: \.self) { option in
                     Button {
@@ -96,11 +96,11 @@ public struct PetCorner: View {
                 }
             }
             scene
-                .frame(width: 300, height: 150)
+                .frame(width: 260, height: 130)
                 .allowsHitTesting(false)
-                .opacity(0.62)
+                .opacity(0.4)
         }
-        .padding(.leading, 4)
+        .padding(.trailing, 4)
         .padding(.bottom, 8)
     }
 

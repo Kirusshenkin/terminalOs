@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+    a { color: #5BE87F; } a:hover { color: #9DF7B4; }
+    .scan { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 3px); }
+    .vig { background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(0,0,0,.75) 100%); }
+
+    .btn, .row { cursor: pointer; user-select: none; font-size: 11.5px; }
+    .btn { border: 1px solid rgba(91,232,127,.4); color: #5BE87F; padding: 6px 12px;
+           letter-spacing: .08em; text-align: center; }
+    .row { display: flex; gap: 8px; align-items: center; color: #5BE87F;
+           padding: 7px 10px; background: rgba(91,232,127,.05); }
+
+    /* A · вспышка люминофора: яркость подскакивает и гаснет с послесвечением */
+    .vA:active { color: #EAFFF0; border-color: #9DF7B4; background: rgba(91,232,127,.22);
+                 text-shadow: 0 0 10px rgba(154,247,180,.9); }
+    .vA { transition: color .34s ease, background .34s ease, border-color .34s ease,
+                      text-shadow .34s ease; }
+
+    /* B · просадка луча: сжатие при нажатии, возврат с перелётом */
+    .vB { transition: transform .16s cubic-bezier(.2,1.6,.4,1), opacity .16s ease; }
+    .vB:active { transform: scale(.97); opacity: .72;
+                 transition: transform .09s ease, opacity .09s ease; }
+
+    /* C · инверсия: как выделение в текстовом терминале */
+    .vC { transition: none; }
+    .vC:active { background: #5BE87F; color: #071008; border-color: #5BE87F; }
+    .vC:active span { color: #071008 !important; }
+
+    /* D · скан-помеха: сбой развёртки на два кадра */
+    .vD { transition: transform .12s steps(3); }
+    .vD:active { transform: translateX(3px); }
+
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</helmet>
+
+<div style="width: 1180px; height: 420px; background: #05080A; color: #5BE87F; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; font-size: 12px;">
+  <div style="display: flex; align-items: baseline; gap: 10px;">
+    <div style="font-size: 15px; color: #9DF7B4;">Отклик на клик · четыре варианта</div>
+    <div style="color: #2E7A45;">нажимай и держи — разница чувствуется, а не видится</div>
+  </div>
+  <div style="color: #3E9E5A; margin: 7px 0 0; line-height: 1.55; max-width: 900px;">Каждый вариант показан на кнопке и на строке списка: отклик обязан работать и там, и там. Все — только на цвете и transform, без теней и фильтров в анимации.</div>
+
+  <div style="flex-grow: 1; background: #071008; border-radius: 14px; position: relative; overflow: hidden; box-shadow: inset 0 0 60px rgba(0,0,0,.85); margin-top: 14px;">
+    <div style="position: absolute; inset: 0; display: flex; gap: 26px; padding: 22px 24px;">
+      <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 12px;">
+        <div style="color: #9DF7B4; font-size: 13.5px;">A · Вспышка люминофора</div>
+        <div style="color: #3E9E5A; font-size: 11.5px; line-height: 1.5; min-height: 76px;">Нажатие даёт короткую вспышку яркости, которая гаснет с послесвечением — так ведёт себя настоящий люминофор. Самое родное для этой эстетики.</div>
+        <div class="btn vA" onClick="{ tick }">ПЕРЕЗАПУСТИТЬ API</div>
+        <div class="row vA" onClick="{ tick }">
+          <span style="color: #5BE87F;">●</span>
+          <span style="flex-grow: 1;">worker-billing</span>
+          <span style="color: #2E7A45;">31 %</span>
+        </div>
+        <div style="color: #2E7A45; font-size: 10.5px;">opacity · 180 мс</div>
+      </div>
+      <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 12px;">
+        <div style="color: #9DF7B4; font-size: 13.5px;">B · Просадка луча</div>
+        <div style="color: #3E9E5A; font-size: 11.5px; line-height: 1.5; min-height: 76px;">Элемент на мгновение сжимается и тускнеет, отпускание возвращает его с лёгким перелётом. У ЭЛТ при нагрузке проседало напряжение, и картинка моргала.</div>
+        <div class="btn vB" onClick="{ tick }">ПЕРЕЗАПУСТИТЬ API</div>
+        <div class="row vB" onClick="{ tick }">
+          <span style="color: #5BE87F;">●</span>
+          <span style="flex-grow: 1;">worker-billing</span>
+          <span style="color: #2E7A45;">31 %</span>
+        </div>
+        <div style="color: #2E7A45; font-size: 10.5px;">scale · 90 + 160 мс</div>
+      </div>
+      <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 12px;">
+        <div style="color: #9DF7B4; font-size: 13.5px;">C · Инверсия</div>
+        <div style="color: #3E9E5A; font-size: 11.5px; line-height: 1.5; min-height: 76px;">Цвета меняются местами на 80 мс — ровно так текстовый терминал показывает выделение. Ничего не двигается, поэтому дешевле некуда.</div>
+        <div class="btn vC" onClick="{ tick }">ПЕРЕЗАПУСТИТЬ API</div>
+        <div class="row vC" onClick="{ tick }">
+          <span style="color: #5BE87F;">●</span>
+          <span style="flex-grow: 1;">worker-billing</span>
+          <span style="color: #2E7A45;">31 %</span>
+        </div>
+        <div style="color: #2E7A45; font-size: 10.5px;">два цвета · 80 мс</div>
+      </div>
+      <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 12px;">
+        <div style="color: #9DF7B4; font-size: 13.5px;">D · Скан-помеха</div>
+        <div style="color: #3E9E5A; font-size: 11.5px; line-height: 1.5; min-height: 76px;">Строка на два кадра уезжает вбок и возвращается — характерный сбой развёртки ЭЛТ. Заметнее всех, но на каждый клик может быть слишком.</div>
+        <div class="btn vD" onClick="{ tick }">ПЕРЕЗАПУСТИТЬ API</div>
+        <div class="row vD" onClick="{ tick }">
+          <span style="color: #5BE87F;">●</span>
+          <span style="flex-grow: 1;">worker-billing</span>
+          <span style="color: #2E7A45;">31 %</span>
+        </div>
+        <div style="color: #2E7A45; font-size: 10.5px;">translateX · 120 мс</div>
+      </div>
+    </div>
+    <div class="scan" style="position: absolute; inset: 0; pointer-events: none;"></div>
+    <div class="vig" style="position: absolute; inset: 0; pointer-events: none;"></div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return { tick: () => {} };
+  }
+}
+</script>
+</body>
+</html>

@@ -77,6 +77,8 @@ public final class AppModel {
     public var selectedGroup: HostGroup.ID?
     public var query = ""
     public var selectedHost: ServerHost.ID?
+    /// Что можно перенести в список: считается один раз, когда список пуст.
+    public internal(set) var importOffers: [ImportOffer] = []
     public var isAddingHost = false
     public var isAddingGroup = false
     public var editingGroup: HostGroup?

@@ -149,6 +149,12 @@ extension Strings {
             .russian: "новый хост выключен: забыть настроить не значит открыть",
             .english: "a new host is off: forgetting to set it up never means opening it",
         ],
+        "first.title": [.russian: "Список пуст — и это ненадолго", .english: "The list is empty — not for long"],
+        "first.subtitle": [.russian: "Phosphor уже посмотрел, что лежит на этой машине. Перенеси готовое или заведи сервер руками — дальше терминал, docker и метрики идут по одному соединению.", .english: "Phosphor has already looked at what this Mac holds. Take what is there or add a server by hand — after that the terminal, docker and metrics all ride one connection."],
+        "first.nothingFound": [.russian: "Готовых серверов на этой машине не нашлось — ни ~/.ssh/config, ни known_hosts, ни Termius.", .english: "Nothing to take from this Mac — no ~/.ssh/config, no known_hosts, no Termius."],
+        "first.take": [.russian: "перенести", .english: "take"],
+        "first.localShell": [.russian: "локальный шелл", .english: "local shell"],
+        "first.next": [.russian: "После первого подключения станут живыми Docker, мониторинг и файлы, а модель через MCP увидит ровно то, что ты ей разрешишь — по умолчанию ничего.", .english: "After the first connection Docker, monitoring and files come alive, and a model over MCP sees exactly what you allow — nothing, by default."],
         "act.step1": [
             .russian: "1 · выбери хост в разделе «Хосты» и поставь ему режим ниже",
             .english: "1 · pick a host under Hosts and give it a mode below",

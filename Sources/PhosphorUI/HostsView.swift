@@ -197,9 +197,16 @@ public struct HostsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label2("\(strings("hosts.all")) · \(model.visibleHosts.count)")
             if model.visibleHosts.isEmpty {
-                Text(strings("hosts.empty"))
-                    .font(style.font(12.5))
-                    .foregroundStyle(style.muted)
+                // Пустой список бывает дважды: в самом начале и после фильтра.
+                // Первый случай — единственный шанс показать, что приложение
+                // уже знает про эту машину; второй — просто пустой фильтр.
+                if model.book.hosts.isEmpty {
+                    FirstRun(model: model)
+                } else {
+                    Text(strings("hosts.empty"))
+                        .font(style.font(12.5))
+                        .foregroundStyle(style.muted)
+                }
             } else {
                 LazyVGrid(
                     columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10

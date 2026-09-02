@@ -90,6 +90,59 @@ extension AppModel {
         return (hosts, url)
     }
 
+    /// Считает, сколько серверов лежит в каждом источнике и ещё не в списке.
+    ///
+    /// Дёшево: три чтения локальных файлов. Дороже было бы спросить человека
+    /// «импортировать?» и заставить его выяснять ответ самому.
+    public func refreshImportOffers() {
+        var offers: [ImportOffer] = []
+        for source in ImportSource.allCases {
+            let count = candidates(from: source).count
+            if count > 0 { offers.append(ImportOffer(key: source.key, count: count, source: source)) }
+        }
+        importOffers = offers
+    }
+
+    /// Переносит всё из источника и обновляет предложения.
+    public func take(_ offer: ImportOffer) {
+        let fresh = candidates(from: offer.source)
+        guard !fresh.isEmpty else { return }
+        book.hosts.append(contentsOf: fresh)
+        scheduleSave()
+        importReport = ImportReport(source: strings(offer.key), added: fresh.count)
+        refreshImportOffers()
+    }
+
+    /// Серверы из источника, которых ещё нет в списке.
+    private func candidates(from source: ImportSource) -> [ServerHost] {
+        switch source {
+        case .sshConfig:
+            let path = NSHomeDirectory() + "/.ssh/config"
+            guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return [] }
+            return unseen(SSHConfigImport.hosts(from: SSHConfigImport.parse(text)))
+        case .knownHosts:
+            let path = KnownHostsFile.defaultPath()
+            guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return [] }
+            // У хэшированных строк имени нет — из них сервер не восстановить.
+            return unseen(
+                KnownHostsFile.parse(text)
+                    .compactMap(\.host)
+                    .map { ServerHost(name: $0, address: $0) })
+        case .termius:
+            return unseen(TermiusHistory.hosts(from: TermiusHistory.scan(), existing: book.hosts))
+        }
+    }
+
+    private func unseen(_ hosts: [ServerHost]) -> [ServerHost] {
+        var seen = Set(book.hosts.map { "\($0.user)@\($0.address):\($0.port)" })
+        var fresh: [ServerHost] = []
+        for host in hosts {
+            let key = "\(host.user)@\(host.address):\(host.port)"
+            if seen.insert(key).inserted { fresh.append(host) }
+        }
+        return fresh
+    }
+
     public func addHost(_ host: ServerHost) {
         book.hosts.append(host)
         scheduleSave()

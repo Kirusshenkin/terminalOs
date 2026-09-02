@@ -53,7 +53,8 @@ public struct Appearance: Codable, Sendable, Equatable {
         logLines: Int? = nil,
         motion: String? = nil,
         connectMotion: String? = nil,
-        logMotion: String? = nil
+        logMotion: String? = nil,
+        biometricReuseSeconds: Double? = nil
     ) {
         self.themeID = themeID
         self.language = language
@@ -71,6 +72,7 @@ public struct Appearance: Codable, Sendable, Equatable {
         self.motion = motion
         self.connectMotion = connectMotion
         self.logMotion = logMotion
+        self.biometricReuseSeconds = biometricReuseSeconds
     }
 }
 

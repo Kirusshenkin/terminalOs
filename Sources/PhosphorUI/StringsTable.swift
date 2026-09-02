@@ -208,6 +208,37 @@ extension Strings {
             .english: "the server wants to write to the clipboard",
         ],
         "term.oddLink": [.russian: "ссылка с необычной схемой", .english: "a link with an unusual scheme"],
+        "nav.profile": [.russian: "профиль", .english: "profile"],
+        "profile.transfer": [.russian: "перенос профиля", .english: "profile transfer"],
+        "profile.transferNote": [
+            .russian: "весь профиль одним зашифрованным файлом под парольной фразой — перенести на "
+                + "другой Мак или восстановить, если утерян мастер-ключ. Пароли хостов остаются в "
+                + "Keychain и в файл не попадают.",
+            .english: "the whole profile as one passphrase-encrypted file — move it to another Mac "
+                + "or restore it if the master key is lost. Host passwords stay in the Keychain and "
+                + "never enter the file.",
+        ],
+        "profile.export": [.russian: "экспорт профиля…", .english: "export profile…"],
+        "profile.import": [.russian: "импорт профиля…", .english: "import profile…"],
+        "profile.exported": [.russian: "профиль экспортирован", .english: "profile exported"],
+        "profile.exportFailed": [.russian: "не удалось экспортировать", .english: "export failed"],
+        "profile.imported": [.russian: "профиль импортирован", .english: "profile imported"],
+        "profile.importFailed": [
+            .russian: "не удалось импортировать — проверь фразу и файл",
+            .english: "import failed — check the passphrase and the file",
+        ],
+        "profile.reuse": [.russian: "окно Touch ID", .english: "Touch ID window"],
+        "profile.reuseNote": [
+            .russian: "сколько секунд одно подтверждение остаётся в силе. Меньше — безопаснее, но чаще прикладывать палец; 0 — спрашивать каждый раз.",
+            .english: "how long one confirmation stays valid. Lower is safer but asks for a finger more often; 0 asks every time.",
+        ],
+        "profile.passphrase": [.russian: "парольная фраза", .english: "passphrase"],
+        "profile.passphraseAgain": [.russian: "фраза ещё раз", .english: "passphrase again"],
+        "profile.passphraseNote": [
+            .russian: "этой фразой файл шифруется и только ею открывается. Забудешь — файл не восстановить.",
+            .english: "this passphrase encrypts the file and is the only thing that opens it. Forget it and the file is unrecoverable.",
+        ],
+        "profile.mismatch": [.russian: "фразы не совпадают", .english: "passphrases do not match"],
         "term.spaces": [.russian: "спейсы", .english: "spaces"],
         "term.noSpaces": [
             .russian: "нет открытых спейсов — нажми + и подключись к серверу",

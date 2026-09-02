@@ -20,6 +20,9 @@ public struct ThemeView: View {
             page
             preview.frame(width: 320)
         }
+        .sheet(item: $model.profilePrompt) { prompt in
+            PassphraseSheet(model: model, prompt: prompt)
+        }
     }
 
     @ViewBuilder private var page: some View {
@@ -204,7 +207,43 @@ public struct ThemeView: View {
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        case .profile:
+            profilePage
         }
+    }
+
+    /// Перенос всего профиля на другой Мак и окно биометрии.
+    private var profilePage: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label2(strings("profile.transfer"))
+            Text(strings("profile.transferNote"))
+                .font(style.font(11)).foregroundStyle(style.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                PhButton(strings("profile.export"), kind: .primary) {
+                    model.profilePrompt = .export
+                }
+                PhButton(strings("profile.import")) { model.chooseImportFile() }
+            }
+            if let note = model.profileNote {
+                Text(note).font(style.font(11.5)).foregroundStyle(style.muted)
+            }
+
+            Label2(strings("profile.reuse"))
+            HStack(spacing: 8) {
+                stepper(
+                    strings("profile.reuse"), value: model.biometricReuseSeconds,
+                    unit: strings("set.sec"), step: 5, range: 0...60
+                ) {
+                    model.applyBiometricReuse($0)
+                }
+            }
+            Text(strings("profile.reuseNote"))
+                .font(style.font(11)).foregroundStyle(style.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func swatch(_ title: String, _ colour: RGBA) -> some View {

@@ -182,6 +182,23 @@ public final class AppModel {
     /// сохранён. Повод предложить запомнить — но не сохранять втихую.
     public var rememberOffer: ServerHost?
 
+    /// Экспорт/импорт профиля: что делаем и итог для человека.
+    public var profilePrompt: ProfilePrompt?
+    public internal(set) var profileNote: String?
+    /// Окно повторного Touch ID в секундах — то же, что задаётся из настроек.
+    public var biometricReuseSeconds: Double = 10
+
+    public enum ProfilePrompt: Identifiable, Sendable {
+        case export
+        case importFrom(URL)
+        public var id: String {
+            switch self {
+            case .export: "export"
+            case .importFrom(let url): "import:\(url.path)"
+            }
+        }
+    }
+
     // MARK: - Постоянные сессии (herdr-стиль)
 
     /// Держать шелл внутри tmux на сервере, чтобы он пережил закрытие
@@ -326,8 +343,8 @@ public final class AppModel {
     }
 
     private let appearance = AppearanceStore()
-    private var gate: any BiometricGate
-    private let profiles: ProfileStore
+    var gate: any BiometricGate
+    let profiles: ProfileStore
     /// Отложенное сохранение: правки копятся и уходят одной записью.
     private var saveTask: Task<Void, Never>?
 
@@ -341,7 +358,8 @@ public final class AppModel {
 
         let saved = appearance.load()
         // Окно повторного Touch ID из настроек: короче — безопаснее.
-        self.gate.reuseDuration = saved.biometricReuseSeconds ?? 10
+        self.biometricReuseSeconds = saved.biometricReuseSeconds ?? 10
+        self.gate.reuseDuration = self.biometricReuseSeconds
         themeID = saved.themeID
         language = Language(rawValue: saved.language) ?? .system
         pet = Pet(rawValue: saved.pet) ?? .cat
@@ -380,7 +398,8 @@ public final class AppModel {
                 logLines: logLines,
                 motion: motion.rawValue,
                 connectMotion: connectMotion.rawValue,
-                logMotion: logMotion.rawValue
+                logMotion: logMotion.rawValue,
+                biometricReuseSeconds: biometricReuseSeconds
             ))
     }
 

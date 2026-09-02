@@ -64,7 +64,7 @@ public enum ActivityPage: String, SectionPage {
 }
 
 public enum ThemePage: String, SectionPage {
-    case palette, glass, language, behaviour
+    case palette, glass, language, behaviour, profile
 
     public var key: String {
         switch self {
@@ -72,6 +72,7 @@ public enum ThemePage: String, SectionPage {
         case .glass: "nav.glass"
         case .language: "nav.language"
         case .behaviour: "nav.behaviour"
+        case .profile: "nav.profile"
         }
     }
 }

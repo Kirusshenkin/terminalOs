@@ -42,6 +42,9 @@ public enum ToolCatalog {
         Tool(name: "run_command", summary: "Выполнить команду на хосте", kind: .write),
         Tool(name: "container_action", summary: "start / stop / restart / rm", kind: .write),
         Tool(name: "manage_authorized_key", summary: "Добавить или удалить ключ", kind: .write),
+        Tool(name: "add_host", summary: "Завести сервер в списке", kind: .write),
+        Tool(name: "update_host", summary: "Изменить сервер в списке", kind: .write),
+        Tool(name: "remove_host", summary: "Убрать сервер из списка", kind: .write),
     ]
 
     public static func tool(named name: String) -> Tool? {

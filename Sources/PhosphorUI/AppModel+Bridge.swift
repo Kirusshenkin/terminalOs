@@ -18,6 +18,9 @@ extension AppModel {
             sessions: { [weak self] id in
                 await self?.selectedHost == id ? await self?.session : nil
             },
+            edit: { [weak self] change in
+                await self?.apply(change)
+            },
             confirm: { [weak self] host, what in
                 await self?.askConfirmation(host: host, what: what) ?? false
             }
@@ -85,4 +88,20 @@ public struct ConfirmationRequest: Identifiable, Sendable {
     public var host: String
     public var what: String
     public var answer: @Sendable (Bool) -> Void
+}
+
+@MainActor
+extension AppModel {
+    /// Применяет правку списка, пришедшую через мост.
+    ///
+    /// Тем же путём, что и правка руками: та же проверка, та же запись
+    /// профиля. Второго способа менять список нет — иначе он однажды
+    /// разойдётся с первым.
+    func apply(_ change: HostEdit) {
+        switch change {
+        case .add(let host): addHost(host)
+        case .update(let host): update(host)
+        case .remove(let id): removeHost(id)
+        }
+    }
 }

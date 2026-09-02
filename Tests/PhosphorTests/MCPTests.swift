@@ -547,3 +547,92 @@ struct HostReportTests {
         #expect(HostReport.text(SessionState()).contains("метрики ещё не собраны"))
     }
 }
+
+@Suite("Правка списка серверов через мост")
+struct HostEditToolTests {
+    /// Исполнитель с пустым списком и согласным человеком.
+    private func runner(
+        book: HostBook = HostBook(),
+        confirmed: Bool = true,
+        applied: @escaping @Sendable (HostEdit) async -> Void = { _ in }
+    ) -> ToolRunner {
+        ToolRunner(
+            policy: AccessPolicy(),
+            audit: AuditLog(),
+            book: { book },
+            sessions: { _ in nil },
+            edit: applied,
+            confirm: { _, _ in confirmed }
+        )
+    }
+
+    @Test("новый сервер попадает в список после согласия человека")
+    func addsAfterConfirmation() async {
+        let box = Box()
+        let runner = runner(applied: { await box.remember($0) })
+        let result = await runner.call(
+            "add_host", arguments: ["address": "192.0.2.10", "user": "deploy", "port": "2222"])
+        #expect(!result.isError)
+        guard case .add(let host)? = await box.value else {
+            Issue.record("правка не дошла до приложения")
+            return
+        }
+        #expect(host.address == "192.0.2.10")
+        #expect(host.user == "deploy")
+        #expect(host.port == 2222)
+    }
+
+    @Test("без адреса заводить нечего")
+    func refusesWithoutAddress() async {
+        let result = await runner().call("add_host", arguments: ["user": "root"])
+        #expect(result.isError)
+    }
+
+    @Test("отказ человека не меняет список")
+    func respectsRefusal() async {
+        let box = Box()
+        let runner = runner(confirmed: false, applied: { await box.remember($0) })
+        let result = await runner.call("add_host", arguments: ["address": "192.0.2.11"])
+        #expect(result.isError)
+        #expect(await box.isEmpty)
+    }
+
+    @Test("сухой прогон рассказывает, но не делает")
+    func dryRunChangesNothing() async {
+        let box = Box()
+        let runner = runner(applied: { await box.remember($0) })
+        let result = await runner.call(
+            "add_host", arguments: ["address": "192.0.2.12"], mode: .dryRun)
+        #expect(!result.isError)
+        #expect(result.text.contains("сделал бы"))
+        #expect(await box.isEmpty)
+    }
+
+    @Test("удаляется только известный сервер")
+    func removesKnownHostOnly() async {
+        var book = HostBook()
+        let host = ServerHost(name: "app-1", address: "192.0.2.13")
+        book.hosts = [host]
+        let box = Box()
+        let runner = runner(book: book, applied: { await box.remember($0) })
+
+        let unknown = await runner.call("remove_host", arguments: ["host": UUID().uuidString])
+        #expect(unknown.isError)
+
+        let known = await runner.call("remove_host", arguments: ["host": host.id.uuidString])
+        #expect(!known.isError)
+        guard case .remove(let id)? = await box.value else {
+            Issue.record("удаление не дошло")
+            return
+        }
+        #expect(id == host.id)
+    }
+
+    /// Запоминает последнюю правку: тесты асинхронные, а проверять надо после.
+    private actor Box {
+        var value: HostEdit?
+        var isEmpty: Bool { value == nil }
+        func remember(_ edit: HostEdit) { value = edit }
+    }
+}
+

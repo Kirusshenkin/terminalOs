@@ -7,7 +7,7 @@ Desktop, Cursor or any other MCP client use those connections — without ever
 seeing a key, a password or a passphrase.
 
 - **Transport:** stdio shim → Unix socket → the running app
-- **Tools:** 10, closed catalogue (7 read, 3 write)
+- **Tools:** 13, closed catalogue (7 read, 6 write)
 - **Auth:** the app is unlocked by Touch ID; the agent inherits a session, not a credential
 - **Default:** every host is `disabled` until you say otherwise
 - **Audit:** every call is recorded, and no tool can erase the record
@@ -124,7 +124,7 @@ so there is nothing to guess.
 
 ## Tools
 
-Ten tools, deliberately. Every one of them is a door into your infrastructure,
+Thirteen tools, deliberately. Every one of them is a door into your infrastructure,
 so "let's add one more" costs more than it looks.
 
 | Tool | What it returns or does | Class |
@@ -139,9 +139,19 @@ so "let's add one more" costs more than it looks.
 | `run_command` | Run a command on a host | **write** |
 | `container_action` | `start` / `stop` / `restart` / `rm` | **write** |
 | `manage_authorized_key` | Add or remove a key | **write** |
+| `add_host` | Put a server into the list | **write** |
+| `update_host` | Change a server in the list | **write** |
+| `remove_host` | Take a server out of the list | **write** |
 
-Read tools never mutate anything and never return a secret. Write tools always
-go through the policy below.
+Read tools never mutate anything and never return a secret. Write tools that
+touch a server go through the policy below.
+
+The last three touch your own list rather than a machine, so they follow a
+different rule: **they always ask, in every mode, including `full`.** A mode
+says how much you trust a server; adding a host says which machine hides behind
+a name, and that is worth seeing with your own eyes before it lands. Removing a
+host takes the entry out of the list — the server itself keeps running where it
+always did.
 
 ---
 

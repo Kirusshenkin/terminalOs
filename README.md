@@ -124,7 +124,9 @@ locked, it never covers your output, and one switch turns it off forever.
 Phosphor is also a **Model Context Protocol server**. Register one command and
 Claude Code, Claude Desktop, Cursor or any other MCP client can list your hosts,
 read metrics, inspect containers, follow logs and — when you allow it — run
-commands, restart containers and manage `authorized_keys`.
+commands, restart containers, manage `authorized_keys`, and add, change or
+remove hosts in your own list. Anything that edits the list asks you first, in
+every mode.
 
 The difference from handing a model a shell: **the app holds the connection, the
 agent holds nothing.**
@@ -147,7 +149,7 @@ In the MCP registry it is `io.github.Kirusshenkin/phosphor`; every release also
 ships a `.mcpb` bundle with a published SHA-256 for clients that install that
 way.
 
-Ten tools, seven of them read-only. Every host starts `disabled` — nothing is
+Thirteen tools, seven of them read-only. Every host starts `disabled` — nothing is
 reachable until you choose `read-only`, `confirm` or `full` for it, and
 production servers are meant to stay `read-only`. A compromised server can put
 anything it likes into a log line the model reads; it still cannot grant itself

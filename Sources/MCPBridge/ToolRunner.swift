@@ -42,18 +42,22 @@ public actor ToolRunner {
     private let confirm: Confirm
     private let sessions: @Sendable (ServerHost.ID) async -> HostSession?
     private let book: @Sendable () async -> HostBook
+    /// Применяет правку списка хостов. Живёт в приложении: там запись на диск.
+    private let edit: @Sendable (HostEdit) async -> Void
 
     public init(
         policy: AccessPolicy,
         audit: AuditLog,
         book: @escaping @Sendable () async -> HostBook,
         sessions: @escaping @Sendable (ServerHost.ID) async -> HostSession?,
+        edit: @escaping @Sendable (HostEdit) async -> Void = { _ in },
         confirm: @escaping Confirm
     ) {
         self.policy = policy
         self.audit = audit
         self.book = book
         self.sessions = sessions
+        self.edit = edit
         self.confirm = confirm
     }
 
@@ -72,6 +76,10 @@ public actor ToolRunner {
             let result = await listHosts()
             await log(tool: tool, host: "—", arguments: arguments, decision: "allow", result: result)
             return result
+        }
+
+        if name == "add_host" || name == "update_host" || name == "remove_host" {
+            return await editHosts(tool: tool, arguments: arguments, mode: mode)
         }
 
         guard let hostID = arguments["host"].flatMap(UUID.init(uuidString:)),
@@ -226,6 +234,79 @@ public actor ToolRunner {
             on: session)
         guard !write.isError else { return write }
         return ToolResult(text: "ключей на сервере: \(updated.count)")
+    }
+
+    /// Правит список серверов: завести, изменить, убрать.
+    ///
+    /// Спрашивает человека всегда — в любом режиме, включая полный. Режимы
+    /// описывают доверие к **серверу**, а здесь меняется твой собственный
+    /// список: адрес, под которым скрывается машина, стоит показать глазами
+    /// прежде, чем он туда попадёт. Из списка убирается только запись —
+    /// сам сервер остаётся жить, где жил.
+    private func editHosts(
+        tool: Tool, arguments: [String: String], mode: RunMode
+    ) async -> ToolResult {
+        let hosts = await book().hosts
+
+        let intent: HostEdit
+        let summary: String
+        switch tool.name {
+        case "add_host":
+            guard let address = arguments["address"]?.trimmingCharacters(in: .whitespaces),
+                !address.isEmpty
+            else { return ToolResult(text: "не указан адрес", isError: true) }
+            let host = ServerHost(
+                name: arguments["name"]?.isEmpty == false ? arguments["name"]! : address,
+                address: address,
+                port: arguments["port"].flatMap(Int.init) ?? 22,
+                user: arguments["user"]?.isEmpty == false ? arguments["user"]! : "root",
+                tags: (arguments["tags"] ?? "")
+                    .split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+            )
+            guard !hosts.contains(where: { $0.address == host.address && $0.user == host.user })
+            else { return ToolResult(text: "такой сервер уже есть в списке") }
+            intent = .add(host)
+            summary = "завести \(host.user)@\(host.address):\(host.port) как «\(host.name)»"
+        case "update_host", "remove_host":
+            guard let id = arguments["host"].flatMap(UUID.init(uuidString:)),
+                var host = hosts.first(where: { $0.id == id })
+            else { return ToolResult(text: "не указан или не найден хост", isError: true) }
+            if tool.name == "remove_host" {
+                intent = .remove(host.id)
+                summary = "убрать «\(host.name)» (\(host.user)@\(host.address)) из списка"
+            } else {
+                if let value = arguments["name"], !value.isEmpty { host.name = value }
+                if let value = arguments["address"], !value.isEmpty { host.address = value }
+                if let value = arguments["user"], !value.isEmpty { host.user = value }
+                if let value = arguments["port"], let port = Int(value) { host.port = port }
+                if let value = arguments["tags"] {
+                    host.tags =
+                        value
+                        .split(separator: ",")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                }
+                intent = .update(host)
+                summary = "изменить «\(host.name)» на \(host.user)@\(host.address):\(host.port)"
+            }
+        default:
+            return ToolResult(text: "неизвестная правка", isError: true)
+        }
+
+        guard mode == .live else { return ToolResult(text: "сделал бы: \(summary)") }
+        guard await confirm("список серверов", summary) else {
+            let refusal = ToolResult(text: "человек отказал", isError: true)
+            await log(
+                tool: tool, host: "—", arguments: arguments, decision: "deny", result: refusal)
+            return refusal
+        }
+
+        await edit(intent)
+        let result = ToolResult(text: "готово: \(summary)")
+        await log(tool: tool, host: "—", arguments: arguments, decision: "confirm", result: result)
+        return result
     }
 
     private func metrics(_ state: SessionState) -> ToolResult {

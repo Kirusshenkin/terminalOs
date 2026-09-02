@@ -88,6 +88,9 @@ public enum BridgeLocation {
         case "container_inspect": ["host", "container"]
         case "container_action": ["host", "container", "action"]
         case "manage_authorized_key": ["host", "operation", "key"]
+        case "add_host": ["name", "address", "user", "port", "tags"]
+        case "update_host": ["host", "name", "address", "user", "port", "tags"]
+        case "remove_host": ["host"]
         default: ["host"]
         }
     }

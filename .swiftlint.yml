@@ -78,6 +78,8 @@ cyclomatic_complexity: { warning: 10, error: 18 }
 custom_rules:
   no_print:
     name: "print вместо логгера"
+    # Шим общается с клиентом через stdout — это его протокол, а не вывод.
+    excluded: ".*phosphor-mcp.*"
     regex: '(^|[^\w.])print\('
     message: "Только Logger: через print секрет может утечь в системный лог"
     severity: warning

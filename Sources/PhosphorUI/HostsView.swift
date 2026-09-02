@@ -1,5 +1,6 @@
 public import HostsKit
 public import PhosphorCore
+public import ProvisionKit
 public import SwiftUI
 public import ThemeKit
 
@@ -14,7 +15,7 @@ public struct HostsView: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: 22) {
-            SectionNav(strings: strings, page: $model.page)
+            SectionNav(title: strings("nav.hosts"), strings: strings, page: $model.page)
             Rectangle().fill(style.rule).frame(width: 1)
             page
         }
@@ -170,49 +171,8 @@ public struct HostsView: View {
             Task { await model.connect(to: host) }
         } label: {
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 11) {
-                    Text(host.osBadge)
-                        .font(style.font(10))
-                        .foregroundStyle(style.muted)
-                        .frame(width: 30, height: 30)
-                        .overlay(Rectangle().stroke(style.text.opacity(0.35), lineWidth: 1))
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text(host.name).font(style.font(12.5)).foregroundStyle(style.bright)
-                            if connected {
-                                Text("●").font(style.font(9)).foregroundStyle(style.accent)
-                            }
-                            // Значок стоит рядом с настоящим аптаймом, а не вместо него.
-                            if let uptime = profile?.uptimeSeconds,
-                                let egg = model.eggs.unbreakableBadge(uptimeSeconds: uptime)
-                            {
-                                Text(strings(egg))
-                                    .font(style.font(9.5)).foregroundStyle(style.warning)
-                            }
-                        }
-                        Text("\(host.user)@\(host.address):\(host.port)")
-                            .font(style.font(10.5)).foregroundStyle(style.muted).lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                }
-
-                // Вторая строка живёт, только когда есть что сказать.
-                HStack(spacing: 10) {
-                    detail(icon: "→", text: model.book.reach(for: host).summary)
-                    if let group = model.book.group(for: host) {
-                        detail(icon: "■", text: group.name)
-                    }
-                    if let profile {
-                        detail(icon: "↑", text: ByteFormat.duration(seconds: profile.uptimeSeconds))
-                        if profile.containerCount > 0 {
-                            detail(icon: "▣", text: "\(profile.containerCount)")
-                        }
-                        detail(icon: "⚿", text: "\(profile.authorizedKeyCount)")
-                    }
-                    Spacer(minLength: 0)
-                }
-                .font(style.font(10.5))
-
+                cardHeader(host, connected: connected, profile: profile)
+                cardDetails(host, profile: profile)
                 if !host.tags.isEmpty {
                     Text(host.tags.joined(separator: " · "))
                         .font(style.font(10.5)).foregroundStyle(style.muted).lineLimit(1)
@@ -226,5 +186,72 @@ public struct HostsView: View {
                     connected ? style.accent : style.text.opacity(0.22), lineWidth: 1))
         }
         .buttonStyle(.plain)
+        .contextMenu { cardMenu(host) }
+    }
+
+    private func cardHeader(
+        _ host: ServerHost, connected: Bool, profile: HostProfile?
+    ) -> some View {
+        HStack(spacing: 11) {
+            Text(host.osBadge)
+                .font(style.font(10))
+                .foregroundStyle(style.muted)
+                .frame(width: 30, height: 30)
+                .overlay(Rectangle().stroke(style.text.opacity(0.35), lineWidth: 1))
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(host.name).font(style.font(12.5)).foregroundStyle(style.bright)
+                    if connected {
+                        Text("●").font(style.font(9)).foregroundStyle(style.accent)
+                    }
+                    // Значок стоит рядом с настоящим аптаймом, а не вместо него.
+                    if let uptime = profile?.uptimeSeconds,
+                        let egg = model.eggs.unbreakableBadge(uptimeSeconds: uptime)
+                    {
+                        Text(strings(egg)).font(style.font(9.5)).foregroundStyle(style.warning)
+                    }
+                }
+                Text("\(host.user)@\(host.address):\(host.port)")
+                    .font(style.font(10.5)).foregroundStyle(style.muted).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// Вторая строка живёт, только когда есть что сказать.
+    private func cardDetails(_ host: ServerHost, profile: HostProfile?) -> some View {
+        HStack(spacing: 10) {
+            detail(icon: "→", text: model.book.reach(for: host).summary)
+            if let group = model.book.group(for: host) {
+                detail(icon: "■", text: group.name)
+            }
+            if let profile {
+                detail(icon: "↑", text: ByteFormat.duration(seconds: profile.uptimeSeconds))
+                if profile.containerCount > 0 {
+                    detail(icon: "▣", text: "\(profile.containerCount)")
+                }
+                detail(icon: "⚿", text: "\(profile.authorizedKeyCount)")
+            }
+            Spacer(minLength: 0)
+        }
+        .font(style.font(10.5))
+    }
+
+    /// Правка и удаление живут здесь: сама карточка — это кнопка
+    /// «подключиться», и путать одно с другим не стоит.
+    @ViewBuilder private func cardMenu(_ host: ServerHost) -> some View {
+        Button("подключиться") {
+            model.screen = .terminal
+            Task { await model.connect(to: host) }
+        }
+        Button("файлы") {
+            model.screen = .files
+            Task { await model.connect(to: host) }
+        }
+        Divider()
+        Button("править…") { model.editingHost = host }
+        Button("дублировать") { model.duplicate(host) }
+        Divider()
+        Button("удалить", role: .destructive) { model.pendingHostRemoval = host }
     }
 }

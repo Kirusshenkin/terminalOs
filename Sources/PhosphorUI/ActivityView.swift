@@ -15,11 +15,55 @@ public struct ActivityView: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: 22) {
-            access
+            SectionNav(
+                title: model.strings("tab.activity"),
+                strings: model.strings, page: $model.activityPage)
             Rectangle().fill(style.rule).frame(width: 1)
-            journal
+            switch model.activityPage {
+            case .journal: journal
+            case .access: access
+            case .tools: tools
+            }
         }
         .task { await model.loadAudit() }
+    }
+
+    /// Что вообще может быть вызвано: список закрытый и короткий намеренно.
+    private var tools: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label2("инструменты · \(ToolCatalog.all.count)")
+            Text(
+                "каждый инструмент — это дверь в твою инфраструктуру, "
+                    + "поэтому список закрытый и короткий"
+            )
+            .font(style.font(11)).foregroundStyle(style.muted)
+            HStack(spacing: 10) {
+                Label2("имя").frame(width: 210, alignment: .leading)
+                Label2("что делает").frame(maxWidth: .infinity, alignment: .leading)
+                Label2("класс").frame(width: 90, alignment: .leading)
+            }
+            .padding(.top, 6).padding(.bottom, 4)
+            .overlay(alignment: .bottom) { Rule() }
+
+            ForEach(ToolCatalog.all) { tool in
+                HStack(spacing: 10) {
+                    Text(tool.name)
+                        .foregroundStyle(style.text).frame(width: 210, alignment: .leading)
+                    Text(tool.summary)
+                        .foregroundStyle(style.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(tool.kind == .write ? "запись" : "чтение")
+                        .foregroundStyle(tool.kind == .write ? style.warning : style.accent)
+                        .frame(width: 90, alignment: .leading)
+                }
+                .font(style.font(12))
+                .padding(.vertical, 4)
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(style.rule.opacity(0.4)).frame(height: 1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     private var access: some View {
@@ -86,7 +130,7 @@ public struct ActivityView: View {
                 .background(style.surface)
                 .overlay(Rectangle().stroke(style.warning.opacity(0.4), lineWidth: 1))
         }
-        .frame(width: 340, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Чем опаснее режим, тем заметнее цвет.

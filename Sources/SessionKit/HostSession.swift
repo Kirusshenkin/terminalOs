@@ -283,6 +283,30 @@ public actor HostSession {
         }
     }
 
+    /// Образы, тома и сети. Спрашиваются по запросу, а не в цикле опроса:
+    /// они меняются редко, и держать их в постоянном обновлении незачем.
+    public func resources() async -> (
+        images: [DockerImage], volumes: [DockerVolume], networks: [DockerNetwork]
+    ) {
+        guard state.profile?.dockerPath != nil else { return ([], [], []) }
+        let prefix = state.profile?.dockerPrefix ?? "docker"
+        async let images = fetch(DockerCLI.images(prefix: prefix))
+        async let volumes = fetch(DockerCLI.volumes(prefix: prefix))
+        async let networks = fetch(DockerCLI.networks(prefix: prefix))
+        return await (
+            DockerCLI.parseImages(images),
+            DockerCLI.parseVolumes(volumes),
+            DockerCLI.parseNetworks(networks)
+        )
+    }
+
+    private func fetch(_ command: String) async -> String {
+        guard let result = try? await transport.run(command, timeout: .seconds(30)),
+            result.succeeded
+        else { return "" }
+        return result.stdout
+    }
+
     public func run(_ command: String) async throws -> CommandResult {
         try await transport.run(command)
     }

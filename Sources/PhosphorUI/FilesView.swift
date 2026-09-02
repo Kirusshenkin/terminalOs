@@ -55,60 +55,63 @@ public struct FilesView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label2(title)
             Text(path).font(style.font(12)).foregroundStyle(style.muted).lineLimit(1)
-            HStack(spacing: 8) {
-                Label2("имя").frame(maxWidth: .infinity, alignment: .leading)
-                Label2("изменён").frame(width: 120, alignment: .leading)
-                Label2("размер").frame(width: 80, alignment: .trailing)
-            }
-            .padding(.bottom, 4)
-            .overlay(alignment: .bottom) { Rule() }
-
+            columns
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(files) { file in
-                        Button {
-                            onOpen(file)
-                        } label: {
-                            HStack(spacing: 8) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    HStack(spacing: 6) {
-                                        Text(file.isDirectory ? "▸" : " ")
-                                            .foregroundStyle(style.muted)
-                                        Text(file.name)
-                                            .foregroundStyle(file.isDirectory ? style.bright : style.text)
-                                        if let target = file.linkTarget {
-                                            Text("→ \(target)")
-                                                .font(style.font(10.5))
-                                                .foregroundStyle(style.muted)
-                                        }
-                                    }
-                                    Text("\(file.permissions)  \(file.owner)")
-                                        .font(style.font(10)).foregroundStyle(style.muted)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-
-                                Text(
-                                    file.modified.map {
-                                        $0.formatted(date: .numeric, time: .shortened)
-                                    } ?? "—"
-                                )
-                                .font(style.font(11)).foregroundStyle(style.muted)
-                                .frame(width: 120, alignment: .leading)
-
-                                Text(file.isDirectory ? "—" : ByteFormat.size(file.size))
-                                    .font(style.font(11)).foregroundStyle(style.muted)
-                                    .frame(width: 80, alignment: .trailing)
-                            }
-                            .font(style.font(12))
-                            .padding(.vertical, 4)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                        fileRow(file, onOpen: onOpen)
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var columns: some View {
+        HStack(spacing: 8) {
+            Label2("имя").frame(maxWidth: .infinity, alignment: .leading)
+            Label2("изменён").frame(width: 120, alignment: .leading)
+            Label2("размер").frame(width: 80, alignment: .trailing)
+        }
+        .padding(.bottom, 4)
+        .overlay(alignment: .bottom) { Rule() }
+    }
+
+    private func fileRow(
+        _ file: RemoteFile, onOpen: @escaping (RemoteFile) -> Void
+    ) -> some View {
+        Button {
+            onOpen(file)
+        } label: {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 6) {
+                        Text(file.isDirectory ? "▸" : " ").foregroundStyle(style.muted)
+                        Text(file.name)
+                            .foregroundStyle(file.isDirectory ? style.bright : style.text)
+                        if let target = file.linkTarget {
+                            Text("→ \(target)")
+                                .font(style.font(10.5)).foregroundStyle(style.muted)
+                        }
+                    }
+                    Text("\(file.permissions)  \(file.owner)")
+                        .font(style.font(10)).foregroundStyle(style.muted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(file.modified.map { $0.formatted(date: .numeric, time: .shortened) } ?? "—")
+                    .font(style.font(11)).foregroundStyle(style.muted)
+                    .frame(width: 120, alignment: .leading)
+
+                Text(file.isDirectory ? "—" : ByteFormat.size(file.size))
+                    .font(style.font(11)).foregroundStyle(style.muted)
+                    .frame(width: 80, alignment: .trailing)
+            }
+            .font(style.font(12))
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var hint: some View {

@@ -50,6 +50,20 @@ public struct RootView: View {
             )
         }
         .sheet(isPresented: $model.isAddingHost) { HostEditor(model: model) }
+        .sheet(item: $model.editingHost) { host in HostEditor(model: model, editing: host) }
+        .alert(item: $model.pendingHostRemoval) { host in
+            Alert(
+                title: Text("удалить «\(host.name)»?"),
+                message: Text(
+                    "\(host.user)@\(host.address) — из списка, "
+                        + "но не с сервера: сам сервер останется на месте"),
+                primaryButton: .destructive(Text("удалить")) {
+                    model.removeHost(host.id)
+                    model.pendingHostRemoval = nil
+                },
+                secondaryButton: .cancel(Text("отмена"))
+            )
+        }
         // Вопрос от MCP: показываем ровно то, что собираются сделать, и на
         // каком хосте. Согласиться вслепую здесь нельзя.
         .alert(item: $model.mcpConfirmation) { request in

@@ -5,16 +5,18 @@ public import SwiftUI
 public struct HostEditor: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    /// Хост, который правим. Пусто — создаём новый.
+    private let existing: ServerHost?
 
-    @State private var name = ""
-    @State private var address = ""
-    @State private var user = "root"
-    @State private var port = "22"
-    @State private var tags = ""
+    @State private var name: String
+    @State private var address: String
+    @State private var user: String
+    @State private var port: String
+    @State private var tags: String
     @State private var groupID: HostGroup.ID?
-    @State private var reachKind = ReachKind.direct
-    @State private var proxyHost = "127.0.0.1"
-    @State private var proxyPort = "10808"
+    @State private var reachKind: ReachKind
+    @State private var proxyHost: String
+    @State private var proxyPort: String
 
     private enum ReachKind: String, CaseIterable {
         case direct, socks
@@ -26,7 +28,25 @@ public struct HostEditor: View {
         }
     }
 
-    public init(model: AppModel) { self.model = model }
+    public init(model: AppModel, editing host: ServerHost? = nil) {
+        self.model = model
+        self.existing = host
+        _name = State(initialValue: host?.name ?? "")
+        _address = State(initialValue: host?.address ?? "")
+        _user = State(initialValue: host?.user ?? "root")
+        _port = State(initialValue: String(host?.port ?? 22))
+        _tags = State(initialValue: host?.tags.joined(separator: ", ") ?? "")
+        _groupID = State(initialValue: host?.groupID)
+        if case .socks(let proxyHost, let proxyPort) = host?.reach {
+            _reachKind = State(initialValue: .socks)
+            _proxyHost = State(initialValue: proxyHost)
+            _proxyPort = State(initialValue: String(proxyPort))
+        } else {
+            _reachKind = State(initialValue: .direct)
+            _proxyHost = State(initialValue: "127.0.0.1")
+            _proxyPort = State(initialValue: "10808")
+        }
+    }
 
     /// Имя не обязательно: если его не задали, берём адрес — так карточка
     /// никогда не будет безымянной.
@@ -45,7 +65,8 @@ public struct HostEditor: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("новый хост").font(style.font(15)).foregroundStyle(style.bright)
+            Text(existing == nil ? "новый хост" : "правка хоста")
+                .font(style.font(15)).foregroundStyle(style.bright)
 
             VStack(alignment: .leading, spacing: 10) {
                 field("адрес", text: $address, placeholder: "10.0.0.1 или example.com")
@@ -64,8 +85,16 @@ public struct HostEditor: View {
 
             HStack(spacing: 8) {
                 Spacer()
-                PhButton("отмена") { model.isAddingHost = false }
-                PhButton("добавить", kind: .primary) { save() }
+                if let existing {
+                    PhButton("удалить", kind: .danger) {
+                        model.pendingHostRemoval = existing
+                        model.editingHost = nil
+                        model.isAddingHost = false
+                    }
+                    Spacer()
+                }
+                PhButton("отмена") { close() }
+                PhButton(existing == nil ? "добавить" : "сохранить", kind: .primary) { save() }
                     .disabled(!isValid)
                     .opacity(isValid ? 1 : 0.4)
             }
@@ -132,8 +161,14 @@ public struct HostEditor: View {
         .buttonStyle(.plain)
     }
 
+    private func close() {
+        model.isAddingHost = false
+        model.editingHost = nil
+    }
+
     private func save() {
         let host = ServerHost(
+            id: existing?.id ?? UUID(),
             name: resolvedName,
             address: address.trimmingCharacters(in: .whitespaces),
             port: Int(port) ?? 22,
@@ -146,7 +181,7 @@ public struct HostEditor: View {
                 ? .socks(host: proxyHost, port: Int(proxyPort) ?? 1080)
                 : .direct
         )
-        model.addHost(host)
-        model.isAddingHost = false
+        if existing == nil { model.addHost(host) } else { model.update(host) }
+        close()
     }
 }

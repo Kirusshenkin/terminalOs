@@ -23,7 +23,7 @@ public actor SystemSSHTransport: SSHTransport {
     ///
     /// Публичный, потому что интерактивный шелл в терминале обязан ехать по
     /// тому же соединению: иначе будет второй логин и второй Touch ID.
-    public nonisolated let socketPath: String
+    nonisolated public let socketPath: String
 
     public init(host: ServerHost, reach: Reach) {
         self.host = host

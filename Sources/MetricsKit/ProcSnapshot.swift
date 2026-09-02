@@ -179,13 +179,22 @@ public enum SnapshotParser {
         case .core: appendCore(fields, to: &builder)
         case .memory: memory(from: fields, into: &builder)
         case .disk: filesystem(from: fields).map { builder.filesystems.append($0) }
+        case .network, .block, .files, .process, .kernel, .cpu:
+            applyExtras(tag: tag, fields: fields, to: &builder)
+        case nil: break
+        }
+    }
+
+    /// Записи, добавленные позже основных: диски, процессы, неизменное.
+    private static func applyExtras(tag: String, fields: [String], to builder: inout Builder) {
+        switch Record(rawValue: tag) {
         case .network: interface(from: fields).map { builder.interfaces.append($0) }
         case .block: disk(from: fields).map { builder.disks.append($0) }
         case .files: builder.openFiles = Int(fields.count > 1 ? fields[1] : "0") ?? 0
         case .process: process(from: fields).map { builder.processes.append($0) }
         case .kernel: builder.kernel = fields.dropFirst().joined(separator: " ")
         case .cpu: builder.cpuModel = fields.dropFirst().joined(separator: " ")
-        case nil: break
+        default: break
         }
     }
 

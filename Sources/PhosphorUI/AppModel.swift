@@ -53,6 +53,9 @@ public final class AppModel {
     public var query = ""
     public var selectedHost: ServerHost.ID?
     public var isAddingHost = false
+    /// Хост, открытый на правку, и хост, ожидающий подтверждения удаления.
+    public var editingHost: ServerHost?
+    public var pendingHostRemoval: ServerHost?
     public var importReport: ImportReport?
 
     /// Живая сессия выбранного хоста, если он подключён.
@@ -70,8 +73,17 @@ public final class AppModel {
     /// Что терминал просит подтвердить: запись в буфер, необычная ссылка.
     public var guardPrompt: GuardPrompt?
 
-    /// Страница внутри раздела «Хосты».
+    /// Страница внутри каждого раздела.
     public var page: HostsPage = .hosts
+    public var dockerPage: DockerPage = .containers
+    public var monitorPage: MonitorPage = .overview
+    public var activityPage: ActivityPage = .journal
+    public var themePage: ThemePage = .palette
+
+    /// Образы, тома и сети выбранного хоста.
+    public internal(set) var images: [DockerImage] = []
+    public internal(set) var volumes: [DockerVolume] = []
+    public internal(set) var networks: [DockerNetwork] = []
 
     /// Пробросы портов и их состояние.
     public var forwards: [PortForward] = []

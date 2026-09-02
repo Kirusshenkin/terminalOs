@@ -157,59 +157,78 @@ public struct DockerView: View {
 
     @ViewBuilder private func content(for container: Container) -> some View {
         switch tab {
-        case "docker.overview":
-            VStack(alignment: .leading, spacing: 12) {
-                if let warning = exposedWarning(container) {
-                    Text(warning)
-                        .font(style.font(11.5)).foregroundStyle(style.warning)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(style.surface)
-                        .overlay(Rectangle().stroke(style.warning.opacity(0.45), lineWidth: 1))
-                }
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4),
-                    spacing: 12
-                ) {
-                    ForEach(overview(container), id: \.0) { item in
-                        VStack(alignment: .leading, spacing: 5) {
-                            Label2(item.0)
-                            Text(item.1)
-                                .font(style.font(12)).foregroundStyle(style.bright)
-                                .lineLimit(2)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12).padding(.vertical, 10)
-                        .background(style.surface)
+        case "docker.overview": overviewPage(container)
+        case "docker.env": environmentPage
+        default: logsPage
+        }
+    }
+
+    /// Двенадцать полей и предупреждение о порте наружу, если оно уместно.
+    private func overviewPage(_ container: Container) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let warning = exposedWarning(container) {
+                Text(warning)
+                    .font(style.font(11.5)).foregroundStyle(style.warning)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(style.surface)
+                    .overlay(Rectangle().stroke(style.warning.opacity(0.45), lineWidth: 1))
+            }
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4),
+                spacing: 12
+            ) {
+                ForEach(overview(container), id: \.0) { item in
+                    VStack(alignment: .leading, spacing: 5) {
+                        Label2(item.0)
+                        Text(item.1)
+                            .font(style.font(12)).foregroundStyle(style.bright).lineLimit(2)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+                    .background(style.surface)
                 }
             }
-        case "docker.env":
-            VStack(alignment: .leading, spacing: 4) {
-                // Values of secret-looking names never leave the mask, in the
-                // interface or in an MCP answer.
-                ForEach(Redaction.apply(to: Self.demoEnvironment), id: \.name) { item in
-                    HStack(spacing: 0) {
-                        Text(item.name).foregroundStyle(style.text)
-                        Text("=").foregroundStyle(style.muted)
-                        Text(item.value).foregroundStyle(style.bright)
-                    }
-                    .font(style.font(12))
+        }
+    }
+
+    private var environmentPage: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // Значения переменных с секретными именами не покидают маску —
+            // ни на экране, ни в ответе MCP.
+            ForEach(Redaction.apply(to: Self.demoEnvironment), id: \.name) { item in
+                HStack(spacing: 0) {
+                    Text(item.name).foregroundStyle(style.text)
+                    Text("=").foregroundStyle(style.muted)
+                    Text(item.value).foregroundStyle(style.bright)
                 }
-                Text(strings("docker.secretsHidden"))
-                    .font(style.font(11)).foregroundStyle(style.muted).padding(.top, 6)
+                .font(style.font(12))
             }
-        default:
+            Text(strings("docker.secretsHidden"))
+                .font(style.font(11)).foregroundStyle(style.muted).padding(.top, 6)
+        }
+    }
+
+    @ViewBuilder private var logsPage: some View {
+        let live = model.logs.elements
+        ScrollView {
             VStack(alignment: .leading, spacing: 2) {
-                ForEach(Self.demoLogs, id: \.0) { line in
-                    Text(line.0)
-                        .font(style.font(12))
-                        .foregroundStyle(
-                            line.1 == 0
-                                ? style.text.opacity(0.85)
-                                : line.1 == 1 ? style.warning : style.danger)
+                if live.isEmpty {
+                    ForEach(Self.demoLogs, id: \.0) { line in
+                        Text(line.0).font(style.font(12)).foregroundStyle(colour(level: line.1))
+                    }
+                    Text("нет подключения — показан пример")
+                        .font(style.font(10.5)).foregroundStyle(style.muted).padding(.top, 6)
+                } else {
+                    ForEach(Array(live.enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(style.font(12))
+                            .foregroundStyle(colour(level: Self.level(of: line)))
+                            .textSelection(.enabled)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -224,7 +243,9 @@ public struct DockerView: View {
     /// Подсветка по уровню, без разбора формата: строки бывают любые.
     private static func level(of line: String) -> Int {
         let upper = line.uppercased()
-        if upper.contains("ERROR") || upper.contains("FATAL") || upper.contains("PANIC") { return 2 }
+        if upper.contains("ERROR") || upper.contains("FATAL") || upper.contains("PANIC") {
+            return 2
+        }
         if upper.contains("WARN") { return 1 }
         return 0
     }

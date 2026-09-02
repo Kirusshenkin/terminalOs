@@ -6,7 +6,7 @@ public import SwiftUI
 /// Всё, что известно о состоянии сервера, на одном экране.
 public struct MonitorView: View {
     @Environment(\.style) private var style
-    let model: AppModel
+    @Bindable var model: AppModel
 
     public init(model: AppModel) { self.model = model }
 
@@ -15,18 +15,70 @@ public struct MonitorView: View {
     private var isLive: Bool { snapshot != nil }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            summary
-            Rule()
+        HStack(alignment: .top, spacing: 22) {
+            SectionNav(title: strings("tab.monitor"), strings: strings, page: $model.monitorPage)
+            Rectangle().fill(style.rule).frame(width: 1)
+            VStack(alignment: .leading, spacing: 12) {
+                summary
+                Rule()
+                page
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    /// Каждая страница показывает своё во всю ширину, а не втискивается
+    /// в треть экрана рядом с двумя другими.
+    @ViewBuilder private var page: some View {
+        switch model.monitorPage {
+        case .overview:
             HStack(alignment: .top, spacing: 20) {
                 cores
                 Rectangle().fill(style.rule).frame(width: 1)
                 middle
-                Rectangle().fill(style.rule).frame(width: 1)
-                right
+            }
+        case .processes: processes
+        case .storage: middle
+        case .network: right
+        }
+    }
+
+    /// Полный список процессов, а не пять строк в углу.
+    private var processes: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label2("самые тяжёлые процессы")
+            HStack(spacing: 10) {
+                Label2("pid").frame(width: 70, alignment: .trailing)
+                Label2("команда").frame(maxWidth: .infinity, alignment: .leading)
+                Label2("cpu").frame(width: 70, alignment: .trailing)
+                Label2("память").frame(width: 80, alignment: .trailing)
+            }
+            .padding(.bottom, 4)
+            .overlay(alignment: .bottom) { Rule() }
+
+            if snapshot?.processes.isEmpty ?? true {
+                Text("нет данных — подключись к хосту")
+                    .font(style.font(12)).foregroundStyle(style.muted)
+            }
+            ForEach(snapshot?.processes ?? [], id: \.pid) { process in
+                HStack(spacing: 10) {
+                    Text("\(process.pid)")
+                        .foregroundStyle(style.muted).frame(width: 70, alignment: .trailing)
+                    Text(process.command)
+                        .foregroundStyle(style.text)
+                        .frame(maxWidth: .infinity, alignment: .leading).lineLimit(1)
+                    Text(ByteFormat.percent(process.cpu))
+                        .foregroundStyle(process.cpu > 0.5 ? style.warning : style.text)
+                        .frame(width: 70, alignment: .trailing)
+                    Text(ByteFormat.percent(process.memory))
+                        .foregroundStyle(style.muted).frame(width: 80, alignment: .trailing)
+                }
+                .font(style.font(12))
+                .padding(.vertical, 3)
             }
             Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Верхняя строка: то, что хочется знать, не читая ничего дальше.

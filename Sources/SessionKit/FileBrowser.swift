@@ -127,7 +127,7 @@ public actor FileBrowser {
     }
 
     /// Нормализует переход по пути, не позволяя выйти за корень.
-    public nonisolated func resolve(_ current: String, entering name: String) -> String {
+    nonisolated public func resolve(_ current: String, entering name: String) -> String {
         if name == ".." {
             let parent = (current as NSString).deletingLastPathComponent
             return parent.isEmpty ? "/" : parent

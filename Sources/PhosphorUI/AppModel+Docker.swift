@@ -34,6 +34,20 @@ extension AppModel {
         lastOutcome = await session.perform(action, on: container)
     }
 
+    /// Подтягивает образы, тома и сети выбранного хоста.
+    public func loadResources() async {
+        guard let session else {
+            images = []
+            volumes = []
+            networks = []
+            return
+        }
+        let fetched = await session.resources()
+        images = fetched.images
+        volumes = fetched.volumes
+        networks = fetched.networks
+    }
+
     /// Переключает поток логов на другой контейнер.
     public func watchLogs(of container: Container) async {
         logTask?.cancel()

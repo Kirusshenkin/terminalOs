@@ -24,6 +24,15 @@ extension AppModel {
         scheduleSave()
     }
 
+    /// Копия хоста рядом: удобно, когда серверы отличаются одной цифрой.
+    public func duplicate(_ host: ServerHost) {
+        var copy = host
+        copy.id = UUID()
+        copy.name = host.name + " копия"
+        book.hosts.append(copy)
+        scheduleSave()
+    }
+
     public func removeHost(_ id: ServerHost.ID) {
         book.hosts.removeAll { $0.id == id }
         if selectedHost == id {

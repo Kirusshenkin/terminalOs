@@ -121,10 +121,19 @@ public struct PetCorner: View {
     private func drawCat(
         _ context: inout GraphicsContext, size: CGSize, ink: Color, line: Color
     ) {
+        drawCatScenery(&context, size: size, line: line)
+        drawCatBody(&context, base: CGPoint(x: 108, y: size.height - 24), ink: ink)
+    }
+
+    /// Пол, коробка и мячик — мир кота.
+    private func drawCatScenery(
+        _ context: inout GraphicsContext, size: CGSize, line: Color
+    ) {
         let floor = size.height - 24
         context.stroke(
             Path {
-                $0.move(to: CGPoint(x: 6, y: floor)); $0.addLine(to: CGPoint(x: size.width - 30, y: floor))
+                $0.move(to: CGPoint(x: 6, y: floor))
+                $0.addLine(to: CGPoint(x: size.width - 30, y: floor))
             },
             with: .color(style.text.opacity(0.16)), lineWidth: 1)
 
@@ -133,7 +142,7 @@ public struct PetCorner: View {
         context.stroke(Path(box), with: .color(line), lineWidth: 1.4)
         context.stroke(
             Path {
-                $0.move(to: CGPoint(x: box.minX, y: box.minY + 9));
+                $0.move(to: CGPoint(x: box.minX, y: box.minY + 9))
                 $0.addLine(to: CGPoint(x: box.maxX, y: box.minY + 9))
             },
             with: .color(line), lineWidth: 1.4)
@@ -143,8 +152,10 @@ public struct PetCorner: View {
             Path(ellipseIn: CGRect(x: size.width - 62, y: floor - 13, width: 13, height: 13)),
             with: .color(line), lineWidth: 1.4)
 
-        let base = CGPoint(x: 108, y: floor)
+    }
 
+    /// Сам кот: сидит, хвост кольцом, глаза закрыты.
+    private func drawCatBody(_ context: inout GraphicsContext, base: CGPoint, ink: Color) {
         // Хвост: обвивает лапы спереди — так сидят коты.
         var tail = Path()
         tail.move(to: CGPoint(x: base.x + 26, y: base.y - 6))
@@ -201,6 +212,14 @@ public struct PetCorner: View {
     private func drawGlider(
         _ context: inout GraphicsContext, size: CGSize, ink: Color, line: Color
     ) {
+        drawTree(&context, size: size, line: line)
+        drawGliderBody(&context, perch: CGPoint(x: 96, y: 44), ink: ink, line: line)
+    }
+
+    /// Ствол с дуплом, ветки и цветок эвкалипта — мир поссума. Пола в нём нет.
+    private func drawTree(
+        _ context: inout GraphicsContext, size: CGSize, line: Color
+    ) {
         // Ствол эвкалипта: слегка сужается кверху, с бороздами коры.
         var trunk = Path()
         trunk.move(to: CGPoint(x: 10, y: size.height))
@@ -213,7 +232,8 @@ public struct PetCorner: View {
         for x in [CGFloat(20), CGFloat(30)] {
             context.stroke(
                 Path {
-                    $0.move(to: CGPoint(x: x, y: 12)); $0.addLine(to: CGPoint(x: x + 2, y: size.height - 6))
+                    $0.move(to: CGPoint(x: x, y: 12))
+                    $0.addLine(to: CGPoint(x: x + 2, y: size.height - 6))
                 },
                 with: .color(line.opacity(0.35)), lineWidth: 1)
         }
@@ -246,8 +266,11 @@ public struct PetCorner: View {
             control1: CGPoint(x: 100, y: size.height - 24), control2: CGPoint(x: 160, y: size.height - 22))
         context.stroke(lower, with: .color(line), lineWidth: 2.2)
 
-        // Цветок эвкалипта на нижней ветке: его еда.
-        let flower = CGPoint(x: size.width - 44, y: size.height - 30)
+        drawFlower(&context, at: CGPoint(x: size.width - 44, y: size.height - 30))
+    }
+
+    /// Цветок эвкалипта: его еда.
+    private func drawFlower(_ context: inout GraphicsContext, at flower: CGPoint) {
         for angle in stride(from: -70.0, through: 70.0, by: 35.0) {
             let radians = angle * .pi / 180
             context.stroke(
@@ -259,8 +282,6 @@ public struct PetCorner: View {
                 },
                 with: .color(style.accent.opacity(0.55)), lineWidth: 1.2)
         }
-
-        drawGliderBody(&context, perch: CGPoint(x: 96, y: 44), ink: ink, line: line)
     }
 
     /// Сам зверь, сидящий на ветке.
@@ -308,6 +329,13 @@ public struct PetCorner: View {
                 with: .color(ink), style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
         }
 
+        drawGliderHead(&context, perch: perch, ink: ink)
+    }
+
+    /// Голова: большие глаза, полоса по лбу, крупные округлые уши.
+    private func drawGliderHead(
+        _ context: inout GraphicsContext, perch: CGPoint, ink: Color
+    ) {
         // Голова: круглая, с чуть вытянутой мордочкой.
         let head = CGRect(x: perch.x - 4, y: perch.y - 42, width: 24, height: 21)
         context.fill(Path(ellipseIn: head), with: .color(ink))

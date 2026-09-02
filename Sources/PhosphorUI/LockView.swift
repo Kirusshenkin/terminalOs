@@ -17,7 +17,9 @@ public struct LockView: View {
     /// Что доступно на этом Маке — показываем только это.
     private let capability: String
     private let error: String?
-    private let onUnlock: () async -> Void
+    /// Возвращает `true`, если профиль действительно открыт: развёртка
+    /// играется только после этого.
+    private let onUnlock: () async -> Bool
 
     @State private var phase: Phase = .waiting
     @State private var arc: CGFloat = 0
@@ -36,7 +38,7 @@ public struct LockView: View {
         welcome: Welcome,
         capability: String,
         error: String? = nil,
-        onUnlock: @escaping () async -> Void
+        onUnlock: @escaping () async -> Bool
     ) {
         self.strings = strings
         self.welcome = welcome
@@ -135,6 +137,15 @@ public struct LockView: View {
                     .foregroundStyle(line.hasPrefix("  ") ? style.text.opacity(0.8) : style.text)
             }
 
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(Array(welcome.verse.enumerated()), id: \.offset) { _, line in
+                    Text(line)
+                        .font(style.font(12.5))
+                        .foregroundStyle(style.muted)
+                }
+            }
+            .padding(.top, 22)
+
             Spacer()
 
             Text(welcome.footer)
@@ -155,13 +166,23 @@ public struct LockView: View {
 
     /// Reading is slow, the release is fast: the snap only exists because of
     /// the contrast between them.
+    ///
+    /// Порядок важен: сначала настоящая проверка, и только потом развёртка.
+    /// Иначе отказ Touch ID оставляет человека на открытом приветствии без
+    /// единой кнопки — экран выглядит открытым, а профиль закрыт.
     private func begin() {
         guard phase == .waiting else { return }
         phase = .reading
         withAnimation(.easeInOut(duration: 1.5)) { arc = 1 }
 
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(1500))
+            guard await onUnlock() else {
+                // Не вышло: дуга сматывается назад, глиф на месте, причина —
+                // строкой под ним. Пробовать снова можно тем же нажатием.
+                withAnimation(.easeOut(duration: 0.25)) { arc = 0 }
+                phase = .waiting
+                return
+            }
             guard phase == .reading else { return }
             phase = .opening
 
@@ -183,7 +204,6 @@ public struct LockView: View {
 
             try? await Task.sleep(for: .milliseconds(620))
             phase = .open
-            await onUnlock()
         }
     }
 

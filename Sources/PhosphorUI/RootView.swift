@@ -35,6 +35,7 @@ public struct RootView: View {
                 error: model.unlockError
             ) {
                 await model.unlock()
+                return model.isUnlocked
             }
         }
     }

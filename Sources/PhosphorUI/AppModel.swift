@@ -208,9 +208,17 @@ public final class AppModel {
 
     public var strings: Strings { Strings(language: language) }
 
+    /// Строфа выбирается один раз за запуск: `welcome` — вычисляемое, и без
+    /// этого стих менялся бы на каждой перерисовке экрана.
+    private let verseIndex = Int.random(in: 0..<Welcome.verseCount)
+
     /// Приветствие, которое открывает развёртка экрана входа.
     public var welcome: Welcome {
-        Welcome(language: language, lastLogin: connectionEvents.first?.time)
+        Welcome(
+            language: language,
+            lastLogin: connectionEvents.first?.time,
+            verseIndex: verseIndex
+        )
     }
 
     /// Строка для конфигурации MCP-клиента.

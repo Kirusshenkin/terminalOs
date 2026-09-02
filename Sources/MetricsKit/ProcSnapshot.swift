@@ -28,6 +28,22 @@ public struct Snapshot: Sendable, Equatable {
         public var sent: UInt64
     }
 
+    /// Счётчики блочного устройства из `/proc/diskstats`.
+    public struct Disk: Sendable, Equatable {
+        public var name: String
+        /// Секторы по 512 байт — так их печатает ядро.
+        public var sectorsRead: UInt64
+        public var sectorsWritten: UInt64
+    }
+
+    /// Самый заметный процесс: имя и доля процессора.
+    public struct Process: Sendable, Equatable {
+        public var pid: Int
+        public var command: String
+        public var cpu: Double
+        public var memory: Double
+    }
+
     public var time: Date
     public var loadOne: Double
     public var loadFive: Double
@@ -40,6 +56,15 @@ public struct Snapshot: Sendable, Equatable {
     public var swapFree: Int64
     public var filesystems: [Filesystem]
     public var interfaces: [Interface]
+    public var disks: [Disk]
+    public var processes: [Process]
+    /// Работающих и всего — четвёртое поле `/proc/loadavg`.
+    public var runningProcesses: Int
+    public var totalProcesses: Int
+    /// Открытых файловых дескрипторов в системе.
+    public var openFiles: Int
+    public var kernel: String
+    public var cpuModel: String
 
     /// Memory actually in use, from `MemAvailable` — the honest figure, unlike
     /// `MemFree`, which counts cache as gone.
@@ -49,6 +74,14 @@ public struct Snapshot: Sendable, Equatable {
 
 /// The command whose output `SnapshotParser` reads.
 public enum ProcProbe {
+    /// Неизменная часть: спрашивается один раз, потому что за жизнь сессии
+    /// модель процессора и версия ядра не меняются.
+    public static let once = """
+        echo "K $(uname -r)"; \
+        echo "P $(sed -n 's/^model name[[:space:]]*: //p' /proc/cpuinfo | head -1 \
+            || echo unknown)"
+        """
+
     public static func loop(interval: Int = 2) -> String {
         """
         while :; do \
@@ -59,6 +92,11 @@ public enum ProcProbe {
         awk '/^(MemTotal|MemAvailable|SwapTotal|SwapFree):/{print "M",$1,$2}' /proc/meminfo; \
         df -PB1 -x tmpfs -x devtmpfs 2>/dev/null | awk 'NR>1{print "D",$6,$2,$3,$4}'; \
         awk 'NR>2{gsub(":","",$1); print "N",$1,$2,$10}' /proc/net/dev; \
+        awk '$3 ~ /^(sd[a-z]|nvme[0-9]+n[0-9]+|vd[a-z]|xvd[a-z])$/ \
+            {print "B",$3,$6,$10}' /proc/diskstats; \
+        echo "F $(cat /proc/sys/fs/file-nr 2>/dev/null | awk '{print $1}' || echo 0)"; \
+        ps -eo pid=,pcpu=,pmem=,comm= --sort=-pcpu 2>/dev/null | head -6 \
+            | awk '{print "S",$1,$2,$3,$4}'; \
         echo "---"; sleep \(interval); done
         """
     }
@@ -78,6 +116,13 @@ public enum SnapshotParser {
         var swapFree: Int64 = 0
         var filesystems: [Snapshot.Filesystem] = []
         var interfaces: [Snapshot.Interface] = []
+        var disks: [Snapshot.Disk] = []
+        var processes: [Snapshot.Process] = []
+        var running = 0
+        var total = 0
+        var openFiles = 0
+        var kernel = ""
+        var cpuModel = ""
         var sawCore = false
     }
 
@@ -98,7 +143,10 @@ public enum SnapshotParser {
             cores: builder.cores.sorted { $0.index < $1.index },
             memoryTotal: builder.memoryTotal, memoryAvailable: builder.memoryAvailable,
             swapTotal: builder.swapTotal, swapFree: builder.swapFree,
-            filesystems: builder.filesystems, interfaces: builder.interfaces
+            filesystems: builder.filesystems, interfaces: builder.interfaces,
+            disks: builder.disks, processes: builder.processes,
+            runningProcesses: builder.running, totalProcesses: builder.total,
+            openFiles: builder.openFiles, kernel: builder.kernel, cpuModel: builder.cpuModel
         )
     }
 
@@ -111,17 +159,32 @@ public enum SnapshotParser {
         case memory = "M"
         case disk = "D"
         case network = "N"
+        case block = "B"
+        case files = "F"
+        case process = "S"
+        case kernel = "K"
+        case cpu = "P"
     }
 
     private static func apply(tag: String, fields: [String], to builder: inout Builder) {
         switch Record(rawValue: tag) {
         case .time: builder.time = time(from: fields) ?? builder.time
-        case .load: builder.load = load(from: fields) ?? builder.load
+        case .load:
+            builder.load = load(from: fields) ?? builder.load
+            if let counts = processCounts(from: fields) {
+                builder.running = counts.running
+                builder.total = counts.total
+            }
         case .uptime: builder.uptime = uptime(from: fields) ?? builder.uptime
         case .core: appendCore(fields, to: &builder)
         case .memory: memory(from: fields, into: &builder)
         case .disk: filesystem(from: fields).map { builder.filesystems.append($0) }
         case .network: interface(from: fields).map { builder.interfaces.append($0) }
+        case .block: disk(from: fields).map { builder.disks.append($0) }
+        case .files: builder.openFiles = Int(fields.count > 1 ? fields[1] : "0") ?? 0
+        case .process: process(from: fields).map { builder.processes.append($0) }
+        case .kernel: builder.kernel = fields.dropFirst().joined(separator: " ")
+        case .cpu: builder.cpuModel = fields.dropFirst().joined(separator: " ")
         case nil: break
         }
     }
@@ -134,6 +197,33 @@ public enum SnapshotParser {
     private static func load(from fields: [String]) -> (one: Double, five: Double, fifteen: Double)? {
         guard fields.count > 3 else { return nil }
         return (Double(fields[1]) ?? 0, Double(fields[2]) ?? 0, Double(fields[3]) ?? 0)
+    }
+
+    /// Четвёртое поле `/proc/loadavg` — `работающих/всего`.
+    private static func processCounts(from fields: [String]) -> (running: Int, total: Int)? {
+        guard fields.count > 4 else { return nil }
+        let parts = fields[4].split(separator: "/")
+        guard parts.count == 2, let running = Int(parts[0]), let total = Int(parts[1]) else {
+            return nil
+        }
+        return (running, total)
+    }
+
+    private static func disk(from fields: [String]) -> Snapshot.Disk? {
+        guard fields.count >= 4,
+            let read = UInt64(fields[2]), let written = UInt64(fields[3])
+        else { return nil }
+        return Snapshot.Disk(name: fields[1], sectorsRead: read, sectorsWritten: written)
+    }
+
+    private static func process(from fields: [String]) -> Snapshot.Process? {
+        guard fields.count >= 5, let pid = Int(fields[1]) else { return nil }
+        return Snapshot.Process(
+            pid: pid,
+            command: fields[4...].joined(separator: " "),
+            cpu: (Double(fields[2]) ?? 0) / 100,
+            memory: (Double(fields[3]) ?? 0) / 100
+        )
     }
 
     private static func uptime(from fields: [String]) -> Int? {
@@ -220,6 +310,26 @@ public enum SnapshotParser {
     }
 
     /// Bytes per second per interface between two snapshots.
+    /// Скорость чтения и записи на диск между снимками, в байтах в секунду.
+    ///
+    /// Ядро считает секторами по 512 байт — переводим сразу, чтобы дальше никто
+    /// не гадал, в чём измеряется число.
+    public static func diskThroughput(from previous: Snapshot, to current: Snapshot) -> [Throughput] {
+        let seconds = max(0.5, current.time.timeIntervalSince(previous.time))
+        var byName: [String: Snapshot.Disk] = [:]
+        for item in previous.disks { byName[item.name] = item }
+        return current.disks.compactMap { new in
+            guard let old = byName[new.name] else { return nil }
+            let read =
+                new.sectorsRead >= old.sectorsRead
+                ? Double(new.sectorsRead - old.sectorsRead) * 512 / seconds : 0
+            let written =
+                new.sectorsWritten >= old.sectorsWritten
+                ? Double(new.sectorsWritten - old.sectorsWritten) * 512 / seconds : 0
+            return Throughput(name: new.name, down: read, up: written)
+        }
+    }
+
     public static func throughput(from previous: Snapshot, to current: Snapshot) -> [Throughput] {
         let seconds = max(0.5, current.time.timeIntervalSince(previous.time))
         var byName: [String: Snapshot.Interface] = [:]

@@ -62,13 +62,31 @@ public struct DockerView: View {
                 Button {
                     model.selectedContainer = container.id
                 } label: {
-                    HStack(spacing: 8) {
-                        Text(container.state == .running ? "●" : "○")
-                            .foregroundStyle(dot(container))
-                        Text(container.name)
-                            .foregroundStyle(container.id == selected?.id ? style.bright : style.text)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 8) {
+                            Text(container.state == .running ? "●" : "○")
+                                .foregroundStyle(dot(container))
+                            Text(container.name)
+                                .foregroundStyle(
+                                    container.id == selected?.id ? style.bright : style.text
+                                )
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            if let stats = model.sessionState.stats[container.name] {
+                                Text(ByteFormat.percent(stats.cpu))
+                                    .font(style.font(10.5))
+                                    .foregroundStyle(stats.cpu > 0.5 ? style.warning : style.muted)
+                            }
+                        }
+                        HStack(spacing: 6) {
+                            Text(container.image).lineLimit(1)
+                            if let stats = model.sessionState.stats[container.name] {
+                                Text("· \(ByteFormat.size(stats.memoryUsed))")
+                            }
+                        }
+                        .font(style.font(10))
+                        .foregroundStyle(style.muted)
+                        .padding(.leading, 16)
                     }
                     .font(style.font(12))
                     .padding(.horizontal, 6).padding(.vertical, 4)
@@ -78,7 +96,7 @@ public struct DockerView: View {
             }
             Spacer(minLength: 0)
         }
-        .frame(width: 240, alignment: .leading)
+        .frame(width: 270, alignment: .leading)
     }
 
     private var isFailure: Bool {
@@ -140,15 +158,30 @@ public struct DockerView: View {
     @ViewBuilder private func content(for container: Container) -> some View {
         switch tab {
         case "docker.overview":
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
-                ForEach(overview(container), id: \.0) { item in
-                    VStack(alignment: .leading, spacing: 5) {
-                        Label2(item.0)
-                        Text(item.1).font(style.font(12)).foregroundStyle(style.bright)
+            VStack(alignment: .leading, spacing: 12) {
+                if let warning = exposedWarning(container) {
+                    Text(warning)
+                        .font(style.font(11.5)).foregroundStyle(style.warning)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(style.surface)
+                        .overlay(Rectangle().stroke(style.warning.opacity(0.45), lineWidth: 1))
+                }
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4),
+                    spacing: 12
+                ) {
+                    ForEach(overview(container), id: \.0) { item in
+                        VStack(alignment: .leading, spacing: 5) {
+                            Label2(item.0)
+                            Text(item.1)
+                                .font(style.font(12)).foregroundStyle(style.bright)
+                                .lineLimit(2)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12).padding(.vertical, 10)
+                        .background(style.surface)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12).padding(.vertical, 10)
-                    .background(style.surface)
                 }
             }
         case "docker.env":
@@ -198,17 +231,43 @@ public struct DockerView: View {
 
     private func overview(_ container: Container) -> [(String, String)] {
         let stats = model.sessionState.stats[container.name]
+        let memory: String =
+            stats.map {
+                $0.memoryLimit > 0
+                    ? "\(ByteFormat.size($0.memoryUsed)) из \(ByteFormat.size($0.memoryLimit))"
+                    : ByteFormat.size($0.memoryUsed)
+            } ?? "—"
+        let share: String =
+            stats.map {
+                $0.memoryLimit > 0
+                    ? ByteFormat.percent(Double($0.memoryUsed) / Double($0.memoryLimit)) : "—"
+            } ?? "—"
         return [
             ("id", String(container.id.prefix(12))),
             ("образ", container.image),
             ("состояние", container.state.title),
-            ("порты", container.ports.isEmpty ? "—" : container.ports),
-            ("стек", container.project ?? "—"),
-            ("health", container.health ?? "—"),
+            ("статус", container.status.isEmpty ? "—" : container.status),
+            ("порты", container.ports.isEmpty ? "не опубликованы" : container.ports),
+            ("стек", container.project ?? "вне стека"),
+            ("health", container.health ?? "не объявлен"),
             ("cpu", stats.map { ByteFormat.percent($0.cpu) } ?? "—"),
-            ("память", stats.map { ByteFormat.size($0.memoryUsed) } ?? "—"),
-            ("pids", stats.map { String($0.pids) } ?? "—"),
+            ("память", memory),
+            ("доля лимита", share),
+            ("процессов", stats.map { String($0.pids) } ?? "—"),
+            ("хост", model.connectedHostName),
         ]
+    }
+
+    /// Порты, опубликованные наружу без привязки к 127.0.0.1, — это дыра мимо
+    /// UFW: докер пишет правила в iptables сам. Показываем это прямо здесь.
+    private func exposedWarning(_ container: Container) -> String? {
+        guard !container.ports.isEmpty else { return nil }
+        let published = container.ports
+            .components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { $0.contains("->") && !$0.contains("127.0.0.1") }
+        guard !published.isEmpty else { return nil }
+        return "порт открыт наружу мимо UFW: " + published.joined(separator: ", ")
     }
 
     private static let demoEnvironment: [(name: String, value: String)] = [

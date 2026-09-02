@@ -49,6 +49,7 @@ public struct RootView: View {
                 secondaryButton: .cancel(Text("отмена"))
             )
         }
+        .sheet(isPresented: $model.isAddingHost) { HostEditor(model: model) }
         .onChange(of: model.screen) { _, screen in
             if screen == .keys { Task { await model.loadKeys() } }
         }

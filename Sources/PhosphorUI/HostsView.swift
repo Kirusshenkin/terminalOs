@@ -1,4 +1,5 @@
 public import HostsKit
+public import PhosphorCore
 public import SwiftUI
 public import ThemeKit
 
@@ -135,6 +136,14 @@ public struct HostsView: View {
         }
     }
 
+    /// Мелкая деталь на карточке: значок и значение.
+    private func detail(icon: String, text: String) -> some View {
+        HStack(spacing: 3) {
+            Text(icon).foregroundStyle(style.muted.opacity(0.7))
+            Text(text).foregroundStyle(style.muted)
+        }
+    }
+
     private func groupColour(_ group: HostGroup) -> Color {
         guard let id = group.themeID else { return style.muted }
         return Color(BuiltInThemes.theme(id: id).ansi[9])
@@ -160,45 +169,67 @@ public struct HostsView: View {
     }
 
     private func hostCard(_ host: ServerHost) -> some View {
-        Button {
+        let connected = model.selectedHost == host.id
+        let profile = connected ? model.sessionState.profile : nil
+        return Button {
             model.screen = .terminal
             Task { await model.connect(to: host) }
         } label: {
-            HStack(spacing: 11) {
-                Text(host.osBadge)
-                    .font(style.font(10))
-                    .foregroundStyle(style.muted)
-                    .frame(width: 30, height: 30)
-                    .overlay(Rectangle().stroke(style.text.opacity(0.35), lineWidth: 1))
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(host.name)
-                            .font(style.font(12.5))
-                            .foregroundStyle(style.bright)
-                        // The badge stands next to the real uptime, never
-                        // instead of it.
-                        if let egg = model.eggs.unbreakableBadge(uptimeSeconds: 400 * 86_400),
-                            host.name.hasSuffix("s2")
-                        {
-                            Text(strings(egg))
-                                .font(style.font(10))
-                                .foregroundStyle(style.warning)
-                        }
-                    }
-                    Text(host.tags.joined(separator: ", "))
-                        .font(style.font(11))
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 11) {
+                    Text(host.osBadge)
+                        .font(style.font(10))
                         .foregroundStyle(style.muted)
-                        .lineLimit(1)
+                        .frame(width: 30, height: 30)
+                        .overlay(Rectangle().stroke(style.text.opacity(0.35), lineWidth: 1))
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(host.name).font(style.font(12.5)).foregroundStyle(style.bright)
+                            if connected {
+                                Text("●").font(style.font(9)).foregroundStyle(style.accent)
+                            }
+                            // Значок стоит рядом с настоящим аптаймом, а не вместо него.
+                            if let uptime = profile?.uptimeSeconds,
+                                let egg = model.eggs.unbreakableBadge(uptimeSeconds: uptime)
+                            {
+                                Text(strings(egg))
+                                    .font(style.font(9.5)).foregroundStyle(style.warning)
+                            }
+                        }
+                        Text("\(host.user)@\(host.address):\(host.port)")
+                            .font(style.font(10.5)).foregroundStyle(style.muted).lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+
+                // Вторая строка живёт, только когда есть что сказать.
+                HStack(spacing: 10) {
+                    detail(icon: "→", text: model.book.reach(for: host).summary)
+                    if let group = model.book.group(for: host) {
+                        detail(icon: "■", text: group.name)
+                    }
+                    if let profile {
+                        detail(icon: "↑", text: ByteFormat.duration(seconds: profile.uptimeSeconds))
+                        if profile.containerCount > 0 {
+                            detail(icon: "▣", text: "\(profile.containerCount)")
+                        }
+                        detail(icon: "⚿", text: "\(profile.authorizedKeyCount)")
+                    }
+                    Spacer(minLength: 0)
+                }
+                .font(style.font(10.5))
+
+                if !host.tags.isEmpty {
+                    Text(host.tags.joined(separator: " · "))
+                        .font(style.font(10.5)).foregroundStyle(style.muted).lineLimit(1)
+                }
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(style.surface)
             .overlay(
                 Rectangle().stroke(
-                    model.selectedHost == host.id ? style.accent : style.text.opacity(0.22),
-                    lineWidth: 1
-                ))
+                    connected ? style.accent : style.text.opacity(0.22), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }

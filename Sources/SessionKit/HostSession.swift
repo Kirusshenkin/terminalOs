@@ -42,6 +42,11 @@ public struct SessionState: Sendable {
         guard let previous, let latest else { return [] }
         return SnapshotParser.throughput(from: previous, to: latest)
     }
+
+    public var diskThroughput: [SnapshotParser.Throughput] {
+        guard let previous, let latest else { return [] }
+        return SnapshotParser.diskThroughput(from: previous, to: latest)
+    }
 }
 
 /// Everything happening against one server, over one connection.
@@ -76,6 +81,9 @@ public actor HostSession {
 
     private let transport: any SSHTransport
     private var state = SessionState()
+    /// Модель процессора и версия ядра: за жизнь сессии не меняются, поэтому
+    /// спрашиваются один раз и подмешиваются в каждый снимок.
+    private var constants = (kernel: "", cpuModel: "")
     private var pollTask: Task<Void, Never>?
     private var metricsTask: Task<Void, Never>?
     private var observers: [UUID: @Sendable (SessionState) -> Void] = [:]
@@ -131,6 +139,12 @@ public actor HostSession {
                 throw TransportError.commandFailed(status: result.status, stderr: result.stderr)
             }
             state.profile = HostProbe.parse(result.stdout)
+            if let once = try? await transport.run(ProcProbe.once, timeout: .seconds(15)),
+                once.succeeded
+            {
+                let parsed = SnapshotParser.parse(once.stdout + "\n---")
+                constants = (parsed?.kernel ?? "", parsed?.cpuModel ?? "")
+            }
             set(phase: .ready)
             startPolling()
             startMetrics()
@@ -224,7 +238,9 @@ public actor HostSession {
     }
 
     private func accept(block: String) {
-        guard let snapshot = SnapshotParser.parse(block) else { return }
+        guard var snapshot = SnapshotParser.parse(block) else { return }
+        if snapshot.kernel.isEmpty { snapshot.kernel = constants.kernel }
+        if snapshot.cpuModel.isEmpty { snapshot.cpuModel = constants.cpuModel }
         state.previous = state.latest
         state.latest = snapshot
         publish()

@@ -144,15 +144,16 @@ struct SessionRail: View {
             model.attachSession(session.name)
         } label: {
             HStack(spacing: 8) {
+                // Цвет точки — статус сессии: работа/покой/ждёт ввода.
                 Circle()
-                    .fill(session.attached ? style.bright : style.muted.opacity(0.5))
+                    .fill(statusColour(session.status))
                     .frame(width: 7, height: 7)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(session.name)
                         .font(style.font(12.5))
                         .foregroundStyle(active ? style.bright : style.text)
                         .lineLimit(1)
-                    Text(windowsLabel(session.windows))
+                    Text("\(statusLabel(session.status)) · \(windowsLabel(session.windows))")
                         .font(style.font(10)).foregroundStyle(style.muted)
                 }
                 Spacer(minLength: 0)
@@ -194,5 +195,17 @@ struct SessionRail: View {
 
     private func windowsLabel(_ count: Int) -> String {
         "\(count) \(model.strings(count == 1 ? "term.window" : "term.windows"))"
+    }
+
+    private func statusColour(_ status: AppModel.SessionStatus) -> Color {
+        switch status {
+        case .working: style.bright
+        case .blocked: style.warning
+        case .idle: style.muted.opacity(0.5)
+        }
+    }
+
+    private func statusLabel(_ status: AppModel.SessionStatus) -> String {
+        model.strings("term.status.\(status.rawValue)")
     }
 }

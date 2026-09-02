@@ -234,6 +234,17 @@ public final class AppModel {
         public var name: String
         public var windows: Int
         public var attached: Bool
+        /// Что в ней происходит прямо сейчас — по переднему процессу.
+        public var status: SessionStatus = .idle
+    }
+
+    /// Состояние сессии, как у «агентов» herdr.
+    ///
+    /// Определяется эвристикой по tmux: у шелла-приглашения — покой, у чужого
+    /// процесса с недавней активностью — работа, у процесса, что давно молчит, —
+    /// вероятно, ждёт ввода. Это догадка, а не факт, и подаётся как подсказка.
+    public enum SessionStatus: String, Sendable, Equatable {
+        case idle, working, blocked
     }
     public internal(set) var myFingerprint: String?
     public internal(set) var keysError: String?

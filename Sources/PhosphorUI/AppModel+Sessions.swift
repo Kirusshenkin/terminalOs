@@ -18,27 +18,72 @@ extension AppModel {
             liveSessions = []
             return
         }
-        // Формат разбирается однозначно: имя, число окон, признак подключения.
+        // Одним заходом: время сервера (чтобы «свежесть» считать по его часам,
+        // а не по нашим) и панели каждой сессии с передним процессом.
         let command =
-            "command -v tmux >/dev/null 2>&1 && "
-            + "tmux list-sessions -F '#{session_name}\t#{session_windows}\t#{session_attached}' "
-            + "2>/dev/null || true"
+            "command -v tmux >/dev/null 2>&1 && { echo \"NOW $(date +%s)\"; "
+            + "tmux list-panes -a -F "
+            + "'#{session_name}\t#{pane_active}\t#{pane_current_command}\t"
+            + "#{session_windows}\t#{session_attached}\t#{session_activity}' 2>/dev/null; } "
+            + "|| true"
         let result = try? await session.run(command)
         liveSessions = Self.parseSessions(result?.stdout ?? "")
     }
 
+    /// Шеллы, при которых сессия считается покоящейся (idle).
+    static let shellCommands: Set<String> = [
+        "zsh", "-zsh", "bash", "-bash", "sh", "-sh", "fish", "-fish", "dash",
+        "tmux", "login", "ksh", "csh", "tcsh",
+    ]
+    /// Насколько недавней должна быть активность, чтобы сессия считалась рабочей.
+    static let workingWindowSeconds = 15
+
     /// Разбирает вывод `tmux list-sessions` в объекты. Чистая функция —
     /// проверяется на фикстуре, без сервера.
     public static func parseSessions(_ output: String) -> [TmuxSession] {
-        output.split(separator: "\n").compactMap { line in
-            let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
-            guard parts.count >= 3, !parts[0].isEmpty else { return nil }
-            return TmuxSession(
-                name: String(parts[0]),
-                windows: Int(parts[1]) ?? 1,
-                attached: parts[2] == "1"
-            )
+        var now = 0
+        // Строки: `session \t paneActive \t command \t windows \t attached \t activity`.
+        // Для каждой сессии берём активную панель — её передний процесс и решает
+        // статус. Порядок первого появления сохраняем.
+        var order: [String] = []
+        var byName: [String: TmuxSession] = [:]
+        var activePicked: Set<String> = []
+
+        for rawLine in output.split(separator: "\n") {
+            let line = String(rawLine)
+            if line.hasPrefix("NOW ") {
+                now = Int(line.dropFirst(4).trimmingCharacters(in: .whitespaces)) ?? 0
+                continue
+            }
+            let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+            guard parts.count >= 6, !parts[0].isEmpty else { continue }
+            let name = parts[0]
+            let isActivePane = parts[1] == "1"
+            let command = parts[2]
+            let windows = Int(parts[3]) ?? 1
+            let attached = parts[4] == "1"
+            let activity = Int(parts[5]) ?? 0
+
+            if byName[name] == nil {
+                order.append(name)
+                byName[name] = TmuxSession(
+                    name: name, windows: windows, attached: attached, status: .idle)
+            }
+            // Статус берём с активной панели; если её не встретили — с первой.
+            if isActivePane || !activePicked.contains(name) {
+                byName[name]?.status = status(command: command, activity: activity, now: now)
+                if isActivePane { activePicked.insert(name) }
+            }
         }
+        return order.compactMap { byName[$0] }
+    }
+
+    /// Эвристика статуса: шелл — покой; чужой процесс с недавней активностью —
+    /// работа; он же, но давно молчащий, — вероятно, ждёт ввода.
+    static func status(command: String, activity: Int, now: Int) -> AppModel.SessionStatus {
+        if shellCommands.contains(command) { return .idle }
+        if now > 0, activity > 0, now - activity > workingWindowSeconds { return .blocked }
+        return .working
     }
 
     /// Подключается к выбранной сессии: терминал перезапускается уже внутри неё.

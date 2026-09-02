@@ -147,7 +147,7 @@ hardcoded interface string — a linter checks.
 
 ## Status
 
-Builds, runs, **138 tests green**. Nine screens: lock, hosts, terminal, files,
+Builds, runs, **150 tests green**. Ten screens: lock, hosts, terminal, files,
 Docker, monitor, keys, provisioning, AI activity. Interface in Russian and
 English.
 
@@ -156,8 +156,14 @@ container listing with actions and streaming logs, `/proc` metrics, reading and
 editing `authorized_keys`, provisioning recipes, both file panes, and an
 interactive shell that rides the same socket.
 
-What is not built yet: the MCP stdio shim (the policy engine and audit trail
-are), the native Citadel transport, and the new-host form.
+MCP works end to end: an `phosphor-mcp` shim ships inside the bundle, speaks
+JSON-RPC over stdio and proxies to a local socket the app owns. Every host
+starts disabled, writes need a decision from a person, a deny-list overrides
+every mode, and the audit log has no writing tool — the model can act but
+cannot erase its trail.
+
+What is not built yet: the native Citadel transport (the process-based one is
+tested and works) and importing hosts from Termius.
 
 Idle CPU is zero — no timers, polling pauses when the window is in the
 background.

@@ -8,7 +8,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-SHORT="${MARKETING_VERSION:-0.1.0}"
+SHORT="${MARKETING_VERSION:-0.1.1}"
 BUILD="${BUILD_NUMBER:-1}"
 REPO="${GITHUB_REPOSITORY:-Kirusshenkin/terminalOs}"
 

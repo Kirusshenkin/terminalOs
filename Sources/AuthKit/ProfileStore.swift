@@ -101,12 +101,14 @@ public actor ProfileStore {
     public func export(passphrase: String, reason: String) async throws -> Data {
         let key = try await masterKey(reason: reason)
         let plain = try Vault(key: key).open(Data(contentsOf: url))
-        return try Vault(key: Self.derive(passphrase: passphrase)).seal(plain)
+        // PBKDF2 со случайной солью, а не быстрый HKDF: файл экспорта — это то,
+        // что можно потерять или переслать, и его нельзя перебирать офлайн.
+        return try PassphraseBox.seal(plain, passphrase: passphrase)
     }
 
     /// Installs an exported profile, replacing whatever is here.
     public func importProfile(_ data: Data, passphrase: String, reason: String) async throws {
-        let plain = try Vault(key: Self.derive(passphrase: passphrase)).open(data)
+        let plain = try PassphraseBox.open(data, passphrase: passphrase)
         let key = try await masterKey(reason: reason)
         try AtomicFile.write(try Vault(key: key).seal(plain), to: url)
     }
@@ -118,17 +120,4 @@ public actor ProfileStore {
         cachedKey = nil
     }
 
-    /// Turns a passphrase into a key.
-    ///
-    /// HKDF with a fixed salt: the export is protected by the passphrase the
-    /// person chose, and the salt only separates this use from any other.
-    static func derive(passphrase: String) -> SymmetricKey {
-        let salt = Data("phosphor.profile.export.v1".utf8)
-        return HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: SymmetricKey(data: Data(passphrase.utf8)),
-            salt: salt,
-            info: Data("profile".utf8),
-            outputByteCount: 32
-        )
-    }
 }

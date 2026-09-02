@@ -326,7 +326,7 @@ public final class AppModel {
     }
 
     private let appearance = AppearanceStore()
-    private let gate: any BiometricGate
+    private var gate: any BiometricGate
     private let profiles: ProfileStore
     /// Отложенное сохранение: правки копятся и уходят одной записью.
     private var saveTask: Task<Void, Never>?
@@ -340,6 +340,8 @@ public final class AppModel {
         self.gateCapability = gate.capability()
 
         let saved = appearance.load()
+        // Окно повторного Touch ID из настроек: короче — безопаснее.
+        self.gate.reuseDuration = saved.biometricReuseSeconds ?? 10
         themeID = saved.themeID
         language = Language(rawValue: saved.language) ?? .system
         pet = Pet(rawValue: saved.pet) ?? .cat

@@ -324,7 +324,7 @@ struct ProfileStoreTests {
         let bundle = try await first.export(passphrase: "правильная", reason: "тест")
 
         let second = ProfileStore(store: MemorySecretStore(), url: target)
-        await #expect(throws: VaultError.cannotDecrypt) {
+        await #expect(throws: PassphraseBox.BoxError.wrongPassphrase) {
             try await second.importProfile(bundle, passphrase: "неправильная", reason: "тест")
         }
     }

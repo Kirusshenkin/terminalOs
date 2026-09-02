@@ -32,6 +32,10 @@ public struct Appearance: Codable, Sendable, Equatable {
     public var motion: String?
     public var connectMotion: String?
     public var logMotion: String?
+    /// Сколько секунд одно подтверждение Touch ID остаётся в силе. Меньше —
+    /// безопаснее, но чаще прикладывать палец. Необязательное: профиль прошлой
+    /// версии читается без миграции.
+    public var biometricReuseSeconds: Double?
 
     public init(
         themeID: String = BuiltInThemes.phosphor.id,

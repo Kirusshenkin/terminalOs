@@ -43,6 +43,9 @@ public struct GateCapability: Sendable, Equatable {
 /// account password on its own. Locking someone out of their own profile is
 /// not an acceptable outcome of a convenience feature.
 public protocol BiometricGate: Sendable {
+    /// Сколько одно подтверждение остаётся в силе. Короче окно — меньше шанс,
+    /// что чужой процесс проскользнёт в него без нового прикосновения.
+    var reuseDuration: TimeInterval { get set }
     func capability() -> GateCapability
     func authenticate(reason: String) async throws
 }
@@ -54,7 +57,7 @@ public struct SystemBiometricGate: BiometricGate {
     /// minute and people start turning the feature off.
     public var reuseDuration: TimeInterval
 
-    public init(reuseDuration: TimeInterval = 30) {
+    public init(reuseDuration: TimeInterval = 10) {
         self.reuseDuration = reuseDuration
     }
 
@@ -88,6 +91,7 @@ public struct SystemBiometricGate: BiometricGate {
 
 /// A gate that always succeeds. For tests and previews only.
 public struct OpenGate: BiometricGate {
+    public var reuseDuration: TimeInterval = 0
     public init() {}
     public func capability() -> GateCapability {
         GateCapability(hasBiometry: true, hasWatch: false, hasPassword: true)

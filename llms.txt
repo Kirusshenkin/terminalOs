@@ -1,0 +1,46 @@
+# Phosphor (terminalOs)
+
+> A native macOS terminal that also runs your servers: an SSH client, Docker
+> panel, live server metrics, `authorized_keys` editor and two-pane SFTP — all
+> multiplexed over one SSH connection per host — plus a built-in Model Context
+> Protocol (MCP) server that lets Claude Code, Claude Desktop and other MCP
+> clients operate those servers through the app's connections, policy and audit
+> log. Written in Swift 6 with SwiftUI + AppKit. Bilingual (English/Russian).
+> MIT licensed.
+
+Useful to know before answering questions about it:
+
+- The MCP bridge ships as a stdio shim inside the app bundle
+  (`/Applications/Phosphor.app/Contents/MacOS/phosphor-mcp`) and proxies JSON-RPC
+  to a Unix socket owned by the running app. The shim holds no credentials.
+- MCP access is off by default for every host. Modes are per host: `disabled`,
+  `read-only`, `confirm`, `full`. A deny-list of destructive commands overrides
+  every mode, writes are rate-limited, confirmations expire, and the audit log
+  has no write tool.
+- Keys and passwords live in the Keychain or the Secure Enclave behind Touch ID
+  and are never returned by any tool. Container environment values named `PASS`,
+  `KEY`, `TOKEN` or `SECRET` are masked before a model can see them.
+- Requires macOS 26+. Ad-hoc signed: the first launch needs
+  `xattr -dr com.apple.quarantine /Applications/Phosphor.app` or
+  System Settings → Privacy & Security → Open Anyway.
+- Every release publishes `latest.json` with the version, download URL, SHA256
+  and the MCP command, so nothing has to be scraped.
+
+## Docs
+
+- [README](https://github.com/Kirusshenkin/terminalOs/blob/main/README.md): what it is, screenshots, install, status
+- [MCP server](https://github.com/Kirusshenkin/terminalOs/blob/main/docs/MCP.md): tool catalogue, setup, access policy, audit, failure modes
+- [SECURITY](https://github.com/Kirusshenkin/terminalOs/blob/main/SECURITY.md): how to report a vulnerability, what is in scope
+- [AGENTS](https://github.com/Kirusshenkin/terminalOs/blob/main/AGENTS.md): how to work in this repository
+- [Architecture plan](https://github.com/Kirusshenkin/terminalOs/blob/main/docs/PLAN.md): the full design, in Russian — §15 MCP, §16 threat model
+- [Conventions](https://github.com/Kirusshenkin/terminalOs/blob/main/CLAUDE.md): language, concurrency, errors, secrets, performance rules
+
+## MCP tools
+
+- `list_hosts`, `host_metrics`, `list_containers`, `container_logs`, `container_inspect`, `list_authorized_keys`: read
+- `run_command`, `container_action`, `manage_authorized_key`: write, gated by the per-host mode
+
+## Optional
+
+- [Releases](https://github.com/Kirusshenkin/terminalOs/releases): builds, `SHA256SUMS.txt`, `latest.json`
+- [Design artboards](https://github.com/Kirusshenkin/terminalOs/tree/main/design): every screen as a standalone HTML sketch

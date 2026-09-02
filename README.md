@@ -7,6 +7,9 @@
 Shell, Docker, metrics, keys and files — over one SSH connection per host.
 Unlocked with your fingerprint. Green on black, because that is how it should look.
 
+*SSH client · Docker manager · server monitor · SFTP · `authorized_keys` editor ·
+MCP server for Claude Code and Claude Desktop · macOS 26 · Swift 6 · MIT*
+
 </div>
 
 ![Terminal](docs/images/01-terminal.png)
@@ -115,6 +118,39 @@ And there is a cat in the corner. Or a sugar glider. It sleeps while the app is
 locked, it never covers your output, and one switch turns it off forever.
 
 ---
+
+## Give an agent your servers without giving it your keys
+
+Phosphor is also a **Model Context Protocol server**. Register one command and
+Claude Code, Claude Desktop, Cursor or any other MCP client can list your hosts,
+read metrics, inspect containers, follow logs and — when you allow it — run
+commands, restart containers and manage `authorized_keys`.
+
+The difference from handing a model a shell: **the app holds the connection, the
+agent holds nothing.**
+
+| | Shell tool with raw `ssh` | Credentials in an MCP config | Phosphor |
+|---|---|---|---|
+| Where the key lives | on disk, agent-readable | on disk, agent-readable | Keychain / Secure Enclave, behind Touch ID |
+| What is reachable | everything | everything | only hosts you enabled, in the mode you set |
+| `rm -rf /` | runs | runs | refused by a deny-list that overrides every mode |
+| Human in the loop | none | none | per-write confirmation, grants expire in 15 min |
+| Trail afterwards | shell history, maybe | none | an audit log with no writing tool |
+| Secrets in output | whatever is on screen | whatever is on screen | masked before the model sees them |
+| Runaway loop | unbounded | unbounded | rate-limited writes |
+
+```sh
+claude mcp add phosphor /Applications/Phosphor.app/Contents/MacOS/phosphor-mcp
+```
+
+Nine tools, six of them read-only. Every host starts `disabled` — nothing is
+reachable until you choose `read-only`, `confirm` or `full` for it, and
+production servers are meant to stay `read-only`. A compromised server can put
+anything it likes into a log line the model reads; it still cannot grant itself
+a mode, get past the deny-list, or erase the record of trying.
+
+**Full details: [`docs/MCP.md`](docs/MCP.md)** — tool catalogue, policy, audit,
+and the exact error the agent gets when the app is closed, locked or refusing.
 
 ## Principles
 

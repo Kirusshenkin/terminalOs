@@ -20,9 +20,11 @@ extension Strings {
         "motion.fade": [.russian: "проявление", .english: "fade in"],
         "set.motionNote": [
             .russian:
-                "движутся положение и прозрачность, больше ничего. При системной «уменьшить движение» сразу показывается конечный кадр.",
+                "движутся положение и прозрачность, больше ничего. При системной «уменьшить движение» "
+                + "сразу показывается конечный кадр.",
             .english:
-                "position and opacity move, nothing else. With the system Reduce Motion on, the final frame shows at once.",
+                "position and opacity move, nothing else. With the system Reduce Motion on, the final "
+                + "frame shows at once.",
         ],
         "menu.connect": [.russian: "подключиться", .english: "connect"],
         "menu.files": [.russian: "файлы", .english: "files"],
@@ -108,9 +110,11 @@ extension Strings {
         "known.type": [.russian: "тип", .english: "type"],
         "known.note": [
             .russian:
-                "отпечатки считаются здесь, ssh-keygen для этого не нужен. «Забыть» удаляет строку: следующее подключение спросит доверие заново",
+                "отпечатки считаются здесь, ssh-keygen для этого не нужен. «Забыть» удаляет строку: "
+                + "следующее подключение спросит доверие заново",
             .english:
-                "computed here, on this Mac — no ssh-keygen needed. Forgetting the line makes the next connection ask again",
+                "computed here, on this Mac — no ssh-keygen needed. Forgetting the line makes the next "
+                + "connection ask again",
         ],
         "known.forget": [.russian: "забыть", .english: "forget"],
         "prov.pickNote": [
@@ -121,7 +125,8 @@ extension Strings {
         "prov.stopAfter": [.russian: "остановить после шага", .english: "stop after this step"],
         "prov.guard": [
             .russian:
-                "шаг «закрыть вход по паролю» выполнится только после того, как отдельное соединение по ключу успешно откроется",
+                "шаг «закрыть вход по паролю» выполнится только после того, как отдельное соединение "
+                + "по ключу успешно откроется",
             .english:
                 "the step that disables password login runs only after a separate key-based connection has opened",
         ],
@@ -149,12 +154,32 @@ extension Strings {
             .russian: "новый хост выключен: забыть настроить не значит открыть",
             .english: "a new host is off: forgetting to set it up never means opening it",
         ],
-        "first.title": [.russian: "Список пуст — и это ненадолго", .english: "The list is empty — not for long"],
-        "first.subtitle": [.russian: "Phosphor уже посмотрел, что лежит на этой машине. Перенеси готовое или заведи сервер руками — дальше терминал, docker и метрики идут по одному соединению.", .english: "Phosphor has already looked at what this Mac holds. Take what is there or add a server by hand — after that the terminal, docker and metrics all ride one connection."],
-        "first.nothingFound": [.russian: "Готовых серверов на этой машине не нашлось — ни ~/.ssh/config, ни known_hosts, ни Termius.", .english: "Nothing to take from this Mac — no ~/.ssh/config, no known_hosts, no Termius."],
+        "first.title": [
+            .russian: "Список пуст — и это ненадолго", .english: "The list is empty — not for long",
+        ],
+        "first.subtitle": [
+            .russian:
+                "Phosphor уже посмотрел, что лежит на этой машине. Перенеси готовое или заведи сервер "
+                + "руками — дальше терминал, docker и метрики идут по одному соединению.",
+            .english:
+                "Phosphor has already looked at what this Mac holds. Take what is there or add a "
+                + "server by hand — after that the terminal, docker and metrics all ride one connection.",
+        ],
+        "first.nothingFound": [
+            .russian:
+                "Готовых серверов на этой машине не нашлось — ни ~/.ssh/config, ни known_hosts, ни Termius.",
+            .english: "Nothing to take from this Mac — no ~/.ssh/config, no known_hosts, no Termius.",
+        ],
         "first.take": [.russian: "перенести", .english: "take"],
         "first.localShell": [.russian: "локальный шелл", .english: "local shell"],
-        "first.next": [.russian: "После первого подключения станут живыми Docker, мониторинг и файлы, а модель через MCP увидит ровно то, что ты ей разрешишь — по умолчанию ничего.", .english: "After the first connection Docker, monitoring and files come alive, and a model over MCP sees exactly what you allow — nothing, by default."],
+        "first.next": [
+            .russian:
+                "После первого подключения станут живыми Docker, мониторинг и файлы, а модель через "
+                + "MCP увидит ровно то, что ты ей разрешишь — по умолчанию ничего.",
+            .english:
+                "After the first connection Docker, monitoring and files come alive, and a model over "
+                + "MCP sees exactly what you allow — nothing, by default.",
+        ],
         "act.step1": [
             .russian: "1 · выбери хост в разделе «Хосты» и поставь ему режим ниже",
             .english: "1 · pick a host under Hosts and give it a mode below",
@@ -187,9 +212,11 @@ extension Strings {
         "clog.empty": [.russian: "подключений ещё не было", .english: "no connections yet"],
         "clog.note": [
             .russian:
-                "только факт соединения. Содержимое сессий сюда не попадает: скроллбэк по умолчанию вообще не пишется на диск, и журнал не должен это обходить",
+                "только факт соединения. Содержимое сессий сюда не попадает: скроллбэк по умолчанию "
+                + "вообще не пишется на диск, и журнал не должен это обходить",
             .english:
-                "the fact of a connection, nothing more. Session content never lands here, and this log must not work around that",
+                "the fact of a connection, nothing more. Session content never lands here, and this "
+                + "log must not work around that",
         ],
         "res.created": [.russian: "создан", .english: "created"],
         "res.size": [.russian: "размер", .english: "size"],
@@ -235,14 +262,20 @@ extension Strings {
         ],
         "profile.reuse": [.russian: "окно Touch ID", .english: "Touch ID window"],
         "profile.reuseNote": [
-            .russian: "сколько секунд одно подтверждение остаётся в силе. Меньше — безопаснее, но чаще прикладывать палец; 0 — спрашивать каждый раз.",
-            .english: "how long one confirmation stays valid. Lower is safer but asks for a finger more often; 0 asks every time.",
+            .russian:
+                "сколько секунд одно подтверждение остаётся в силе. Меньше — безопаснее, но чаще "
+                + "прикладывать палец; 0 — спрашивать каждый раз.",
+            .english:
+                "how long one confirmation stays valid. Lower is safer but asks for a finger more often; "
+                + "0 asks every time.",
         ],
         "profile.passphrase": [.russian: "парольная фраза", .english: "passphrase"],
         "profile.passphraseAgain": [.russian: "фраза ещё раз", .english: "passphrase again"],
         "profile.passphraseNote": [
             .russian: "этой фразой файл шифруется и только ею открывается. Забудешь — файл не восстановить.",
-            .english: "this passphrase encrypts the file and is the only thing that opens it. Forget it and the file is unrecoverable.",
+            .english:
+                "this passphrase encrypts the file and is the only thing that opens it. Forget it and "
+                + "the file is unrecoverable.",
         ],
         "profile.mismatch": [.russian: "фразы не совпадают", .english: "passphrases do not match"],
         "term.status.working": [.russian: "работает", .english: "working"],
@@ -314,9 +347,11 @@ extension Strings {
         "fwd.empty": [.russian: "пока ничего не проброшено", .english: "nothing forwarded yet"],
         "fwd.note": [
             .russian:
-                "локальный слушает только на 127.0.0.1: пробросить порт и открыть его всей сети — обидная ошибка, и по умолчанию её быть не должно",
+                "локальный слушает только на 127.0.0.1: пробросить порт и открыть его всей сети — "
+                + "обидная ошибка, и по умолчанию её быть не должно",
             .english:
-                "a local forward listens on 127.0.0.1 only: opening it to the whole network is an expensive slip, never a default",
+                "a local forward listens on 127.0.0.1 only: opening it to the whole network is an "
+                + "expensive slip, never a default",
         ],
         "fwd.direction": [.russian: "направление", .english: "direction"],
         "fwd.localPort": [.russian: "порт у себя", .english: "port here"],
@@ -335,7 +370,8 @@ extension Strings {
         "files.size": [.russian: "размер", .english: "size"],
         "files.note": [
             .russian:
-                "файлы идут по тому же соединению, что и терминал: отдельного логина нет, и через тот же прокси или бастион",
+                "файлы идут по тому же соединению, что и терминал: отдельного логина нет, и через тот "
+                + "же прокси или бастион",
             .english:
                 "files ride the connection the terminal holds: no second login, same proxy or bastion",
         ],
@@ -416,9 +452,11 @@ extension Strings {
         ],
         "set.glassNote": [
             .russian:
-                "скан-линии и виньетка рисуются один раз и не стоят ничего на кадр: это не анимация, а статичный слой",
+                "скан-линии и виньетка рисуются один раз и не стоят ничего на кадр: это не анимация, а "
+                + "статичный слой",
             .english:
-                "scanlines and the vignette are drawn once and cost nothing per frame: a static layer, not an animation",
+                "scanlines and the vignette are drawn once and cost nothing per frame: a static layer, "
+                + "not an animation",
         ],
         "set.pet": [.russian: "питомец", .english: "pet"],
         "set.off": [.russian: "выключить", .english: "turn off"],
@@ -433,7 +471,8 @@ extension Strings {
             .russian:
                 "опрос замирает, когда окно не на виду: интервал — это про то, как часто спрашивать, пока смотришь",
             .english:
-                "polling stops when the window is out of sight: the interval is how often to ask while you are looking",
+                "polling stops when the window is out of sight: the interval is how often to ask while "
+                + "you are looking",
         ],
         "set.logBuffer": [.russian: "буфер логов контейнера", .english: "container log buffer"],
         "set.logNote": [

@@ -34,3 +34,15 @@ AGENTS.md
 .claude/
 .mcp.json
 .claude-*
+
+# Ничего настоящего: чужие и свои реальные данные не должны попадать в git
+# даже случайно. Первая линия — этот список, вторая — no-real-data.py.
+termius-hosts.json
+*.termius.json
+known_hosts
+*.pem
+*.key
+*.p12
+*.mobileprovision
+local/
+*.local.json

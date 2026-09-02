@@ -4,6 +4,9 @@ set -uo pipefail
 cd "$(dirname "$0")/../.."
 fail=0
 
+echo "==> реальные данные"
+python3 "$(dirname "$0")/no-real-data.py" || fail=1
+
 echo "==> swift format"
 swift format lint --recursive --parallel Sources 2>/dev/null || fail=1
 

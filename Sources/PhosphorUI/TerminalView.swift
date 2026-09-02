@@ -35,7 +35,7 @@ public struct TerminalPane: View {
         // атака через OSC 52.
         .alert(item: $model.guardPrompt) { prompt in
             Alert(
-                title: Text(prompt.title),
+                title: Text(strings(prompt.titleKey)),
                 message: Text(prompt.detail),
                 primaryButton: .default(Text(strings("common.allow"))) { model.accept(prompt) },
                 secondaryButton: .cancel(Text(strings("common.deny")))

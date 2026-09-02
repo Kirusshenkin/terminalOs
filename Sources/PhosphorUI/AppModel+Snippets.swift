@@ -52,12 +52,12 @@ extension AppModel {
             if let result = try? await transport.run(command, timeout: .seconds(120)) {
                 text = result.succeeded ? result.stdout : result.stderr
             } else {
-                text = "не удалось подключиться"
+                text = strings("snip.noLink")
             }
             await transport.close()
             snippetOutput +=
                 "── \(host.name) ──\n"
-                + (text.isEmpty ? "(пусто)\n" : String(text.prefix(4_000)))
+                + (text.isEmpty ? "\(strings("common.empty"))\n" : String(text.prefix(4_000)))
                 + "\n"
         }
     }

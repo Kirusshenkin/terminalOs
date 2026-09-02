@@ -70,10 +70,11 @@ public struct GuardPrompt: Identifiable, Sendable {
     public var id = UUID()
     public var request: AnsiGuard.Request
 
-    public var title: String {
+    /// Ключ, а не строка: тип живёт вне интерфейса и языка не знает.
+    public var titleKey: String {
         switch request {
-        case .clipboardWrite: "сервер хочет записать в буфер обмена"
-        case .unsafeLink: "ссылка с необычной схемой"
+        case .clipboardWrite: "term.clipboard"
+        case .unsafeLink: "term.oddLink"
         }
     }
 

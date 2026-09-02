@@ -6,7 +6,7 @@ public import SessionKit
 @MainActor
 extension AppModel {
     public var connectedHostName: String {
-        book.hosts.first { $0.id == selectedHost }?.name ?? "сервер"
+        book.hosts.first { $0.id == selectedHost }?.name ?? strings("files.server")
     }
 
     /// Читает обе панели. Локальная не зависит от подключения.
@@ -69,7 +69,7 @@ extension AppModel {
             remoteFiles = try await browser.list(remotePath)
             filesError = nil
         } catch {
-            filesError = "не удалось прочитать \(remotePath): \(error)"
+            filesError = "\(strings("files.cannotRead")) \(remotePath): \(error)"
             remoteFiles = []
         }
     }

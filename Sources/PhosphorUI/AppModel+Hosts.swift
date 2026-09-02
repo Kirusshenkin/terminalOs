@@ -50,7 +50,7 @@ extension AppModel {
     public func importTermiusHistory() -> ImportReport {
         let entries = TermiusHistory.scan()
         return appendNew(
-            TermiusHistory.hosts(from: entries, existing: book.hosts), source: "история Termius")
+            TermiusHistory.hosts(from: entries, existing: book.hosts), source: strings("hosts.termius"))
     }
 
     public func addHost(_ host: ServerHost) {
@@ -122,7 +122,7 @@ extension AppModel {
     public func duplicate(_ host: ServerHost) {
         var copy = host
         copy.id = UUID()
-        copy.name = host.name + " копия"
+        copy.name = host.name + strings("host.copySuffix")
         book.hosts.append(copy)
         scheduleSave()
     }

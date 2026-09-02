@@ -19,7 +19,7 @@ extension AppModel {
             serverKeys = try await manager.load()
             myFingerprint = await manager.currentFingerprint()
         } catch {
-            keysError = "не удалось прочитать authorized_keys: \(error)"
+            keysError = "\(strings("keys.readFailed")) \(error)"
         }
     }
 
@@ -31,7 +31,7 @@ extension AppModel {
     /// Дописывает ключ в `authorized_keys` на сервере.
     public func addKeyToServer() async {
         guard let host = book.hosts.first(where: { $0.id == selectedHost }) else {
-            keysError = "хост не выбран"
+            keysError = strings("keys.noHost")
             return
         }
         let manager = KeyManager(
@@ -43,7 +43,7 @@ extension AppModel {
             isAddingKey = false
             keysError = nil
         } catch {
-            keysError = "не удалось добавить ключ: \(error)"
+            keysError = "\(strings("keys.addFailed")) \(error)"
         }
     }
 
@@ -74,7 +74,7 @@ extension AppModel {
             )
             keysError = nil
         } catch KeyManager.KeyError.wouldLockOut {
-            keysError = "после удаления не останется ни одного рабочего ключа"
+            keysError = strings("keys.lastKey")
         } catch {
             keysError = "\(error)"
         }

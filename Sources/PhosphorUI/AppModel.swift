@@ -88,19 +88,19 @@ public final class AppModel {
     /// это кнопка «подключиться», и путать одно с другим не стоит.
     public func cardMenuItems(for host: ServerHost) -> [MenuItem] {
         [
-            MenuItem("подключиться") { [self] in
+            MenuItem(strings("menu.connect")) { [self] in
                 screen = .terminal
                 Task { await connect(to: host) }
             },
-            MenuItem("файлы") { [self] in
+            MenuItem(strings("menu.files")) { [self] in
                 screen = .files
                 Task { await connect(to: host) }
             },
             .separator,
-            MenuItem("править…") { [self] in editingHost = host },
-            MenuItem("дублировать") { [self] in duplicate(host) },
+            MenuItem(strings("menu.edit")) { [self] in editingHost = host },
+            MenuItem(strings("menu.duplicate")) { [self] in duplicate(host) },
             .separator,
-            MenuItem("удалить", kind: .destructive) { [self] in pendingHostRemoval = host },
+            MenuItem(strings("common.delete"), kind: .destructive) { [self] in pendingHostRemoval = host },
         ]
     }
     public var importReport: ImportReport?
@@ -335,15 +335,15 @@ public final class AppModel {
         defer { isUnlocking = false }
 
         do {
-            try await gate.authenticate(reason: "открыть профиль Phosphor")
+            try await gate.authenticate(reason: strings("auth.reason"))
             await loadProfile()
             isUnlocked = true
         } catch GateError.unavailable(let reason) {
-            unlockError = "проверка недоступна: \(reason)"
+            unlockError = "\(strings("auth.unavailable")) \(reason)"
         } catch GateError.lockedOut {
-            unlockError = "биометрия заблокирована — войди паролем учётной записи"
+            unlockError = strings("auth.lockedOut")
         } catch {
-            unlockError = "вход отменён"
+            unlockError = strings("auth.cancelled")
         }
     }
 
@@ -353,7 +353,7 @@ public final class AppModel {
 
     private func loadProfile() async {
         do {
-            book = try await profiles.load(HostBook.self, reason: "открыть профиль Phosphor")
+            book = try await profiles.load(HostBook.self, reason: strings("auth.reason"))
             syncForwardsFromBook()
         } catch ProfileStoreError.empty {
             // Первый запуск: список пуст. Ничего не выдумываем — человек либо
@@ -361,9 +361,9 @@ public final class AppModel {
             // Termius), либо заводит хост руками. Экран хостов подсказывает как.
             book = HostBook()
         } catch ProfileStoreError.keyLost {
-            unlockError = "профиль на месте, но ключ утерян — восстанови из экспорта"
+            unlockError = strings("vault.keyLost")
         } catch {
-            unlockError = "профиль не читается: \(error.localizedDescription)"
+            unlockError = "\(strings("vault.unreadable")) \(error.localizedDescription)"
         }
     }
 
@@ -454,7 +454,7 @@ public final class AppModel {
         saveTask = Task { [profiles, book] in
             try? await Task.sleep(for: .milliseconds(700))
             guard !Task.isCancelled else { return }
-            try? await profiles.save(book, reason: "сохранить профиль Phosphor")
+            try? await profiles.save(book, reason: strings("auth.saveReason"))
         }
     }
 

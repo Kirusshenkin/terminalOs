@@ -9,7 +9,7 @@ extension AppModel {
         let path = KnownHostsFile.defaultPath()
         guard let text = try? String(contentsOfFile: path, encoding: .utf8) else {
             knownHosts = []
-            knownHostsError = "файл ~/.ssh/known_hosts не найден — ты ещё никому не доверился"
+            knownHostsError = strings("known.missing")
             return
         }
         knownHosts = KnownHostsFile.parse(text)
@@ -27,7 +27,7 @@ extension AppModel {
             knownHosts = remaining
             knownHostsError = nil
         } catch {
-            knownHostsError = "не удалось записать known_hosts: \(error.localizedDescription)"
+            knownHostsError = "\(strings("known.writeFailed")) \(error.localizedDescription)"
         }
     }
 

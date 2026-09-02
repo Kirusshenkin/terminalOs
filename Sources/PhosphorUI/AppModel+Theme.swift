@@ -31,16 +31,16 @@ extension AppModel {
             guard let theme = try ThemeImport.iTerm(data: data, id: "imported-\(name)", name: name),
                 theme.isValid
             else {
-                themeImportNote = "в файле нет всех шестнадцати цветов ANSI"
+                themeImportNote = strings("theme.needsSixteen")
                 return
             }
             importedThemes.removeAll { $0.id == theme.id }
             importedThemes.append(theme)
             themeID = theme.id
             saveAppearance()
-            themeImportNote = "добавлена тема «\(name)»"
+            themeImportNote = "\(strings("theme.added")) «\(name)»"
         } catch {
-            themeImportNote = "файл не читается: \(error.localizedDescription)"
+            themeImportNote = "\(strings("theme.unreadable")) \(error.localizedDescription)"
         }
     }
 }

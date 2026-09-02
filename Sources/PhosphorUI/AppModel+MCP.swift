@@ -23,7 +23,7 @@ extension AppModel {
             AuditEntry(
                 tool: "policy", hostName: host.name, arguments: "mode=\(mode.rawValue)",
                 decision: "changed", succeeded: true,
-                summary: "режим доступа: \(mode.title)"
+                summary: "\(strings("mcp.mode")) \(mode.title)"
             ))
         auditEntries = await audit.entries()
     }

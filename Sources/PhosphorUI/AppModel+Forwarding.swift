@@ -66,7 +66,7 @@ extension AppModel {
 
     func startForward(_ forward: PortForward) async {
         guard let manager = forwardManager() else {
-            forwardError = "нет живого соединения с хостом — подключись сначала"
+            forwardError = strings("fwd.needLink")
             return
         }
         do {

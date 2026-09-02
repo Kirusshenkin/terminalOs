@@ -27,7 +27,7 @@ extension AppModel {
         guard let session else {
             lastOutcome = ActionOutcome(
                 action: action, containerName: container.name,
-                succeeded: false, message: "нет подключения к хосту"
+                succeeded: false, message: strings("err.noSession")
             )
             return
         }
@@ -57,18 +57,19 @@ extension AppModel {
         containerEnvironment = []
         containerEnvironmentNote = nil
         guard let session else {
-            containerEnvironmentNote = "нет подключения к хосту"
+            containerEnvironmentNote = strings("err.noSession")
             return
         }
         do {
             let result = try await session.run(DockerCLI.inspect(id: container.id))
             guard result.succeeded else {
-                containerEnvironmentNote = result.stderr.isEmpty ? "docker inspect не ответил" : result.stderr
+                containerEnvironmentNote =
+                    result.stderr.isEmpty ? strings("err.inspectSilent") : result.stderr
                 return
             }
             let parsed = DockerCLI.parseEnvironment(result.stdout)
             containerEnvironment = Redaction.apply(to: parsed)
-            if parsed.isEmpty { containerEnvironmentNote = "у контейнера нет переменных" }
+            if parsed.isEmpty { containerEnvironmentNote = strings("dock.noEnv") }
         } catch {
             containerEnvironmentNote = "\(error)"
         }
@@ -86,7 +87,7 @@ extension AppModel {
 
     private func perform(_ action: ResourceAction) async {
         guard let session else {
-            resourcesMessage = "нет подключения к хосту"
+            resourcesMessage = strings("err.noSession")
             return
         }
         do {

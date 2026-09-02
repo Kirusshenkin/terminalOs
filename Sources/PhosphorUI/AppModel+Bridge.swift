@@ -27,7 +27,8 @@ extension AppModel {
             // ничем содержательным. Полагаться на то, что профиль ещё не
             // загружен, нельзя: это совпадение, а не защита.
             guard await self?.isUnlocked == true else {
-                return BridgeResponse(ok: false, text: "Phosphor заблокирован — приложи палец")
+                return BridgeResponse(
+                    ok: false, text: await self?.strings("bridge.locked") ?? "locked")
             }
             guard request.method == "call", let tool = request.tool else {
                 return BridgeResponse(ok: true, text: "", tools: BridgeLocation.descriptions())
@@ -45,7 +46,7 @@ extension AppModel {
             bridge = server
             bridgeError = nil
         } catch {
-            bridgeError = "мост не поднялся: \(error)"
+            bridgeError = "\(strings("bridge.failed")) \(error)"
         }
     }
 

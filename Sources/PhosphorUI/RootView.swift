@@ -113,7 +113,7 @@ public struct RootView: View {
                         title: Text(model.strings("alert.removeKeyTitle")),
                         message: Text(
                             "\(key.comment ?? key.algorithm)\n\(key.fingerprint)\n\n"
-                                + "после этого войти можно будет только другим ключом"),
+                                + model.strings("alert.removeKeyBody")),
                         primaryButton: .destructive(Text(model.strings("common.delete"))) {
                             model.confirmKeyRemoval(key)
                         },

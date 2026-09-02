@@ -44,13 +44,74 @@ public struct TerminalPane: View {
                         .foregroundStyle(isFailure ? style.warning : style.muted)
                         .padding(.bottom, 8)
                 }
-                TerminalHost(theme: style.theme, destination: model.terminalDestination) { request in
-                    Task { @MainActor in model.guardPrompt = GuardPrompt(request: request) }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if model.session != nil { splitBar }
+                panes
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             PetCorner(pet: $model.pet) { model.saveAppearance() }
         }
+    }
+
+    /// Одна панель или две живые рядом/друг над другом.
+    @ViewBuilder private var panes: some View {
+        let primary = hostSurface(model.terminalDestination)
+        if let second = model.secondDestination {
+            let layout =
+                model.splitVertical
+                ? AnyLayout(HStackLayout(spacing: 1)) : AnyLayout(VStackLayout(spacing: 1))
+            layout {
+                primary
+                Rectangle().fill(style.rule)
+                    .frame(
+                        width: model.splitVertical ? 1 : nil,
+                        height: model.splitVertical ? nil : 1)
+                ZStack(alignment: .topTrailing) {
+                    hostSurface(second)
+                    // Закрыть вторую панель — сессия за ней остаётся на сервере.
+                    Button { model.closeSplit() } label: {
+                        Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(style.muted)
+                            .padding(5)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        } else {
+            primary
+        }
+    }
+
+    private func hostSurface(_ destination: TerminalHost.Destination) -> some View {
+        TerminalHost(theme: style.theme, destination: destination) { request in
+            Task { @MainActor in model.guardPrompt = GuardPrompt(request: request) }
+        }
+    }
+
+    /// Тонкая полоса управления сплитом над терминалом.
+    private var splitBar: some View {
+        HStack(spacing: 10) {
+            Spacer()
+            if model.secondSession == nil {
+                Button { model.splitTerminal() } label: {
+                    Label2(model.strings("term.split"))
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button { model.flipSplit() } label: {
+                    Image(
+                        systemName: model.splitVertical
+                            ? "rectangle.split.2x1" : "rectangle.split.1x2"
+                    )
+                    .font(.system(size: 11)).foregroundStyle(style.muted)
+                }
+                .buttonStyle(.plain)
+                Button { model.closeSplit() } label: {
+                    Label2(model.strings("term.unsplit"))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 4).padding(.bottom, 6)
     }
 
     /// Тонкая полоса «запомнить этот сервер?» после подключения на лету.

@@ -219,6 +219,13 @@ public final class AppModel {
     /// в «main», когда переключаешься обратно.
     var spaceSessions: [ServerHost.ID: String] = [:]
 
+    /// Вторая панель сплита: имя её tmux-сессии на том же хосте. nil — одна
+    /// панель. Обе панели живые: как claude и dev-сервер рядом у herdr.
+    public var secondSession: String?
+    /// Делить экран по вертикали (панели рядом) или по горизонтали (одна над
+    /// другой).
+    public var splitVertical = true
+
     /// Одна tmux-сессия на сервере: имя, сколько окон, подключён ли кто-то.
     public struct TmuxSession: Identifiable, Sendable, Equatable {
         public var id: String { name }
@@ -304,6 +311,16 @@ public final class AppModel {
         let session = persistentSessions ? (terminalSession ?? "main") : nil
         return .remote(
             host: host, reach: book.reach(for: host), controlPath: socket, session: session)
+    }
+
+    /// Куда смотрит вторая панель сплита. nil — панели нет.
+    public var secondDestination: TerminalHost.Destination? {
+        guard let second = secondSession, let id = selectedHost,
+            let host = book.hosts.first(where: { $0.id == id }),
+            let socket = sessionSocketPath
+        else { return nil }
+        return .remote(
+            host: host, reach: book.reach(for: host), controlPath: socket, session: second)
     }
 
     /// Theme for the current context: a host's group can override the default,

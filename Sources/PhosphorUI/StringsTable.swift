@@ -239,6 +239,8 @@ extension Strings {
             .english: "this passphrase encrypts the file and is the only thing that opens it. Forget it and the file is unrecoverable.",
         ],
         "profile.mismatch": [.russian: "фразы не совпадают", .english: "passphrases do not match"],
+        "term.split": [.russian: "разделить", .english: "split"],
+        "term.unsplit": [.russian: "убрать сплит", .english: "unsplit"],
         "term.spaces": [.russian: "спейсы", .english: "spaces"],
         "term.noSpaces": [
             .russian: "нет открытых спейсов — нажми + и подключись к серверу",

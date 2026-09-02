@@ -49,6 +49,25 @@ extension AppModel {
         screen = .terminal
     }
 
+    /// Делит терминал на две живые панели. Вторая садится в отдельную сессию
+    /// на том же хосте (не в ту же, что первая, — иначе это одна и та же лента).
+    public func splitTerminal() {
+        guard secondSession == nil else { return }
+        let primary = terminalSession ?? "main"
+        secondSession = primary == "side" ? "side2" : "side"
+        screen = .terminal
+    }
+
+    /// Убирает вторую панель. tmux-сессия за ней остаётся жить на сервере.
+    public func closeSplit() {
+        secondSession = nil
+    }
+
+    /// Меняет ориентацию сплита: рядом ↔ одна над другой.
+    public func flipSplit() {
+        splitVertical.toggle()
+    }
+
     /// Переключает фокус на другой спейс (хост). tmux на прежнем хосте
     /// продолжает работать — мы просто отводим от него взгляд.
     public func switchSpace(_ id: ServerHost.ID) {

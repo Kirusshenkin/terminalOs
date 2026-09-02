@@ -9,24 +9,34 @@ public struct KeysView: View {
     public init(model: AppModel) { self.model = model }
     private var strings: Strings { model.strings }
 
-    /// Ключи с сервера; пример — только пока нет подключения.
-    private var keys: [AuthorizedKey] {
-        model.serverKeys.isEmpty ? AuthorizedKeysFile.parse(Self.sample) : model.serverKeys
-    }
+    /// Только ключи, прочитанные с сервера. Пример на этом экране опасен
+    /// вдвойне: спутать показанный ключ с настоящим — значит решить, что доступ
+    /// у кого-то есть, когда его нет, или наоборот.
+    private var keys: [AuthorizedKey] { model.serverKeys }
 
-    private var isLive: Bool { !model.serverKeys.isEmpty }
+    private var isLive: Bool { model.session != nil }
     private var currentFingerprint: String? { model.myFingerprint ?? keys.first?.fingerprint }
 
-    public var body: some View {
+    @ViewBuilder public var body: some View {
+        if model.session == nil {
+            HostPicker(
+                model: model,
+                title: "authorized_keys",
+                note: "ключи читаются с сервера — выбери, с какого"
+            )
+            .frame(maxWidth: 320, alignment: .leading)
+            Spacer(minLength: 0)
+        } else {
+            live
+        }
+    }
+
+    private var live: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 14) {
                 Text("authorized_keys").font(style.font(15)).foregroundStyle(style.bright)
-                Text("root@app-1").font(style.font(12)).foregroundStyle(style.muted)
+                Text(target).font(style.font(12)).foregroundStyle(style.muted)
                 Spacer()
-                if !isLive {
-                    Text("нет подключения — показан пример")
-                        .font(style.font(10.5)).foregroundStyle(style.muted)
-                }
                 PhButton("обновить") { Task { await model.loadKeys() } }
                 PhButton("+ добавить", kind: .primary) { model.isAddingKey = true }
             }
@@ -39,6 +49,15 @@ public struct KeysView: View {
             warning
             Spacer(minLength: 0)
         }
+    }
+
+    /// Кому принадлежит файл, который правим: имя берётся из профиля, а не из
+    /// того, что прислал сервер.
+    private var target: String {
+        guard let id = model.selectedHost,
+            let host = model.book.hosts.first(where: { $0.id == id })
+        else { return "" }
+        return "\(host.user)@\(host.name)"
     }
 
     private var header: some View {
@@ -129,10 +148,4 @@ public struct KeysView: View {
             .overlay(Rectangle().stroke(style.warning.opacity(0.45), lineWidth: 1))
     }
 
-    private static let sample = """
-        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGhIjKlMnOp you@mac
-        ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBBmZ8kQ== secure-enclave
-        command="deploy.sh",no-pty ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlMnOpQrStUvWxYz012345 deploy@ci
-        #phosphor-disabled ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP0oQrStUvWxYz0123456789AbCdEfGhIjKlMnOpQr temp
-        """
 }

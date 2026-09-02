@@ -5,6 +5,7 @@ public import SwiftUI
 public struct ForwardingView: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    private var strings: Strings { model.strings }
 
     @State private var direction = PortForward.Direction.local
     @State private var listenPort = ""
@@ -22,10 +23,10 @@ public struct ForwardingView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("проброс портов").font(style.font(15)).foregroundStyle(style.bright)
+                Text(strings("fwd.title")).font(style.font(15)).foregroundStyle(style.bright)
                 Text(
                     model.selectedHost == nil
-                        ? "хост не выбран — пробросы привязаны к хосту"
+                        ? strings("fwd.noHost")
                         : model.connectedHostName
                 )
                 .font(style.font(12)).foregroundStyle(style.muted)
@@ -35,7 +36,7 @@ public struct ForwardingView: View {
             Rule()
 
             if model.forwards.isEmpty {
-                Text("пока ничего не проброшено")
+                Text(strings("fwd.empty"))
                     .font(style.font(12)).foregroundStyle(style.muted)
             }
             ForEach(model.forwards) { forward in row(forward) }
@@ -46,8 +47,7 @@ public struct ForwardingView: View {
             Spacer(minLength: 0)
 
             Text(
-                "локальный слушает только на 127.0.0.1: пробросить порт и открыть его "
-                    + "всей сети — обидная ошибка, и по умолчанию её быть не должно"
+                strings("fwd.note")
             )
             .font(style.font(11)).foregroundStyle(style.muted)
         }
@@ -56,7 +56,7 @@ public struct ForwardingView: View {
     private var editor: some View {
         HStack(alignment: .bottom, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
-                Label2("направление")
+                Label2(strings("fwd.direction"))
                 HStack(spacing: 6) {
                     ForEach(PortForward.Direction.allCases, id: \.self) { item in
                         Button {
@@ -76,10 +76,10 @@ public struct ForwardingView: View {
                     }
                 }
             }
-            field("порт у себя", text: $listenPort).frame(width: 110)
-            field("куда, хост", text: $targetHost).frame(width: 150)
-            field("куда, порт", text: $targetPort).frame(width: 110)
-            PhButton("добавить", kind: .primary) {
+            field(strings("fwd.localPort"), text: $listenPort).frame(width: 110)
+            field(strings("fwd.remoteHost"), text: $targetHost).frame(width: 150)
+            field(strings("fwd.remotePort"), text: $targetPort).frame(width: 110)
+            PhButton(strings("common.add"), kind: .primary) {
                 model.addForward(
                     direction: direction,
                     listenPort: Int(listenPort) ?? 0,
@@ -123,13 +123,13 @@ public struct ForwardingView: View {
                     set: { model.setAutoStart($0, for: forward) }
                 )
             ) {
-                Text("при подключении").font(style.font(10.5)).foregroundStyle(style.muted)
+                Text(strings("fwd.onConnect")).font(style.font(10.5)).foregroundStyle(style.muted)
             }
             .toggleStyle(.checkbox)
-            PhButton(running ? "опустить" : "поднять") {
+            PhButton(running ? strings("fwd.down") : strings("fwd.up")) {
                 Task { await model.toggleForward(forward) }
             }
-            PhButton("удалить", kind: .danger) { model.removeForward(forward) }
+            PhButton(strings("common.delete"), kind: .danger) { model.removeForward(forward) }
         }
         .font(style.font(12))
         .padding(.vertical, 5)

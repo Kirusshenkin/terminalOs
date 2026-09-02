@@ -6,6 +6,7 @@ public import SwiftUI
 public struct FilesView: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    private var strings: Strings { model.strings }
 
     public init(model: AppModel) { self.model = model }
 
@@ -13,7 +14,7 @@ public struct FilesView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 22) {
                 panel(
-                    title: "локально",
+                    title: strings("files.local"),
                     path: model.localPath,
                     files: model.localFiles,
                     onOpen: { model.openLocal($0) }
@@ -32,15 +33,15 @@ public struct FilesView: View {
     @ViewBuilder private var remotePanel: some View {
         if model.session == nil {
             VStack(spacing: 12) {
-                Text("нет подключения")
+                Text(strings("files.noLink"))
                     .font(style.font(14)).foregroundStyle(style.muted)
-                Text("выбери хост на вкладке «хосты»")
+                Text(strings("files.pickOnHosts"))
                     .font(style.font(11.5)).foregroundStyle(style.muted)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             panel(
-                title: "\(model.connectedHostName) · то же ssh-соединение",
+                title: "\(model.connectedHostName) · \(strings("files.sameSSH"))",
                 path: model.remotePath,
                 files: model.remoteFiles,
                 onOpen: { file in Task { await model.openRemote(file) } }
@@ -69,9 +70,9 @@ public struct FilesView: View {
 
     private var columns: some View {
         HStack(spacing: 8) {
-            Label2("имя").frame(maxWidth: .infinity, alignment: .leading)
-            Label2("изменён").frame(width: 120, alignment: .leading)
-            Label2("размер").frame(width: 80, alignment: .trailing)
+            Label2(strings("host.name")).frame(maxWidth: .infinity, alignment: .leading)
+            Label2(strings("files.modified")).frame(width: 120, alignment: .leading)
+            Label2(strings("files.size")).frame(width: 80, alignment: .trailing)
         }
         .padding(.bottom, 4)
         .overlay(alignment: .bottom) { Rule() }
@@ -115,11 +116,8 @@ public struct FilesView: View {
     }
 
     private var hint: some View {
-        Text(
-            "файлы идут по тому же соединению, что и терминал: отдельного логина нет, "
-                + "и через тот же прокси или бастион"
-        )
-        .font(style.font(11))
-        .foregroundStyle(style.muted)
+        Text(strings("files.note"))
+            .font(style.font(11))
+            .foregroundStyle(style.muted)
     }
 }

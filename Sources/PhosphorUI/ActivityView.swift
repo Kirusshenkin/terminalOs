@@ -10,6 +10,7 @@ public import SwiftUI
 public struct ActivityView: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    private var strings: Strings { model.strings }
 
     public init(model: AppModel) { self.model = model }
 
@@ -31,16 +32,13 @@ public struct ActivityView: View {
     /// Что вообще может быть вызвано: список закрытый и короткий намеренно.
     private var tools: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label2("инструменты · \(ToolCatalog.all.count)")
-            Text(
-                "каждый инструмент — это дверь в твою инфраструктуру, "
-                    + "поэтому список закрытый и короткий"
-            )
-            .font(style.font(11)).foregroundStyle(style.muted)
+            Label2("\(strings("act.tools")) · \(ToolCatalog.all.count)")
+            Text(strings("act.toolsNote"))
+                .font(style.font(11)).foregroundStyle(style.muted)
             HStack(spacing: 10) {
-                Label2("имя").frame(width: 210, alignment: .leading)
-                Label2("что делает").frame(maxWidth: .infinity, alignment: .leading)
-                Label2("класс").frame(width: 90, alignment: .leading)
+                Label2(strings("host.name")).frame(width: 210, alignment: .leading)
+                Label2(strings("act.what")).frame(maxWidth: .infinity, alignment: .leading)
+                Label2(strings("act.class")).frame(width: 90, alignment: .leading)
             }
             .padding(.top, 6).padding(.bottom, 4)
             .overlay(alignment: .bottom) { Rule() }
@@ -52,7 +50,7 @@ public struct ActivityView: View {
                     Text(tool.summary)
                         .foregroundStyle(style.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(tool.kind == .write ? "запись" : "чтение")
+                    Text(tool.kind == .write ? strings("act.write") : strings("act.read"))
                         .foregroundStyle(tool.kind == .write ? style.warning : style.accent)
                         .frame(width: 90, alignment: .leading)
                 }
@@ -68,8 +66,8 @@ public struct ActivityView: View {
 
     private var access: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label2("доступ по хостам")
-            Text("новый хост выключен: забыть настроить не значит открыть")
+            Label2(strings("act.perHost"))
+            Text(strings("act.newHostOff"))
                 .font(style.font(11)).foregroundStyle(style.muted)
 
             ForEach(model.book.hosts) { host in
@@ -109,8 +107,8 @@ public struct ActivityView: View {
             Spacer(minLength: 0)
 
             VStack(alignment: .leading, spacing: 5) {
-                Label2("как подключить клиента")
-                Text(model.bridgeError ?? "мост поднят, пока открыто приложение")
+                Label2(strings("act.howToConnect"))
+                Text(model.bridgeError ?? strings("act.bridgeUp"))
                     .font(style.font(11))
                     .foregroundStyle(model.bridgeError == nil ? style.muted : style.warning)
                 Text(model.bridgeCommand)
@@ -122,7 +120,7 @@ public struct ActivityView: View {
                     .background(style.surface)
             }
 
-            Text("запрещённые команды отклоняются в любом режиме, включая полный")
+            Text(strings("act.denyNote"))
                 .font(style.font(11))
                 .foregroundStyle(style.warning)
                 .padding(.horizontal, 12).padding(.vertical, 10)
@@ -146,13 +144,13 @@ public struct ActivityView: View {
     private var journal: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label2("журнал действий")
+                Label2(strings("act.journal"))
                 Spacer()
-                Text("только дозапись · инструмента для правки не существует")
+                Text(strings("act.appendOnly"))
                     .font(style.font(10.5)).foregroundStyle(style.muted)
             }
             if model.auditEntries.isEmpty {
-                Text("пока ничего не происходило")
+                Text(strings("act.empty"))
                     .font(style.font(12)).foregroundStyle(style.muted)
             }
             ScrollView {

@@ -5,6 +5,7 @@ public import SwiftUI
 public struct HostEditor: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    private var strings: Strings { model.strings }
     /// Хост, который правим. Пусто — создаём новый.
     private let existing: ServerHost?
 
@@ -20,10 +21,11 @@ public struct HostEditor: View {
 
     private enum ReachKind: String, CaseIterable {
         case direct, socks
-        var title: String {
+        /// Ключ, а не готовая строка: enum не знает про язык интерфейса.
+        var key: String {
             switch self {
-            case .direct: "напрямую"
-            case .socks: "через прокси"
+            case .direct: "host.direct"
+            case .socks: "host.viaProxy"
             }
         }
     }
@@ -65,17 +67,17 @@ public struct HostEditor: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(existing == nil ? "новый хост" : "правка хоста")
+            Text(existing == nil ? strings("host.new") : strings("host.edit"))
                 .font(style.font(15)).foregroundStyle(style.bright)
 
             VStack(alignment: .leading, spacing: 10) {
-                field("адрес", text: $address, placeholder: "10.0.0.1 или example.com")
+                field(strings("host.address"), text: $address, placeholder: strings("host.addressHint"))
                 HStack(spacing: 10) {
-                    field("пользователь", text: $user)
-                    field("порт", text: $port).frame(width: 110)
+                    field(strings("host.user"), text: $user)
+                    field(strings("host.port"), text: $port).frame(width: 110)
                 }
-                field("имя", text: $name, placeholder: "необязательно — возьмём адрес")
-                field("теги", text: $tags, placeholder: "через запятую")
+                field(strings("host.name"), text: $name, placeholder: strings("host.nameHint"))
+                field(strings("host.tags"), text: $tags, placeholder: strings("host.tagsHint"))
             }
 
             group
@@ -86,17 +88,19 @@ public struct HostEditor: View {
             HStack(spacing: 8) {
                 Spacer()
                 if let existing {
-                    PhButton("удалить", kind: .danger) {
+                    PhButton(strings("common.delete"), kind: .danger) {
                         model.pendingHostRemoval = existing
                         model.editingHost = nil
                         model.isAddingHost = false
                     }
                     Spacer()
                 }
-                PhButton("отмена") { close() }
-                PhButton(existing == nil ? "добавить" : "сохранить", kind: .primary) { save() }
-                    .disabled(!isValid)
-                    .opacity(isValid ? 1 : 0.4)
+                PhButton(strings("common.cancel")) { close() }
+                PhButton(existing == nil ? strings("common.add") : strings("common.save"), kind: .primary) {
+                    save()
+                }
+                .disabled(!isValid)
+                .opacity(isValid ? 1 : 0.4)
             }
         }
         .padding(22)
@@ -120,9 +124,9 @@ public struct HostEditor: View {
 
     private var group: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label2("группа — она несёт настройки: доступ, тему, режим ии")
+            Label2(strings("host.groupNote"))
             HStack(spacing: 6) {
-                chip("без группы", selected: groupID == nil) { groupID = nil }
+                chip(strings("host.noGroup"), selected: groupID == nil) { groupID = nil }
                 ForEach(model.book.groups) { item in
                     chip(item.name, selected: groupID == item.id) { groupID = item.id }
                 }
@@ -132,16 +136,16 @@ public struct HostEditor: View {
 
     private var reach: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label2("как дотянуться")
+            Label2(strings("host.reach"))
             HStack(spacing: 6) {
                 ForEach(ReachKind.allCases, id: \.self) { kind in
-                    chip(kind.title, selected: reachKind == kind) { reachKind = kind }
+                    chip(strings(kind.key), selected: reachKind == kind) { reachKind = kind }
                 }
             }
             if reachKind == .socks {
                 HStack(spacing: 10) {
-                    field("хост прокси", text: $proxyHost)
-                    field("порт", text: $proxyPort).frame(width: 110)
+                    field(strings("host.proxyHost"), text: $proxyHost)
+                    field(strings("host.port"), text: $proxyPort).frame(width: 110)
                 }
             }
         }

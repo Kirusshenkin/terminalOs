@@ -74,15 +74,14 @@ public struct RootView: View {
             content
                 .alert(item: $model.pendingHostRemoval) { host in
                     Alert(
-                        title: Text("удалить «\(host.name)»?"),
+                        title: Text("\(model.strings("common.delete")) «\(host.name)»?"),
                         message: Text(
-                            "\(host.user)@\(host.address) — из списка, но не с сервера: "
-                                + "сам сервер останется на месте"),
-                        primaryButton: .destructive(Text("удалить")) {
+                            "\(host.user)@\(host.address) — \(model.strings("alert.removeHost"))"),
+                        primaryButton: .destructive(Text(model.strings("common.delete"))) {
                             model.removeHost(host.id)
                             model.pendingHostRemoval = nil
                         },
-                        secondaryButton: .cancel(Text("отмена"))
+                        secondaryButton: .cancel(Text(model.strings("common.cancel")))
                     )
                 }
                 // Разрушающее действие называет контейнер по имени: «удалить»
@@ -94,7 +93,7 @@ public struct RootView: View {
                         primaryButton: .destructive(Text(pending.action.title)) {
                             model.confirm(pending)
                         },
-                        secondaryButton: .cancel(Text("отмена"))
+                        secondaryButton: .cancel(Text(model.strings("common.cancel")))
                     )
                 }
                 .alert(item: $model.pendingAction) { pending in
@@ -104,33 +103,33 @@ public struct RootView: View {
                         primaryButton: .destructive(Text(pending.action.title)) {
                             model.confirm(pending)
                         },
-                        secondaryButton: .cancel(Text("отмена"))
+                        secondaryButton: .cancel(Text(model.strings("common.cancel")))
                     )
                 }
                 // Удаление ключа, которым ты подключён, — единственное действие,
                 // способное отрезать от сервера навсегда.
                 .alert(item: $model.pendingKeyRemoval) { key in
                     Alert(
-                        title: Text("удалить ключ, которым ты подключён?"),
+                        title: Text(model.strings("alert.removeKeyTitle")),
                         message: Text(
                             "\(key.comment ?? key.algorithm)\n\(key.fingerprint)\n\n"
                                 + "после этого войти можно будет только другим ключом"),
-                        primaryButton: .destructive(Text("удалить")) {
+                        primaryButton: .destructive(Text(model.strings("common.delete"))) {
                             model.confirmKeyRemoval(key)
                         },
-                        secondaryButton: .cancel(Text("отмена"))
+                        secondaryButton: .cancel(Text(model.strings("common.cancel")))
                     )
                 }
                 // Вопрос от MCP: показываем ровно то, что собираются сделать.
                 .alert(item: $model.mcpConfirmation) { request in
                     Alert(
-                        title: Text("ии просит выполнить на «\(request.host)»"),
+                        title: Text("\(model.strings("alert.mcpAsks")) «\(request.host)»"),
                         message: Text(request.what),
-                        primaryButton: .destructive(Text("разрешить")) {
+                        primaryButton: .destructive(Text(model.strings("common.allow"))) {
                             request.answer(true)
                             model.mcpConfirmation = nil
                         },
-                        secondaryButton: .cancel(Text("отклонить")) {
+                        secondaryButton: .cancel(Text(model.strings("common.deny"))) {
                             request.answer(false)
                             model.mcpConfirmation = nil
                         }
@@ -273,12 +272,18 @@ public struct RootView: View {
 
     private var footer: some View {
         HStack(spacing: 22) {
-            Text("\(model.book.hosts.count) хостов · \(model.book.groups.count) групп")
-            Text(model.style.theme.name)
+            Text(
+                "\(model.book.hosts.count) \(model.strings("foot.hosts")) · "
+                    + "\(model.book.groups.count) \(model.strings("foot.groups"))"
+            )
+            Text(
+                model.strings.themeName(
+                    id: model.style.theme.id, fallback: model.style.theme.name)
+            )
             Spacer()
             Text(
                 model.petVisible
-                    ? (model.pet == .cat ? "котёнок спит" : "поссум спит")
+                    ? model.strings(model.pet == .cat ? "foot.catAsleep" : "foot.gliderAsleep")
                     : ""
             )
         }

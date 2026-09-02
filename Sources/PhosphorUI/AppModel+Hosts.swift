@@ -38,8 +38,9 @@ extension AppModel {
     /// Хосты из `~/.ssh/known_hosts` — машины, которым ты уже доверился.
     @discardableResult
     public func importKnownHosts() -> ImportReport {
-        let text = (try? String(
-            contentsOfFile: KnownHostsFile.defaultPath(), encoding: .utf8)) ?? ""
+        let text =
+            (try? String(
+                contentsOfFile: KnownHostsFile.defaultPath(), encoding: .utf8)) ?? ""
         return appendNew(KnownHostsFile.servers(text), source: "known_hosts")
     }
 

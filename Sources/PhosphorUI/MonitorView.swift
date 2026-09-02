@@ -36,7 +36,7 @@ public struct MonitorView: View {
                 HostPicker(
                     model: model,
                     title: strings("tab.monitor"),
-                    note: "снимки /proc идут по тому же соединению — выбери сервер"
+                    note: strings("mon.pickNote")
                 )
                 .frame(maxWidth: 320, alignment: .leading)
             } else {
@@ -55,18 +55,18 @@ public struct MonitorView: View {
     /// Полный список процессов, а не пять строк в углу.
     private var processes: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label2("самые тяжёлые процессы")
+            Label2(strings("mon.topProcesses"))
             HStack(spacing: 10) {
                 Label2("pid").frame(width: 70, alignment: .trailing)
-                Label2("команда").frame(maxWidth: .infinity, alignment: .leading)
+                Label2(strings("mon.command")).frame(maxWidth: .infinity, alignment: .leading)
                 Label2("cpu").frame(width: 70, alignment: .trailing)
-                Label2("память").frame(width: 80, alignment: .trailing)
+                Label2(strings("mon.memory")).frame(width: 80, alignment: .trailing)
             }
             .padding(.bottom, 4)
             .overlay(alignment: .bottom) { Rule() }
 
             if snapshot?.processes.isEmpty ?? true {
-                Text("нет данных — подключись к хосту")
+                Text(strings("mon.noData"))
                     .font(style.font(12)).foregroundStyle(style.muted)
             }
             ForEach(snapshot?.processes ?? [], id: \.pid) { process in
@@ -93,21 +93,23 @@ public struct MonitorView: View {
     /// Верхняя строка: то, что хочется знать, не читая ничего дальше.
     private var summary: some View {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
-            stat("аптайм", snapshot.map { ByteFormat.duration(seconds: $0.uptime) } ?? "—")
+            stat(strings("mon.uptime"), snapshot.map { ByteFormat.duration(seconds: $0.uptime) } ?? "—")
             stat(
                 "load",
                 snapshot.map {
                     String(format: "%.2f %.2f %.2f", $0.loadOne, $0.loadFive, $0.loadFifteen)
                 } ?? "—")
-            stat("процессы", snapshot.map { "\($0.runningProcesses) из \($0.totalProcesses)" } ?? "—")
-            stat("память", snapshot.map { ByteFormat.percent($0.memoryUsage) } ?? "—")
-            stat("дескрипторы", snapshot.map { "\($0.openFiles)" } ?? "—")
-            stat("контейнеры", containersSummary)
+            stat(
+                strings("mon.processes"),
+                snapshot.map { "\($0.runningProcesses) \(strings("common.of")) \($0.totalProcesses)" } ?? "—")
+            stat(strings("mon.memory"), snapshot.map { ByteFormat.percent($0.memoryUsage) } ?? "—")
+            stat(strings("mon.handles"), snapshot.map { "\($0.openFiles)" } ?? "—")
+            stat(strings("mon.containers"), containersSummary)
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 Text(snapshot?.cpuModel.isEmpty == false ? snapshot?.cpuModel ?? "" : "—")
                     .font(style.font(11)).foregroundStyle(style.muted).lineLimit(1)
-                Text(snapshot.map { "ядро \($0.kernel)" } ?? "нет соединения")
+                Text(snapshot.map { "\(strings("mon.kernel")) \($0.kernel)" } ?? strings("mon.noLink"))
                     .font(style.font(11)).foregroundStyle(style.muted)
             }
         }
@@ -118,7 +120,9 @@ public struct MonitorView: View {
         guard !all.isEmpty else { return "—" }
         let running = all.filter { $0.state == .running }.count
         let sick = all.filter(\.isUnhealthy).count
-        return sick > 0 ? "\(running)/\(all.count) · \(sick) больных" : "\(running) из \(all.count)"
+        return sick > 0
+            ? "\(running)/\(all.count) · \(sick) \(strings("mon.sick"))"
+            : "\(running) \(strings("common.of")) \(all.count)"
     }
 
     private func stat(_ title: String, _ value: String) -> some View {
@@ -155,7 +159,7 @@ public struct MonitorView: View {
                 }
             }
             if usage.isEmpty {
-                Text("ждём второго снимка: загрузка — это разница")
+                Text(strings("mon.secondSnapshot"))
                     .font(style.font(11)).foregroundStyle(style.muted)
             }
         }
@@ -176,7 +180,7 @@ public struct MonitorView: View {
                 HStack {
                     Text(
                         snapshot.map {
-                            "\(ByteFormat.size($0.memoryUsed)) из \(ByteFormat.size($0.memoryTotal))"
+                            "\(ByteFormat.size($0.memoryUsed)) \(strings("common.of")) \(ByteFormat.size($0.memoryTotal))"
                         } ?? "—")
                     Spacer()
                     Text(swapLine).foregroundStyle(swapUsed > 0.01 ? style.warning : style.muted)
@@ -204,7 +208,7 @@ public struct MonitorView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Label2("диск: чтение и запись")
+                Label2(strings("mon.diskIO"))
                 if model.sessionState.diskThroughput.isEmpty {
                     Text("—").font(style.font(11.5)).foregroundStyle(style.muted)
                 }
@@ -212,8 +216,8 @@ public struct MonitorView: View {
                     HStack {
                         Text(flow.name).foregroundStyle(style.muted)
                         Spacer()
-                        Text("↓ \(ByteFormat.size(Int64(flow.down)))/с")
-                        Text("↑ \(ByteFormat.size(Int64(flow.up)))/с")
+                        Text("↓ \(ByteFormat.size(Int64(flow.down)))\(strings("common.perSec"))")
+                        Text("↑ \(ByteFormat.size(Int64(flow.up)))\(strings("common.perSec"))")
                     }
                     .font(style.font(11.5))
                     .foregroundStyle(style.text)
@@ -230,15 +234,15 @@ public struct MonitorView: View {
 
     private var swapLine: String {
         guard let snapshot else { return "swap —" }
-        guard snapshot.swapTotal > 0 else { return "swap отсутствует" }
+        guard snapshot.swapTotal > 0 else { return strings("mon.noSwap") }
         return "swap \(ByteFormat.size(snapshot.swapTotal - snapshot.swapFree))"
-            + " из \(ByteFormat.size(snapshot.swapTotal))"
+            + " \(strings("common.of")) \(ByteFormat.size(snapshot.swapTotal))"
     }
 
     private var disks: [(String, Double, String)] {
         guard let snapshot, !snapshot.filesystems.isEmpty else { return [] }
         return snapshot.filesystems.map {
-            ($0.mount, $0.usage, "свободно \(ByteFormat.size($0.available))")
+            ($0.mount, $0.usage, "\(strings("mon.free")) \(ByteFormat.size($0.available))")
         }
     }
 
@@ -255,8 +259,8 @@ public struct MonitorView: View {
                     HStack {
                         Text(flow.name).foregroundStyle(style.muted)
                         Spacer()
-                        Text("↓ \(ByteFormat.size(Int64(flow.down)))/с")
-                        Text("↑ \(ByteFormat.size(Int64(flow.up)))/с")
+                        Text("↓ \(ByteFormat.size(Int64(flow.down)))\(strings("common.perSec"))")
+                        Text("↑ \(ByteFormat.size(Int64(flow.up)))\(strings("common.perSec"))")
                     }
                     .font(style.font(11.5))
                     .foregroundStyle(style.text)
@@ -264,7 +268,7 @@ public struct MonitorView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Label2("самые тяжёлые процессы")
+                Label2(strings("mon.topProcesses"))
                 if snapshot?.processes.isEmpty ?? true {
                     Text("—").font(style.font(11.5)).foregroundStyle(style.muted)
                 }
@@ -283,7 +287,7 @@ public struct MonitorView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Label2("контейнеры")
+                Label2(strings("mon.containers"))
                 if model.sessionState.containers.isEmpty {
                     Text("—").font(style.font(11.5)).foregroundStyle(style.muted)
                 }

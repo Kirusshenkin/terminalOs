@@ -1,5 +1,5 @@
-public import PhosphorCore
 public import HostsKit
+public import PhosphorCore
 public import SessionKit
 public import SwiftUI
 
@@ -7,6 +7,7 @@ public import SwiftUI
 public struct TerminalPane: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    private var strings: Strings { model.strings }
 
     public init(model: AppModel) { self.model = model }
 
@@ -36,8 +37,8 @@ public struct TerminalPane: View {
             Alert(
                 title: Text(prompt.title),
                 message: Text(prompt.detail),
-                primaryButton: .default(Text("разрешить")) { model.accept(prompt) },
-                secondaryButton: .cancel(Text("отклонить"))
+                primaryButton: .default(Text(strings("common.allow"))) { model.accept(prompt) },
+                secondaryButton: .cancel(Text(strings("common.deny")))
             )
         }
     }
@@ -46,11 +47,11 @@ public struct TerminalPane: View {
     /// Данные уже подставлены — человеку остаётся только согласиться.
     private func rememberBanner(_ host: ServerHost) -> some View {
         HStack(spacing: 10) {
-            Text("запомнить \(host.user)@\(host.address)?")
+            Text("\(strings("term.remember")) \(host.user)@\(host.address)?")
                 .font(style.font(12)).foregroundStyle(style.bright)
             Spacer()
-            PhButton("запомнить", kind: .primary) { model.acceptRememberOffer() }
-            PhButton("не надо") { model.rememberOffer = nil }
+            PhButton(strings("term.remember"), kind: .primary) { model.acceptRememberOffer() }
+            PhButton(strings("term.nope")) { model.rememberOffer = nil }
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(style.surface)
@@ -61,11 +62,11 @@ public struct TerminalPane: View {
     private var phaseNote: String? {
         switch model.sessionState.phase {
         case .idle: nil
-        case .connecting: "подключаюсь…"
-        case .probing: "собираю профиль хоста…"
+        case .connecting: strings("term.connecting")
+        case .probing: strings("term.probing")
         case .ready:
             model.sessionState.profile.map {
-                "\($0.osName) \($0.osVersion) · аптайм \(ByteFormat.duration(seconds: $0.uptimeSeconds))"
+                "\($0.osName) \($0.osVersion) · \(strings("term.uptime")) \(ByteFormat.duration(seconds: $0.uptimeSeconds))"
             }
         case .failed(let reason): reason
         }

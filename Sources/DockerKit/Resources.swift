@@ -116,9 +116,9 @@ public enum ResourceAction: Sendable, Equatable {
 
     public var subject: String {
         switch self {
-        case let .removeImage(_, name): name
-        case let .removeVolume(name): name
-        case let .removeNetwork(_, name): name
+        case .removeImage(_, let name): name
+        case .removeVolume(let name): name
+        case .removeNetwork(_, let name): name
         case .pruneImages: "все образы без имени"
         case .pruneVolumes: "все тома, которые никто не подключил"
         case .pruneNetworks: "все сети, к которым никто не подключён"
@@ -145,11 +145,11 @@ public enum ResourceAction: Sendable, Equatable {
 
     public func command(prefix: String = "docker") -> String {
         switch self {
-        case let .removeImage(id, _): "\(prefix) image rm \(Shell.quote(id))"
+        case .removeImage(let id, _): "\(prefix) image rm \(Shell.quote(id))"
         case .pruneImages: "\(prefix) image prune -f"
-        case let .removeVolume(name): "\(prefix) volume rm \(Shell.quote(name))"
+        case .removeVolume(let name): "\(prefix) volume rm \(Shell.quote(name))"
         case .pruneVolumes: "\(prefix) volume prune -f"
-        case let .removeNetwork(id, _): "\(prefix) network rm \(Shell.quote(id))"
+        case .removeNetwork(let id, _): "\(prefix) network rm \(Shell.quote(id))"
         case .pruneNetworks: "\(prefix) network prune -f"
         }
     }

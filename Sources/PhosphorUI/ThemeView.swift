@@ -27,9 +27,11 @@ public struct ThemeView: View {
         case .palette:
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Label2("палитра ansi · \(current.name)")
+                    Label2(
+                        "\(strings("set.palette")) · \(strings.themeName(id: current.id, fallback: current.name))"
+                    )
                     Spacer()
-                    PhButton("импорт .itermcolors") { model.importTheme() }
+                    PhButton(strings("set.import")) { model.importTheme() }
                 }
                 if let note = model.themeImportNote {
                     Text(note).font(style.font(11)).foregroundStyle(style.muted)
@@ -45,34 +47,38 @@ public struct ThemeView: View {
                         }
                     }
                 }
-                Label2("особые цвета")
+                Label2(strings("set.special"))
                 LazyVGrid(
                     columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2),
                     spacing: 8
                 ) {
-                    swatch("текст", current.foreground)
-                    swatch("фон", current.background)
-                    swatch("курсор", current.cursor)
-                    swatch("выделение", current.selection)
+                    swatch(strings("set.text"), current.foreground)
+                    swatch(strings("set.bg"), current.background)
+                    swatch(strings("set.cursor"), current.cursor)
+                    swatch(strings("set.selection"), current.selection)
                 }
-                Label2("шрифт")
+                Label2(strings("set.font"))
                 HStack(spacing: 8) {
-                    stepper("размер", value: model.fontSize, unit: "пт", step: 1, range: 10...20) {
+                    stepper(
+                        strings("set.size"), value: model.fontSize, unit: strings("set.pt"), step: 1,
+                        range: 10...20
+                    ) {
                         model.fontSize = $0
                         model.saveAppearance()
                     }
-                    toggleChip("лигатуры", on: model.ligatures) {
+                    toggleChip(strings("set.ligatures"), on: model.ligatures) {
                         model.ligatures.toggle()
                         model.saveAppearance()
                     }
                     stepper(
-                        "строка", value: model.lineHeight, unit: "", step: 0.1, range: 1.0...2.0
+                        strings("set.lineHeight"), value: model.lineHeight, unit: "", step: 0.1,
+                        range: 1.0...2.0
                     ) {
                         model.lineHeight = $0
                         model.saveAppearance()
                     }
                 }
-                Text("IBM Plex Mono едет в бандле — на систему не полагаемся")
+                Text(strings("set.fontNote"))
                     .font(style.font(10.5)).foregroundStyle(style.muted)
                 Spacer(minLength: 0)
             }
@@ -80,49 +86,45 @@ public struct ThemeView: View {
         case .glass:
             VStack(alignment: .leading, spacing: 10) {
                 sliders
-                Text(
-                    "скан-линии и виньетка рисуются один раз и не стоят ничего "
-                        + "на кадр: это не анимация, а статичный слой"
-                )
-                .font(style.font(11)).foregroundStyle(style.muted)
+                Text(strings("set.glassNote"))
+                    .font(style.font(11)).foregroundStyle(style.muted)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         case .behaviour:
             VStack(alignment: .leading, spacing: 14) {
-                Label2("питомец")
+                Label2(strings("set.pet"))
                 HStack(spacing: 8) {
                     ForEach(Pet.allCases, id: \.self) { pet in
-                        toggleChip(pet.title.lowercased(), on: model.petVisible && model.pet == pet)
-                        {
+                        toggleChip(pet.title.lowercased(), on: model.petVisible && model.pet == pet) {
                             model.pet = pet
                             model.petVisible = true
                             model.saveAppearance()
                         }
                     }
-                    toggleChip("выключить", on: !model.petVisible) {
+                    toggleChip(strings("set.off"), on: !model.petVisible) {
                         model.petVisible.toggle()
                         model.saveAppearance()
                     }
                 }
-                Text("на продовых хостах питомца нет по умолчанию — на проде не играют")
+                Text(strings("set.petNote"))
                     .font(style.font(11)).foregroundStyle(style.muted)
 
-                Label2("опрос сервера")
+                Label2(strings("set.poll"))
                 HStack(spacing: 8) {
                     stepper(
-                        "интервал", value: model.pollSeconds, unit: "с", step: 1, range: 1...30
+                        strings("set.interval"), value: model.pollSeconds, unit: strings("set.sec"), step: 1,
+                        range: 1...30
                     ) {
                         model.pollSeconds = $0
                         model.saveAppearance()
                         model.applyPollInterval()
                     }
                 }
-                Text("опрос замирает, когда окно не на виду: интервал — это про то, "
-                    + "как часто спрашивать, пока смотришь")
+                Text(strings("set.pollNote"))
                     .font(style.font(11)).foregroundStyle(style.muted)
 
-                Label2("буфер логов контейнера")
+                Label2(strings("set.logBuffer"))
                 HStack(spacing: 8) {
                     ForEach([500, 2_000, 5_000, 20_000], id: \.self) { lines in
                         toggleChip("\(lines)", on: model.logLines == lines) {
@@ -132,8 +134,7 @@ public struct ThemeView: View {
                         }
                     }
                 }
-                Text("буфер ограничен сверху всегда: неограниченный — это утечка "
-                    + "с отложенным сроком")
+                Text(strings("set.logNote"))
                     .font(style.font(11)).foregroundStyle(style.muted)
                 Spacer(minLength: 0)
             }
@@ -164,15 +165,12 @@ public struct ThemeView: View {
                         }
                     )
                 ) {
-                    Text("показывать отсылки").font(style.font(12)).foregroundStyle(style.text)
+                    Text(strings("set.showEggs")).font(style.font(12)).foregroundStyle(style.text)
                 }
                 .toggleStyle(.switch)
                 .tint(style.accent)
-                Text(
-                    "отсылка никогда не подменяет информацию: значок стоит рядом "
-                        + "с настоящим числом, а не вместо него"
-                )
-                .font(style.font(11)).foregroundStyle(style.muted)
+                Text(strings("set.eggsNote"))
+                    .font(style.font(11)).foregroundStyle(style.muted)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -197,14 +195,18 @@ public struct ThemeView: View {
     ) -> some View {
         HStack(spacing: 8) {
             Text(title).font(style.font(11.5)).foregroundStyle(style.muted)
-            Button { set(max(range.lowerBound, value - step)) } label: {
+            Button {
+                set(max(range.lowerBound, value - step))
+            } label: {
                 Text("−").font(style.font(13)).foregroundStyle(style.text).frame(width: 16)
             }
             .buttonStyle(.plain)
             Text(step < 1 ? String(format: "%.1f", value) : String(Int(value)) + unit)
                 .font(style.font(11.5)).foregroundStyle(style.bright)
                 .frame(width: 38)
-            Button { set(min(range.upperBound, value + step)) } label: {
+            Button {
+                set(min(range.upperBound, value + step))
+            } label: {
                 Text("+").font(style.font(13)).foregroundStyle(style.text).frame(width: 16)
             }
             .buttonStyle(.plain)
@@ -240,7 +242,7 @@ public struct ThemeView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Rectangle().fill(Color(theme.ansi[10])).frame(width: 9, height: 9)
-                        Text(theme.name)
+                        Text(strings.themeName(id: theme.id, fallback: theme.name))
                             .foregroundStyle(theme.id == model.themeID ? style.bright : style.text)
                         Spacer(minLength: 0)
                     }
@@ -252,24 +254,30 @@ public struct ThemeView: View {
                 .buttonStyle(.plain)
             }
             Spacer(minLength: 0)
-            Label2("привязка").padding(.bottom, 4)
+            Label2(strings("set.binding")).padding(.bottom, 4)
             ForEach(model.book.groups) { group in
                 // Клик привязывает выбранную тему к группе: прод красный не
                 // ради красоты, а чтобы окно нельзя было перепутать.
-                Button { model.bindTheme(model.themeID, to: group) } label: {
+                Button {
+                    model.bindTheme(model.themeID, to: group)
+                } label: {
                     HStack(spacing: 6) {
                         Text(group.name).foregroundStyle(style.muted)
                         Spacer()
-                        Text(group.themeID.map { BuiltInThemes.theme(id: $0).name }
-                             ?? "по умолчанию")
-                            .foregroundStyle(style.text)
+                        Text(
+                            group.themeID.map {
+                                strings.themeName(id: $0, fallback: BuiltInThemes.theme(id: $0).name)
+                            }
+                                ?? strings("set.default")
+                        )
+                        .foregroundStyle(style.text)
                     }
                     .font(style.font(11))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
-            Text("клик привязывает выбранную тему к группе")
+            Text(strings("set.bindingNote"))
                 .font(style.font(10)).foregroundStyle(style.muted).padding(.top, 4)
         }
         .frame(width: 190, alignment: .leading)
@@ -277,20 +285,20 @@ public struct ThemeView: View {
 
     private var sliders: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label2("фон и стекло")
-            row("скан-линии", current.scanlines) {
+            Label2(strings("set.glass"))
+            row(strings("set.scanlines"), current.scanlines) {
                 model.scanlines = $0
                 model.saveAppearance()
             }
-            row("свечение", current.glow) {
+            row(strings("set.glow"), current.glow) {
                 model.glow = $0
                 model.saveAppearance()
             }
-            row("виньетка", current.vignette) {
+            row(strings("set.vignette"), current.vignette) {
                 model.vignette = $0
                 model.saveAppearance()
             }
-            PhButton("вернуть как в теме") {
+            PhButton(strings("set.resetGlass")) {
                 model.scanlines = nil
                 model.glow = nil
                 model.vignette = nil
@@ -332,7 +340,7 @@ public struct ThemeView: View {
 
     private var preview: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label2("предпросмотр")
+            Label2(strings("set.preview"))
             VStack(alignment: .leading, spacing: 4) {
                 line([("root@prod-01", 10), (":", 8), ("~", 12), ("# ls -la", 15)])
                 line([("drwxr-xr-x", 12), ("  app  ", 15), ("config", 14), ("  deploy.sh", 11)])

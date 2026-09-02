@@ -5,6 +5,7 @@ public import SwiftUI
 public struct SnippetsView: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    private var strings: Strings { model.strings }
 
     @State private var name = ""
     @State private var command = ""
@@ -27,7 +28,7 @@ public struct SnippetsView: View {
 
     private var list: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label2("сниппеты · \(model.book.snippets.count)")
+            Label2("\(strings("snip.title")) · \(model.book.snippets.count)")
             ForEach(model.book.snippets) { snippet in
                 Button {
                     selected = snippet.id; values = [:]
@@ -47,8 +48,8 @@ public struct SnippetsView: View {
                 .buttonStyle(.plain)
             }
             Rule().padding(.vertical, 6)
-            Label2("новый")
-            TextField("название", text: $name)
+            Label2(strings("snip.new"))
+            TextField(strings("snip.name"), text: $name)
                 .textFieldStyle(.plain).font(style.font(12))
                 .padding(.horizontal, 8).padding(.vertical, 5)
                 .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))
@@ -56,7 +57,7 @@ public struct SnippetsView: View {
                 .textFieldStyle(.plain).font(style.font(12))
                 .padding(.horizontal, 8).padding(.vertical, 5)
                 .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))
-            PhButton("сохранить") {
+            PhButton(strings("common.save")) {
                 model.addSnippet(name: name, command: command)
                 name = ""
                 command = ""
@@ -75,7 +76,7 @@ public struct SnippetsView: View {
                     .textSelection(.enabled)
 
                 if !snippet.placeholders.isEmpty {
-                    Label2("подстановки")
+                    Label2(strings("snip.substitutions"))
                     ForEach(snippet.placeholders, id: \.self) { key in
                         HStack(spacing: 8) {
                             Text(key).font(style.font(12)).foregroundStyle(style.muted)
@@ -94,7 +95,7 @@ public struct SnippetsView: View {
                     }
                 }
 
-                Label2("что уйдёт на сервер")
+                Label2(strings("snip.whatGoes"))
                 Text(snippet.expand(values))
                     .font(style.font(12)).foregroundStyle(style.bright)
                     .textSelection(.enabled)
@@ -103,16 +104,16 @@ public struct SnippetsView: View {
                     .background(style.surface)
 
                 HStack(spacing: 8) {
-                    PhButton("выполнить здесь", kind: .primary) {
+                    PhButton(strings("snip.runHere"), kind: .primary) {
                         Task { await model.runSnippet(snippet, values: values, onGroup: false) }
                     }
                     .disabled(model.session == nil)
                     if let group = model.currentGroup {
-                        PhButton("на всех в «\(group.name)»") {
+                        PhButton("\(strings("snip.runAll")) «\(group.name)»") {
                             Task { await model.runSnippet(snippet, values: values, onGroup: true) }
                         }
                     }
-                    PhButton("удалить", kind: .danger) { model.removeSnippet(snippet) }
+                    PhButton(strings("common.delete"), kind: .danger) { model.removeSnippet(snippet) }
                 }
 
                 if let egg = model.snippetEgg {
@@ -121,7 +122,7 @@ public struct SnippetsView: View {
                 }
 
                 if !model.snippetOutput.isEmpty {
-                    Label2("вывод")
+                    Label2(strings("snip.output"))
                     ScrollView {
                         Text(model.snippetOutput)
                             .font(style.font(11.5)).foregroundStyle(style.text.opacity(0.85))
@@ -132,7 +133,7 @@ public struct SnippetsView: View {
                 Spacer(minLength: 0)
             }
         } else {
-            Text("сниппетов ещё нет").font(style.font(12)).foregroundStyle(style.muted)
+            Text(strings("snip.empty")).font(style.font(12)).foregroundStyle(style.muted)
         }
     }
 }

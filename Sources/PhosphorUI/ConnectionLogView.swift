@@ -5,19 +5,20 @@ public import SwiftUI
 public struct ConnectionLogView: View {
     @Environment(\.style) private var style
     let model: AppModel
+    private var strings: Strings { model.strings }
 
     public init(model: AppModel) { self.model = model }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("журнал подключений").font(style.font(15)).foregroundStyle(style.bright)
-                Text("\(model.connectionEvents.count) записей")
+                Text(strings("clog.title")).font(style.font(15)).foregroundStyle(style.bright)
+                Text("\(model.connectionEvents.count) \(strings("clog.records"))")
                     .font(style.font(12)).foregroundStyle(style.muted)
             }
 
             if model.connectionEvents.isEmpty {
-                Text("подключений ещё не было").font(style.font(12)).foregroundStyle(style.muted)
+                Text(strings("clog.empty")).font(style.font(12)).foregroundStyle(style.muted)
             }
 
             ScrollView {
@@ -52,8 +53,7 @@ public struct ConnectionLogView: View {
             }
 
             Text(
-                "только факт соединения. Содержимое сессий сюда не попадает: скроллбэк "
-                    + "по умолчанию вообще не пишется на диск, и журнал не должен это обходить"
+                strings("clog.note")
             )
             .font(style.font(11)).foregroundStyle(style.muted)
         }

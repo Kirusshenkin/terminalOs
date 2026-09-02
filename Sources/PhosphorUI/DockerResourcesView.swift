@@ -1,12 +1,13 @@
+public import AppKit
 public import DockerKit
 public import PhosphorCore
-public import AppKit
 public import SwiftUI
 
 /// Образы, тома и сети — три простые таблицы.
 public struct DockerResourcesView: View {
     @Environment(\.style) private var style
     let model: AppModel
+    private var strings: Strings { model.strings }
     let page: DockerPage
 
     public init(model: AppModel, page: DockerPage) {
@@ -40,9 +41,9 @@ public struct DockerResourcesView: View {
                 PhButton(prune.title) { model.request(prune) }
             }
             if model.session == nil {
-                Text("нет подключения").font(style.font(11.5)).foregroundStyle(style.muted)
+                Text(strings("files.noLink")).font(style.font(11.5)).foregroundStyle(style.muted)
             } else {
-                PhButton("обновить") { Task { await model.loadResources() } }
+                PhButton(strings("common.refresh")) { Task { await model.loadResources() } }
             }
         }
     }
@@ -67,7 +68,10 @@ public struct DockerResourcesView: View {
     }
 
     private var images: some View {
-        table(["образ", "id", "создан", "размер"], widths: [nil, 120, 140, 90]) {
+        table(
+            [strings("dock.image"), "id", strings("res.created"), strings("res.size")],
+            widths: [nil, 120, 140, 90]
+        ) {
             ForEach(model.images) { image in
                 HStack(spacing: 10) {
                     HStack(spacing: 6) {
@@ -77,7 +81,7 @@ public struct DockerResourcesView: View {
                         // Безымянные образы остаются после пересборки и молча
                         // едят диск — их стоит замечать.
                         if image.isDangling {
-                            Text("занимает место зря")
+                            Text(strings("res.dangling"))
                                 .font(style.font(10)).foregroundStyle(style.warning.opacity(0.8))
                         }
                     }
@@ -96,9 +100,9 @@ public struct DockerResourcesView: View {
                 }
                 .contentShape(Rectangle())
                 .contextMenu {
-                    Button("копировать id") { copy(image.id) }
+                    Button(strings("res.copyID")) { copy(image.id) }
                     Divider()
-                    Button("удалить образ", role: .destructive) {
+                    Button(strings("res.removeImage"), role: .destructive) {
                         model.request(.removeImage(id: image.id, name: image.name))
                     }
                 }
@@ -107,7 +111,7 @@ public struct DockerResourcesView: View {
     }
 
     private var volumes: some View {
-        table(["том", "драйвер", "точка монтирования"], widths: [260, 100, nil]) {
+        table([strings("res.volume"), strings("res.driver"), strings("res.mount")], widths: [260, 100, nil]) {
             ForEach(model.volumes) { volume in
                 HStack(spacing: 10) {
                     Text(volume.name)
@@ -126,9 +130,9 @@ public struct DockerResourcesView: View {
                 }
                 .contentShape(Rectangle())
                 .contextMenu {
-                    Button("копировать путь") { copy(volume.mountpoint) }
+                    Button(strings("res.copyPath")) { copy(volume.mountpoint) }
                     Divider()
-                    Button("удалить том", role: .destructive) {
+                    Button(strings("res.removeVolume"), role: .destructive) {
                         model.request(.removeVolume(name: volume.name))
                     }
                 }
@@ -137,7 +141,10 @@ public struct DockerResourcesView: View {
     }
 
     private var networks: some View {
-        table(["сеть", "id", "драйвер", "область"], widths: [nil, 140, 120, 100]) {
+        table(
+            [strings("res.network"), "id", strings("res.driver"), strings("res.scope")],
+            widths: [nil, 140, 120, 100]
+        ) {
             ForEach(model.networks) { network in
                 HStack(spacing: 10) {
                     Text(network.name)
@@ -157,10 +164,10 @@ public struct DockerResourcesView: View {
                 }
                 .contentShape(Rectangle())
                 .contextMenu {
-                    Button("копировать id") { copy(network.id) }
+                    Button(strings("res.copyID")) { copy(network.id) }
                     Divider()
                     // Три сети docker заводит сам, и без них он не работает.
-                    Button("удалить сеть", role: .destructive) {
+                    Button(strings("res.removeNetwork"), role: .destructive) {
                         model.request(.removeNetwork(id: network.id, name: network.name))
                     }
                     .disabled(["bridge", "host", "none"].contains(network.name))

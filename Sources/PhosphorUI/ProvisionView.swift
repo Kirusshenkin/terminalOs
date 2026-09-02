@@ -20,7 +20,7 @@ public struct ProvisionView: View {
                 HostPicker(
                     model: model,
                     title: strings("tab.provision"),
-                    note: "рецепт выполняется на сервере — выбери, на каком"
+                    note: strings("prov.pickNote")
                 )
                 .frame(maxWidth: 320, alignment: .leading)
                 Spacer(minLength: 0)
@@ -36,7 +36,7 @@ public struct ProvisionView: View {
     private var steps: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("рецепт · базовый").font(style.font(15)).foregroundStyle(style.bright)
+                Text(strings("prov.recipe")).font(style.font(15)).foregroundStyle(style.bright)
                 if let profile = model.profile {
                     Text("\(profile.osName) \(profile.osVersion)")
                         .font(style.font(12)).foregroundStyle(style.muted)
@@ -65,7 +65,7 @@ public struct ProvisionView: View {
 
             HStack(spacing: 8) {
                 if model.isProvisioning {
-                    PhButton("остановить после шага", kind: .danger) { model.stopProvisioning() }
+                    PhButton(strings("prov.stopAfter"), kind: .danger) { model.stopProvisioning() }
                 } else {
                     PhButton(strings("provision.run"), kind: .primary) {
                         Task { await model.startProvisioning() }
@@ -77,8 +77,7 @@ public struct ProvisionView: View {
             // Правило, которого нет в обычных скриптах: сначала доказать, что
             // ключ работает, и только потом закрывать пароли.
             Text(
-                "шаг «закрыть вход по паролю» выполнится только после того, "
-                    + "как отдельное соединение по ключу успешно откроется"
+                strings("prov.guard")
             )
             .font(style.font(11))
             .foregroundStyle(style.warning)
@@ -92,13 +91,13 @@ public struct ProvisionView: View {
 
     private var counter: String {
         let done = model.provisionSteps.filter(\.isFinished).count
-        return "\(done) из \(model.provisionSteps.count) · идемпотентно, установленное пропускается"
+        return "\(done) \(strings("common.of")) \(model.provisionSteps.count) · \(strings("prov.idempotent"))"
     }
 
     private var output: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Text(model.isProvisioning ? "● живой лог" : "лог")
+                Text(model.isProvisioning ? "● \(strings("prov.liveLog"))" : strings("prov.log"))
                     .font(style.font(11))
                     .foregroundStyle(model.isProvisioning ? style.bright : style.muted)
                 Spacer()
@@ -122,7 +121,7 @@ public struct ProvisionView: View {
     /// Точный список команд до запуска: согласиться вслепую здесь нельзя.
     private var plannedSheet: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("что уйдёт на сервер").font(style.font(15)).foregroundStyle(style.bright)
+            Text(strings("common.whatGoes")).font(style.font(15)).foregroundStyle(style.bright)
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(model.plannedCommands, id: \.step) { entry in
@@ -141,7 +140,7 @@ public struct ProvisionView: View {
             }
             HStack {
                 Spacer()
-                PhButton("закрыть") { model.showsPlannedCommands = false }
+                PhButton(strings("common.close")) { model.showsPlannedCommands = false }
             }
         }
         .padding(22)

@@ -23,8 +23,8 @@ public struct DockerView: View {
     /// Одна строка о том, что сейчас с хостом. Разные причины — разные подсказки.
     private var connectionNote: String? {
         switch model.sessionState.phase {
-        case .idle: "сервер не выбран"
-        case .connecting, .probing: "подключаюсь…"
+        case .idle: strings("dock.noHost")
+        case .connecting, .probing: strings("dock.connecting")
         case .ready: nil
         case .failed(let reason): reason
         }
@@ -43,7 +43,7 @@ public struct DockerView: View {
             HostPicker(
                 model: model,
                 title: strings("docker.containers"),
-                note: "docker читается по тому же соединению — выбери сервер"
+                note: strings("dock.pickNote")
             )
             .frame(width: 250)
         } else {
@@ -234,7 +234,7 @@ public struct DockerView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 2) {
                 if live.isEmpty {
-                    Text(model.session == nil ? "выбери сервер" : "логов пока нет")
+                    Text(model.session == nil ? strings("dock.pickShort") : strings("dock.noLogs"))
                         .font(style.font(11.5)).foregroundStyle(style.muted)
                 } else {
                     ForEach(Array(live.enumerated()), id: \.offset) { _, line in
@@ -272,7 +272,7 @@ public struct DockerView: View {
         let memory: String =
             stats.map {
                 $0.memoryLimit > 0
-                    ? "\(ByteFormat.size($0.memoryUsed)) из \(ByteFormat.size($0.memoryLimit))"
+                    ? "\(ByteFormat.size($0.memoryUsed)) \(strings("common.of")) \(ByteFormat.size($0.memoryLimit))"
                     : ByteFormat.size($0.memoryUsed)
             } ?? "—"
         let share: String =
@@ -282,17 +282,17 @@ public struct DockerView: View {
             } ?? "—"
         return [
             ("id", String(container.id.prefix(12))),
-            ("образ", container.image),
-            ("состояние", container.state.title),
-            ("статус", container.status.isEmpty ? "—" : container.status),
-            ("порты", container.ports.isEmpty ? "не опубликованы" : container.ports),
-            ("стек", container.project ?? "вне стека"),
-            ("health", container.health ?? "не объявлен"),
+            (strings("dock.image"), container.image),
+            (strings("dock.state"), container.state.title),
+            (strings("dock.status"), container.status.isEmpty ? "—" : container.status),
+            (strings("dock.ports"), container.ports.isEmpty ? strings("dock.noPorts") : container.ports),
+            (strings("dock.stack"), container.project ?? strings("dock.noStack")),
+            ("health", container.health ?? strings("dock.undeclared")),
             ("cpu", stats.map { ByteFormat.percent($0.cpu) } ?? "—"),
-            ("память", memory),
-            ("доля лимита", share),
-            ("процессов", stats.map { String($0.pids) } ?? "—"),
-            ("хост", model.connectedHostName),
+            (strings("mon.memory"), memory),
+            (strings("dock.limitShare"), share),
+            (strings("dock.processCount"), stats.map { String($0.pids) } ?? "—"),
+            (strings("dock.host"), model.connectedHostName),
         ]
     }
 
@@ -305,9 +305,7 @@ public struct DockerView: View {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { $0.contains("->") && !$0.contains("127.0.0.1") }
         guard !published.isEmpty else { return nil }
-        return "порт открыт наружу мимо UFW: " + published.joined(separator: ", ")
+        return strings("dock.exposed") + published.joined(separator: ", ")
     }
-
-
 
 }

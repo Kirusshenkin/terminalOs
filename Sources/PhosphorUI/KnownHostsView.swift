@@ -5,23 +5,24 @@ public import SwiftUI
 public struct KnownHostsView: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    private var strings: Strings { model.strings }
 
     public init(model: AppModel) { self.model = model }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("известные хосты").font(style.font(15)).foregroundStyle(style.bright)
+                Text(strings("hosts.known")).font(style.font(15)).foregroundStyle(style.bright)
                 Text("~/.ssh/known_hosts · \(model.knownHosts.count)")
                     .font(style.font(12)).foregroundStyle(style.muted)
                 Spacer()
-                PhButton("обновить") { model.loadKnownHosts() }
+                PhButton(strings("common.refresh")) { model.loadKnownHosts() }
             }
 
             HStack(spacing: 10) {
-                Label2("хост").frame(width: 240, alignment: .leading)
-                Label2("тип").frame(width: 130, alignment: .leading)
-                Label2("отпечаток").frame(maxWidth: .infinity, alignment: .leading)
+                Label2(strings("known.host")).frame(width: 240, alignment: .leading)
+                Label2(strings("known.type")).frame(width: 130, alignment: .leading)
+                Label2(strings("keys.fingerprint")).frame(maxWidth: .infinity, alignment: .leading)
                 Label2("").frame(width: 90)
             }
             .padding(.bottom, 4)
@@ -38,8 +39,7 @@ public struct KnownHostsView: View {
             }
 
             Text(
-                "отпечатки считаются здесь, на этой машине — ssh-keygen для этого не нужен. "
-                    + "«Забыть» удаляет строку: следующее подключение спросит доверие заново"
+                strings("known.note")
             )
             .font(style.font(11)).foregroundStyle(style.muted)
         }
@@ -64,7 +64,7 @@ public struct KnownHostsView: View {
                 .font(style.font(11)).foregroundStyle(style.muted)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            PhButton("забыть", kind: .danger) { model.forget(entry) }
+            PhButton(strings("known.forget"), kind: .danger) { model.forget(entry) }
                 .frame(width: 90)
         }
         .font(style.font(12))

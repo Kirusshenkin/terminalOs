@@ -7,6 +7,7 @@ public struct GroupEditor: View {
     @Environment(\.style) private var style
     @Environment(\.dismiss) private var dismiss
     @Bindable var model: AppModel
+    private var strings: Strings { model.strings }
     private let editing: HostGroup?
     @State private var name: String
 
@@ -20,9 +21,9 @@ public struct GroupEditor: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(editing == nil ? "новая группа" : "переименовать группу")
+            Text(editing == nil ? strings("group.new") : strings("group.rename"))
                 .font(style.font(15)).foregroundStyle(style.bright)
-            TextField("прод, стейдж, домашние…", text: $name)
+            TextField(strings("group.hint"), text: $name)
                 .textFieldStyle(.plain)
                 .font(style.font(13))
                 .foregroundStyle(style.text)
@@ -31,8 +32,8 @@ public struct GroupEditor: View {
                 .onSubmit(save)
             HStack(spacing: 8) {
                 Spacer()
-                PhButton("отмена") { dismiss() }
-                PhButton("сохранить", kind: .primary, action: save)
+                PhButton(strings("common.cancel")) { dismiss() }
+                PhButton(strings("common.save"), kind: .primary, action: save)
                     .disabled(trimmed.isEmpty)
                     .opacity(trimmed.isEmpty ? 0.4 : 1)
             }

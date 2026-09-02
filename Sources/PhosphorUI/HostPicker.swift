@@ -28,14 +28,14 @@ public struct HostPicker: View {
                 .padding(.bottom, 4)
 
             if model.book.hosts.isEmpty {
-                Text("хостов пока нет")
+                Text(model.strings("common.noHosts"))
                     .font(style.font(12))
                     .foregroundStyle(style.muted)
                 Button {
                     model.screen = .hosts
                     model.isAddingHost = true
                 } label: {
-                    Text("+ добавить хост")
+                    Text(model.strings("common.addHost"))
                         .font(style.font(11.5))
                         .foregroundStyle(style.bright)
                 }

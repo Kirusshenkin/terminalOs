@@ -143,7 +143,7 @@ struct DockerTests {
             "ID": "3f9a", "Names": "api-gateway", "Image": "api:2.14",
             "State": "running", "Status": "Up 6 days",
             "Ports": "127.0.0.1:8080->8080/tcp",
-            "Labels": "com.docker.compose.project=prod,tier=web",
+            "Labels": "com.docker.compose.project=acme,tier=web",
         ])
         let exited = json([
             "ID": "1c0d", "Names": "migrator", "Image": "api:2.14",
@@ -155,7 +155,7 @@ struct DockerTests {
 
         let containers = DockerCLI.parseList(output)
         #expect(containers.count == 2)
-        #expect(containers[0].project == "prod")
+        #expect(containers[0].project == "acme")
         #expect(containers[0].state == .running)
         #expect(containers[1].state == .exited)
     }
@@ -306,13 +306,13 @@ struct SSHConfigTests {
 struct HostBookTests {
     private func book() -> HostBook {
         let prod = HostGroup(name: "prod", themeID: "ruby", guardLevel: .always, mcpMode: .readOnly)
-        let games = HostGroup(name: "games")
+        let web = HostGroup(name: "web")
         return HostBook(
-            groups: [prod, games],
+            groups: [prod, web],
             hosts: [
-                ServerHost(name: "prod.s1", address: "10.0.0.1", groupID: prod.id, tags: ["api"]),
-                ServerHost(name: "prod.s2", address: "10.0.0.2", groupID: prod.id, tags: ["api"]),
-                ServerHost(name: "web.dev", address: "10.1.0.1", groupID: games.id, tags: ["dev"]),
+                ServerHost(name: "prod-1", address: "10.0.0.1", groupID: prod.id, tags: ["appTag"]),
+                ServerHost(name: "prod-2", address: "10.0.0.2", groupID: prod.id, tags: ["appTag"]),
+                ServerHost(name: "web-dev", address: "10.1.0.1", groupID: web.id, tags: ["dev"]),
                 ServerHost(name: "loose", address: "10.2.0.1"),
             ]
         )
@@ -321,8 +321,8 @@ struct HostBookTests {
     @Test("поиск идёт по имени, тегу и названию группы")
     func search() {
         let book = book()
-        #expect(book.search("api").count == 2)
-        #expect(book.search("games").count == 1)  // по имени группы
+        #expect(book.search("appTag").count == 2)
+        #expect(book.search("web").count == 1)  // по имени группы
         #expect(book.search("").count == 4)
         #expect(book.search("нет такого").isEmpty)
     }

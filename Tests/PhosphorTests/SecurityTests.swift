@@ -42,7 +42,7 @@ struct ShellTests {
 
     @Test("домен: принимаем нормальные, отвергаем опасные")
     func domainValidation() {
-        #expect(Validate.domain("Prod.Example.COM") == "prod.example.com")
+        #expect(Validate.domain("MiXeD.Example.COM") == "mixed.example.com")
         #expect(Validate.domain("a.io") == "a.io")
         #expect(Validate.domain("localhost") == nil)  // без точки
         #expect(Validate.domain("-bad.example.com") == nil)  // дефис в начале

@@ -16,31 +16,31 @@ struct ImportTests {
         bytes.append(0)
         bytes.append(contentsOf: "1.20.0".utf8)  // версия — не адрес
         bytes.append(0)
-        bytes.append(contentsOf: "203.0.113.12".utf8)
+        bytes.append(contentsOf: "192.0.2.10".utf8)
         bytes.append(0)
         bytes.append(contentsOf: "location".utf8)
         bytes.append(0)
-        bytes.append(contentsOf: "Minsk, HM, BY".utf8)
+        bytes.append(contentsOf: "Sampletown, ST, ZZ".utf8)
         bytes.append(0)
 
         let entries = TermiusHistory.parse(bytes)
         #expect(entries.count == 1)
-        #expect(entries.first?.address == "203.0.113.12")
-        #expect(entries.first?.location == "Minsk, HM, BY")
+        #expect(entries.first?.address == "192.0.2.10")
+        #expect(entries.first?.location == "Sampletown, ST, ZZ")
     }
 
     @Test("повторный адрес в разных версиях записи не задваивается")
     func termiusDedup() {
         var bytes = Data()
         for _ in 0..<3 {
-            bytes.append(contentsOf: "203.0.113.11".utf8)
+            bytes.append(contentsOf: "198.51.100.20".utf8)
             bytes.append(0)
-            bytes.append(contentsOf: "Springfield am Main, HE, DE".utf8)
+            bytes.append(contentsOf: "Example City, EX, ZZ".utf8)
             bytes.append(0)
         }
         let entries = TermiusHistory.parse(bytes)
         #expect(entries.count == 1)
-        #expect(entries.first?.location == "Springfield am Main, HE, DE")
+        #expect(entries.first?.location == "Example City, EX, ZZ")
     }
 
     @Test("не-адреса отбрасываются: октет больше 255 и ведущий ноль")
@@ -57,7 +57,7 @@ struct ImportTests {
     @Test("история превращается в хосты, уже добавленные — пропускаются")
     func termiusToHosts() {
         let entries = [
-            TermiusHistory.Entry(address: "10.0.0.1", location: "Minsk, HM, BY"),
+            TermiusHistory.Entry(address: "10.0.0.1", location: "Sampletown, ST, ZZ"),
             TermiusHistory.Entry(address: "10.0.0.2", location: nil),
         ]
         let existing = [ServerHost(name: "уже есть", address: "10.0.0.1")]

@@ -128,7 +128,7 @@ hosts_script = '''class Component extends DCLogic {
     const sel = this.state.group ?? null;
     const groups = [
       { id: 'prod', name: 'prod', n: '9 хостов', env: 'прод, красная тема', dot: '#E0673F' },
-      { id: 'games', name: 'games', n: '4 хоста', env: 'стейдж', dot: '#7AA2E3' },
+      { id: 'svc', name: 'svc', n: '4 хоста', env: 'стейдж', dot: '#7AA2E3' },
       { id: 'lab',  name: 'lab',  n: '3 хоста', env: 'дев', dot: '#3E9E5A' },
       { id: 'misc',  name: 'без группы', n: '4 хоста', env: '—', dot: '#2E7A45' },
     ];
@@ -136,7 +136,7 @@ hosts_script = '''class Component extends DCLogic {
       ['app-1','UBU','ssh, prod, stage','prod',''], ['worker-1','UBU','ssh, prod, api','prod',''],
       ['node-2','UBU','ssh, prod, api','prod',''], ['node-3','UBU','ssh, prod, api','prod','!'],
       ['node-4','UBU','ssh, prod, api','prod',''], ['worker-2','UBU','ssh, prod, worker','prod','!'],
-      ['lobby','UBU','ssh, lobby, games','games',''], ['web.dev','UBU','ssh, dev, games','games',''],
+      ['svc-lobby','UBU','ssh, lobby, svc','svc',''], ['svc-dev','UBU','ssh, dev, svc','svc',''],
       ['lab.dev','DEB','ssh, lab','lab',''], ['lab.dev new','DEB','ssh, lab','lab',''],
       ['203.0.113.9','SRV','ssh, telnet, root','misc',''], ['203.0.113.24','SRV','ssh, root','misc',''],
     ];

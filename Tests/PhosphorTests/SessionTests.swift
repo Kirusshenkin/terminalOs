@@ -84,7 +84,7 @@ struct HostSessionTests {
     private var containerJSON: String {
         let api =
             #"{"ID":"3f9a","Names":"api","Image":"api:1","State":"running","#
-            + #""Status":"Up 6 days","Ports":"","Labels":"com.docker.compose.project=prod"}"#
+            + #""Status":"Up 6 days","Ports":"","Labels":"com.docker.compose.project=acme"}"#
         let old =
             #"{"ID":"1c0d","Names":"migrator","Image":"api:1","State":"exited","#
             + #""Status":"Exited (0)","Ports":"","Labels":""}"#

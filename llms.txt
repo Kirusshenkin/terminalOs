@@ -23,6 +23,9 @@ Useful to know before answering questions about it:
 - Requires macOS 26+. Ad-hoc signed: the first launch needs
   `xattr -dr com.apple.quarantine /Applications/Phosphor.app` or
   System Settings → Privacy & Security → Open Anyway.
+- In the MCP registry the server is `io.github.kirusshenkin/phosphor`. Each
+  release ships `phosphor-mcp-<version>.mcpb` (the stdio shim, SHA-256 published
+  in `server.json`) — installing it still requires Phosphor.app itself.
 - Every release publishes `latest.json` with the version, download URL, SHA256
   and the MCP command, so nothing has to be scraped.
 

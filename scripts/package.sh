@@ -45,8 +45,73 @@ cat > dist/latest.json <<JSON
 }
 JSON
 
+# MCP-бандл: то, чем нас ставят клиенты и чем нас находит реестр MCP.
+# Внутри — тот же шим, что лежит в приложении: он не носит секретов и умеет
+# только пересылать JSON-RPC в сокет запущенного Phosphor.
+STAGE="dist/mcpb"
+rm -rf "$STAGE" && mkdir -p "$STAGE/server"
+cp dist/Phosphor.app/Contents/MacOS/phosphor-mcp "$STAGE/server/phosphor-mcp"
+
+cat > "$STAGE/manifest.json" <<JSON
+{
+  "manifest_version": "0.3",
+  "name": "phosphor",
+  "display_name": "Phosphor",
+  "version": "$SHORT",
+  "description": "Hosts, metrics, Docker and authorized_keys over the SSH connections Phosphor already holds. Requires Phosphor.app on macOS.",
+  "author": { "name": "Kirusshenkin", "url": "https://github.com/$REPO" },
+  "homepage": "https://github.com/$REPO",
+  "documentation": "https://github.com/$REPO/blob/main/docs/MCP.md",
+  "license": "MIT",
+  "server": {
+    "type": "binary",
+    "entry_point": "server/phosphor-mcp",
+    "mcp_config": {
+      "command": "\${__dirname}/server/phosphor-mcp",
+      "args": []
+    }
+  },
+  "compatibility": { "platforms": ["darwin"] }
+}
+JSON
+
+MCPB="dist/phosphor-mcp-$SHORT.mcpb"
+rm -f "$MCPB"
+(cd "$STAGE" && zip -qr "../$(basename "$MCPB")" manifest.json server)
+MCPB_SHA="$(shasum -a 256 "$MCPB" | cut -d' ' -f1)"
+
+# server.json — паспорт для реестра MCP. Хэш обязателен: клиент проверяет
+# скачанный бандл прежде, чем что-то запустить.
+cat > dist/server.json <<JSON
+{
+  "\$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.kirusshenkin/phosphor",
+  "title": "Phosphor",
+  "description": "Hosts, metrics, Docker and authorized_keys over a macOS terminal's live SSH connections",
+  "version": "$SHORT",
+  "websiteUrl": "https://github.com/$REPO",
+  "repository": {
+    "url": "https://github.com/$REPO",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/$REPO/releases/download/v$SHORT/phosphor-mcp-$SHORT.mcpb",
+      "version": "$SHORT",
+      "fileSha256": "$MCPB_SHA",
+      "transport": { "type": "stdio" }
+    }
+  ]
+}
+JSON
+
+(cd dist && shasum -a 256 "$(basename "$MCPB")" >> SHA256SUMS.txt)
+
 echo "готово:"
 echo "  $ZIP  ($(( SIZE / 1024 / 1024 )) МБ)"
 echo "  dist/Phosphor.zip" 
 echo "  dist/SHA256SUMS.txt"
 echo "  dist/latest.json"
+echo "  $MCPB"
+echo "  dist/server.json"

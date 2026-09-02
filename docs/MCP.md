@@ -41,6 +41,15 @@ a shell would give it. That trade is the whole point.
 
 ## Setup
 
+Registry name: **`io.github.kirusshenkin/phosphor`** — every release publishes a
+`server.json` and a `phosphor-mcp-<version>.mcpb` bundle with its SHA-256, so a
+client that installs from the [MCP registry](https://registry.modelcontextprotocol.io)
+gets the shim verified before it runs.
+
+The bundle is the shim, not the app: **Phosphor.app has to be installed and
+unlocked**, otherwise every call fails closed with a message saying which of the
+two is missing.
+
 Install Phosphor, unlock it once, then register the shim that ships inside the
 bundle:
 

@@ -23,3 +23,6 @@ appcast.xml
 
 # Generated canvas — built from design/*.dc.html
 design/helm-terminal-sketches.html
+
+# Собирается скриптами релиза
+dist/

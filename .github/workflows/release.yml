@@ -7,6 +7,9 @@ on:
 
 permissions:
   contents: write
+  # Реестр MCP пускает публиковаться по OIDC-токену прогона: ни секретов
+  # в репозитории, ни ручного логина.
+  id-token: write
 
 jobs:
   build:
@@ -39,6 +42,11 @@ jobs:
           # приложение молча не откроется.
           codesign --verify --deep --strict /tmp/verify/Phosphor.app
           test -x /tmp/verify/Phosphor.app/Contents/MacOS/phosphor-mcp
+          # Бандл для MCP-клиентов: манифест и исполняемый шим внутри.
+          rm -rf /tmp/mcpb && mkdir -p /tmp/mcpb
+          unzip -q "dist/phosphor-mcp-${{ steps.ver.outputs.short }}.mcpb" -d /tmp/mcpb
+          test -x /tmp/mcpb/server/phosphor-mcp
+          test -s /tmp/mcpb/manifest.json
 
       - name: Релиз
         env:
@@ -51,4 +59,16 @@ jobs:
             dist/Phosphor-${{ steps.ver.outputs.short }}.zip \
             dist/Phosphor.zip \
             dist/SHA256SUMS.txt \
-            dist/latest.json
+            dist/latest.json \
+            dist/phosphor-mcp-${{ steps.ver.outputs.short }}.mcpb \
+            dist/server.json
+
+      # Публикация в реестр MCP — после релиза: server.json ссылается на
+      # ассет по постоянному адресу, и он должен уже существовать.
+      - name: Реестр MCP
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz" \
+            | tar xz mcp-publisher
+          cp dist/server.json server.json
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

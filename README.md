@@ -143,6 +143,10 @@ agent holds nothing.**
 claude mcp add phosphor /Applications/Phosphor.app/Contents/MacOS/phosphor-mcp
 ```
 
+In the MCP registry it is `io.github.kirusshenkin/phosphor`; every release also
+ships a `.mcpb` bundle with a published SHA-256 for clients that install that
+way.
+
 Nine tools, six of them read-only. Every host starts `disabled` — nothing is
 reachable until you choose `read-only`, `confirm` or `full` for it, and
 production servers are meant to stay `read-only`. A compromised server can put

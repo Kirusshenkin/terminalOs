@@ -6,7 +6,7 @@
 # это лечится инструкцией и Homebrew, — но обновления через Sparkle приходят уже
 # без карантина.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 CONFIG="${1:-release}"
 SHORT="${MARKETING_VERSION:-0.1.0}"

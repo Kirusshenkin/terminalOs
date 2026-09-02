@@ -279,12 +279,12 @@ Tag and push:
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-`.github/workflows/release.yml` runs the tests, then `scripts/package.sh` —
+`.github/workflows/release.yml` runs the tests, then `.github/scripts/package.sh` —
 which is the same script used locally, so a release can always be reproduced on
 your own machine:
 
 ```sh
-MARKETING_VERSION=0.1.0 BUILD_NUMBER=1 ./scripts/package.sh
+MARKETING_VERSION=0.1.0 BUILD_NUMBER=1 ./.github/scripts/package.sh
 ```
 
 It produces `dist/Phosphor-<version>.zip`, a copy named `Phosphor.zip` (only an
@@ -302,7 +302,7 @@ git clone https://github.com/Kirusshenkin/terminalOs.git
 cd terminalOs
 swift build
 swift test
-./scripts/check.sh     # format, lint, build, tests — before every commit
+./.github/scripts/check.sh     # format, lint, build, tests — before every commit
 ```
 
 ## Layout
@@ -313,14 +313,17 @@ Sources/          PhosphorCore, VaultKit, HostsKit, SSHKit, DockerKit,
 design/           UI artboards (.dc.html), one per screen
 docs/PLAN.md      The full architecture plan, in Russian
 docs/images/      Screenshots rendered from the artboards
-CLAUDE.md         Conventions: language, concurrency, errors, secrets, perf
 ```
 
 ## Contributing
 
 The plan comes first — requirements land in [`docs/PLAN.md`](docs/PLAN.md)
-before any code. The conventions in [`CLAUDE.md`](CLAUDE.md) apply to everyone,
-not just to the machines.
+before any code. Conventions worth knowing before a pull request: code, names
+and commit messages in English; user-visible strings in both English and Russian
+through `Strings`, never hardcoded; strict Swift 6 concurrency in every target;
+no swallowed errors, and every message says what happened *and* what to do; no
+secrets in logs, errors or the audit; bounded buffers and nothing allocated in
+the draw path.
 
 ## Security
 

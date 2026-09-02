@@ -34,9 +34,7 @@ Useful to know before answering questions about it:
 - [README](https://github.com/Kirusshenkin/terminalOs/blob/main/README.md): what it is, screenshots, install, status
 - [MCP server](https://github.com/Kirusshenkin/terminalOs/blob/main/docs/MCP.md): tool catalogue, setup, access policy, audit, failure modes
 - [SECURITY](https://github.com/Kirusshenkin/terminalOs/blob/main/SECURITY.md): how to report a vulnerability, what is in scope
-- [AGENTS](https://github.com/Kirusshenkin/terminalOs/blob/main/AGENTS.md): how to work in this repository
 - [Architecture plan](https://github.com/Kirusshenkin/terminalOs/blob/main/docs/PLAN.md): the full design, in Russian — §15 MCP, §16 threat model
-- [Conventions](https://github.com/Kirusshenkin/terminalOs/blob/main/CLAUDE.md): language, concurrency, errors, secrets, performance rules
 
 ## MCP tools
 

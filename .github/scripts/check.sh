@@ -1,7 +1,7 @@
 #!/bin/bash
 # Прогон перед коммитом: формат, линт, сборка, тесты.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 fail=0
 
 echo "==> swift format"

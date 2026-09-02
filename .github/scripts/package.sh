@@ -6,13 +6,13 @@
 # внутри бандла и ad-hoc подпись после распаковки становится недействительной —
 # приложение не запускается, и понять почему трудно.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 SHORT="${MARKETING_VERSION:-0.1.0}"
 BUILD="${BUILD_NUMBER:-1}"
 REPO="${GITHUB_REPOSITORY:-Kirusshenkin/terminalOs}"
 
-MARKETING_VERSION="$SHORT" BUILD_NUMBER="$BUILD" ./scripts/bundle.sh release
+MARKETING_VERSION="$SHORT" BUILD_NUMBER="$BUILD" ./.github/scripts/bundle.sh release
 
 ZIP="dist/Phosphor-$SHORT.zip"
 rm -f "$ZIP"

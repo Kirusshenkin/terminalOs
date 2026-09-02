@@ -32,7 +32,7 @@ jobs:
         env:
           MARKETING_VERSION: ${{ steps.ver.outputs.short }}
           BUILD_NUMBER: ${{ github.run_number }}
-        run: ./scripts/package.sh
+        run: ./.github/scripts/package.sh
 
       - name: Проверка бандла
         run: |

@@ -13,7 +13,7 @@ public struct TerminalHost: NSViewRepresentable {
     /// Куда открывать шелл.
     public enum Destination: Equatable {
         case local
-        case remote(host: ServerHost, reach: Reach, controlPath: String)
+        case remote(host: ServerHost, reach: Reach, controlPath: String, session: String?)
     }
 
     private let theme: Theme
@@ -59,8 +59,9 @@ public struct TerminalHost: NSViewRepresentable {
         switch destination {
         case .local:
             surface.startLocalShell()
-        case .remote(let host, let reach, let controlPath):
-            surface.startRemoteShell(host: host, reach: reach, controlPath: controlPath)
+        case .remote(let host, let reach, let controlPath, let session):
+            surface.startRemoteShell(
+                host: host, reach: reach, controlPath: controlPath, tmuxSession: session)
         }
     }
 }

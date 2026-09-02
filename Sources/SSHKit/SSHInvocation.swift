@@ -43,11 +43,37 @@ public enum SSHInvocation {
     }
 
     /// Аргументы для интерактивного шелла: то же самое плюс запрос PTY.
+    ///
+    /// Если задано имя tmux-сессии — шелл открывается внутри неё: `-A` значит
+    /// «подключиться к существующей или создать». Так сессия живёт на сервере и
+    /// переживает закрытие приложения или обрыв сети: при следующем заходе мы
+    /// подключаемся к той же живой сессии, а не начинаем с нуля. Если tmux на
+    /// сервере нет — молча откатываемся на обычный логин-шелл, а не падаем.
     public static func shellArguments(
-        host: ServerHost, reach: Reach, controlPath: String
+        host: ServerHost, reach: Reach, controlPath: String, tmuxSession: String? = nil
     ) -> [String] {
-        arguments(host: host, reach: reach, controlPath: controlPath)
+        var result =
+            arguments(host: host, reach: reach, controlPath: controlPath)
             + ["-t", "\(host.user)@\(host.address)"]
+        if let tmuxSession, let name = tmuxSessionName(tmuxSession) {
+            // exec, чтобы tmux (или откат) стал самим шеллом, а не его ребёнком.
+            result.append(
+                "command -v tmux >/dev/null 2>&1 && exec tmux new-session -A -s \(name) "
+                    + "|| exec \"${SHELL:-/bin/sh}\" -l")
+        }
+        return result
+    }
+
+    /// Имя tmux-сессии из произвольной строки: tmux запрещает точки и двоеточия
+    /// в именах, поэтому оставляем только безопасные символы. Пусто — значит имя
+    /// негодное, и tmux лучше не запускать, чем запускать с мусором.
+    public static func tmuxSessionName(_ raw: String) -> String? {
+        let allowed = CharacterSet(charactersIn:
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+        let cleaned = String(raw.unicodeScalars.map { allowed.contains($0) ? Character($0) : "-" })
+            .prefix(60)
+        let trimmed = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     public static func target(_ host: ServerHost) -> String {

@@ -12,6 +12,29 @@ public struct TerminalPane: View {
     public init(model: AppModel) { self.model = model }
 
     public var body: some View {
+        HStack(spacing: 0) {
+            // Рейл сессий показываем только на живом хосте: у локального шелла
+            // сервера нет, а значит и постоянных сессий тоже.
+            if model.session != nil, model.persistentSessions {
+                SessionRail(model: model)
+                Rectangle().fill(style.rule).frame(width: 1)
+            }
+            terminal
+        }
+        // Ничего не попадает в буфер обмена и не открывается, пока человек не
+        // увидел, что именно. Согласиться вслепую — как раз то, чем пользуется
+        // атака через OSC 52.
+        .alert(item: $model.guardPrompt) { prompt in
+            Alert(
+                title: Text(strings(prompt.titleKey)),
+                message: Text(prompt.detail),
+                primaryButton: .default(Text(strings("common.allow"))) { model.accept(prompt) },
+                secondaryButton: .cancel(Text(strings("common.deny")))
+            )
+        }
+    }
+
+    private var terminal: some View {
         ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .leading, spacing: 0) {
                 if let offer = model.rememberOffer {
@@ -29,17 +52,6 @@ public struct TerminalPane: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             PetCorner(pet: $model.pet) { model.saveAppearance() }
-        }
-        // Ничего не попадает в буфер обмена и не открывается, пока человек не
-        // увидел, что именно. Согласиться вслепую — как раз то, чем пользуется
-        // атака через OSC 52.
-        .alert(item: $model.guardPrompt) { prompt in
-            Alert(
-                title: Text(strings(prompt.titleKey)),
-                message: Text(prompt.detail),
-                primaryButton: .default(Text(strings("common.allow"))) { model.accept(prompt) },
-                secondaryButton: .cancel(Text(strings("common.deny")))
-            )
         }
     }
 

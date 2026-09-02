@@ -68,10 +68,13 @@ public final class TerminalSurface: LocalProcessTerminalView {
     ///
     /// Идёт тем же `ssh` и по тому же управляющему сокету, что и остальные
     /// команды: одно соединение, один логин, одно место, где видно обрыв.
-    public func startRemoteShell(host: ServerHost, reach: Reach, controlPath: String) {
+    public func startRemoteShell(
+        host: ServerHost, reach: Reach, controlPath: String, tmuxSession: String? = nil
+    ) {
         startProcess(
             executable: SSHInvocation.executable,
-            args: SSHInvocation.shellArguments(host: host, reach: reach, controlPath: controlPath),
+            args: SSHInvocation.shellArguments(
+                host: host, reach: reach, controlPath: controlPath, tmuxSession: tmuxSession),
             environment: Terminal.getEnvironmentVariables(termName: "xterm-256color")
         )
     }

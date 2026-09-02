@@ -181,6 +181,26 @@ public final class AppModel {
     /// Хост, к которому только что подключились «на лету» и который ещё не
     /// сохранён. Повод предложить запомнить — но не сохранять втихую.
     public var rememberOffer: ServerHost?
+
+    // MARK: - Постоянные сессии (herdr-стиль)
+
+    /// Держать шелл внутри tmux на сервере, чтобы он пережил закрытие
+    /// приложения и обрыв сети. По духу herdr — включено по умолчанию.
+    public var persistentSessions = true
+    /// Имя tmux-сессии, к которой сейчас подключён терминал. nil — «main».
+    public var terminalSession: String?
+    /// Живые tmux-сессии на выбранном хосте, для рейла сессий.
+    public internal(set) var liveSessions: [TmuxSession] = []
+    /// Черновик имени при создании новой сессии.
+    public var newSessionName = ""
+
+    /// Одна tmux-сессия на сервере: имя, сколько окон, подключён ли кто-то.
+    public struct TmuxSession: Identifiable, Sendable, Equatable {
+        public var id: String { name }
+        public var name: String
+        public var windows: Int
+        public var attached: Bool
+    }
     public internal(set) var myFingerprint: String?
     public internal(set) var keysError: String?
     public var pendingKeyRemoval: AuthorizedKey?
@@ -254,7 +274,11 @@ public final class AppModel {
             let host = book.hosts.first(where: { $0.id == id }),
             let socket = sessionSocketPath
         else { return .local }
-        return .remote(host: host, reach: book.reach(for: host), controlPath: socket)
+        // Постоянные сессии (herdr-стиль): шелл живёт внутри tmux на сервере и
+        // переживает закрытие приложения. Выключено — обычный одноразовый шелл.
+        let session = persistentSessions ? (terminalSession ?? "main") : nil
+        return .remote(
+            host: host, reach: book.reach(for: host), controlPath: socket, session: session)
     }
 
     /// Theme for the current context: a host's group can override the default,

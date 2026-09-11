@@ -1,7 +1,7 @@
 public import DockerKit
-public import KeysKit
 public import Foundation
 public import HostsKit
+public import KeysKit
 public import PhosphorCore
 public import SessionKit
 
@@ -199,7 +199,8 @@ public actor ToolRunner {
         let updated: [AuthorizedKey]
         switch action {
         case "add":
-            guard let line = arguments["key"], !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            guard let line = arguments["key"], !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else {
                 return ToolResult(text: "не указан ключ", isError: true)
             }
             let added = AuthorizedKeysFile.parse(line)
@@ -211,7 +212,9 @@ public actor ToolRunner {
             }
             updated = keys + [key]
         default:
-            guard let wanted = arguments["fingerprint"], !wanted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            guard let wanted = arguments["fingerprint"],
+                !wanted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else {
                 return ToolResult(text: "не указан отпечаток", isError: true)
             }
             let doomed = Set(keys.filter { $0.fingerprint == wanted }.map(\.id))

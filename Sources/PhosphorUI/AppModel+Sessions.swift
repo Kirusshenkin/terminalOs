@@ -1,6 +1,6 @@
 public import Foundation
-public import PhosphorCore
 public import HostsKit
+public import PhosphorCore
 public import SSHKit
 
 /// Постоянные tmux-сессии на сервере: список, подключение, создание, снятие.
@@ -106,6 +106,7 @@ extension AppModel {
     /// Убирает вторую панель. tmux-сессия за ней остаётся жить на сервере.
     public func closeSplit() {
         secondSession = nil
+        surfaces.discard(.second)
     }
 
     /// Меняет ориентацию сплита: рядом ↔ одна над другой.

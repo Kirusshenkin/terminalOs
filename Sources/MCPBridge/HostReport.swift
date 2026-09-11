@@ -1,6 +1,6 @@
 public import DockerKit
-public import PhosphorCore
 public import MetricsKit
+public import PhosphorCore
 public import SessionKit
 
 /// Одна страница о состоянии хоста — то, ради чего иначе пришлось бы сделать

@@ -68,8 +68,9 @@ public enum SSHInvocation {
     /// в именах, поэтому оставляем только безопасные символы. Пусто — значит имя
     /// негодное, и tmux лучше не запускать, чем запускать с мусором.
     public static func tmuxSessionName(_ raw: String) -> String? {
-        let allowed = CharacterSet(charactersIn:
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+        let allowed = CharacterSet(
+            charactersIn:
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
         let cleaned = String(raw.unicodeScalars.map { allowed.contains($0) ? Character($0) : "-" })
             .prefix(60)
         let trimmed = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "-"))

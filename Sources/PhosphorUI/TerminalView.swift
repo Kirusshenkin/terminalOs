@@ -54,7 +54,7 @@ public struct TerminalPane: View {
 
     /// Одна панель или две живые рядом/друг над другом.
     @ViewBuilder private var panes: some View {
-        let primary = hostSurface(model.terminalDestination)
+        let primary = hostSurface(model.terminalDestination, slot: .primary)
         if let second = model.secondDestination {
             let layout =
                 model.splitVertical
@@ -66,9 +66,11 @@ public struct TerminalPane: View {
                         width: model.splitVertical ? 1 : nil,
                         height: model.splitVertical ? nil : 1)
                 ZStack(alignment: .topTrailing) {
-                    hostSurface(second)
+                    hostSurface(second, slot: .second)
                     // Закрыть вторую панель — сессия за ней остаётся на сервере.
-                    Button { model.closeSplit() } label: {
+                    Button {
+                        model.closeSplit()
+                    } label: {
                         Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
                             .foregroundStyle(style.muted)
                             .padding(5)
@@ -81,8 +83,12 @@ public struct TerminalPane: View {
         }
     }
 
-    private func hostSurface(_ destination: TerminalHost.Destination) -> some View {
-        TerminalHost(theme: style.theme, destination: destination) { request in
+    private func hostSurface(
+        _ destination: TerminalHost.Destination, slot: TerminalSurfaces.Slot
+    ) -> some View {
+        TerminalHost(
+            theme: style.theme, surfaces: model.surfaces, slot: slot, destination: destination
+        ) { request in
             Task { @MainActor in model.guardPrompt = GuardPrompt(request: request) }
         }
     }
@@ -92,12 +98,16 @@ public struct TerminalPane: View {
         HStack(spacing: 10) {
             Spacer()
             if model.secondSession == nil {
-                Button { model.splitTerminal() } label: {
+                Button {
+                    model.splitTerminal()
+                } label: {
                     Label2(model.strings("term.split"))
                 }
                 .buttonStyle(.plain)
             } else {
-                Button { model.flipSplit() } label: {
+                Button {
+                    model.flipSplit()
+                } label: {
                     Image(
                         systemName: model.splitVertical
                             ? "rectangle.split.2x1" : "rectangle.split.1x2"
@@ -105,7 +115,9 @@ public struct TerminalPane: View {
                     .font(.system(size: 11)).foregroundStyle(style.muted)
                 }
                 .buttonStyle(.plain)
-                Button { model.closeSplit() } label: {
+                Button {
+                    model.closeSplit()
+                } label: {
                     Label2(model.strings("term.unsplit"))
                 }
                 .buttonStyle(.plain)

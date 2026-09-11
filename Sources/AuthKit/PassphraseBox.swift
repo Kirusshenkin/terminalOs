@@ -95,7 +95,8 @@ public enum PassphraseBox {
         ])
     }
     private static func readUInt16(_ data: Data, at offset: inout Int) -> UInt16 {
-        let value = UInt16(data[data.startIndex + offset]) << 8
+        let value =
+            UInt16(data[data.startIndex + offset]) << 8
             | UInt16(data[data.startIndex + offset + 1])
         offset += 2
         return value

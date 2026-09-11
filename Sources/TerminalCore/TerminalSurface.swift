@@ -79,6 +79,14 @@ public final class TerminalSurface: LocalProcessTerminalView {
         )
     }
 
+    /// Жив ли шелл в этой поверхности. Ложь — процесс завершился сам
+    /// (`exit` на той стороне) или его ещё не запускали.
+    public var isRunning: Bool { process?.running ?? false }
+
+    /// Гасит шелл. Нужно, когда панель закрывают насовсем: иначе ssh остаётся
+    /// висеть без единого зрителя.
+    public func stop() { process?.terminate() }
+
     /// Starts a login shell in the user's home directory.
     public func startLocalShell() {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"

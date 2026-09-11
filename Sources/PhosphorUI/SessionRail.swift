@@ -20,7 +20,9 @@ struct SessionRail: View {
             HStack {
                 Label2(model.strings("term.spaces"))
                 Spacer()
-                Button { model.screen = .hosts } label: {
+                Button {
+                    model.screen = .hosts
+                } label: {
                     Image(systemName: "plus").font(.system(size: 11, weight: .bold))
                         .foregroundStyle(style.muted)
                 }
@@ -53,7 +55,9 @@ struct SessionRail: View {
                 HStack {
                     Label2(model.strings("term.sessions"))
                     Spacer()
-                    Button { adding.toggle() } label: {
+                    Button {
+                        adding.toggle()
+                    } label: {
                         Image(systemName: "plus").font(.system(size: 11, weight: .bold))
                             .foregroundStyle(style.muted)
                     }

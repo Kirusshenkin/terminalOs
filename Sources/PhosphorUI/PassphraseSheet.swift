@@ -42,8 +42,10 @@ struct PassphraseSheet: View {
             HStack(spacing: 8) {
                 Spacer()
                 PhButton(model.strings("common.cancel")) { dismiss() }
-                PhButton(model.strings(isExport ? "profile.export" : "profile.import"),
-                    kind: .primary) {
+                PhButton(
+                    model.strings(isExport ? "profile.export" : "profile.import"),
+                    kind: .primary
+                ) {
                     run()
                 }
                 .disabled(!ready)

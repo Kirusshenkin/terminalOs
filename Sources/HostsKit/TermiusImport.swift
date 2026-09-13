@@ -2,13 +2,17 @@ public import Foundation
 
 /// Reads Termius's *connection history* — the one thing it leaves in the clear.
 ///
-/// Termius encrypts the saved hosts (address and label) with a key derived from
-/// the account password, so those cannot be read without it. What is left
-/// unencrypted in its IndexedDB is the log of machines you actually connected
-/// to: an IP and a geo-tag. That is recovered here by pulling printable strings
-/// out of the LevelDB files and pairing each address with the location that
-/// follows it — an approximation, and labelled as one, never presented as the
-/// real host list.
+/// Сохранённые хосты Termius держит зашифрованными: каждая запись в его
+/// IndexedDB — это `04 01`, случайный nonce и бокс libsodium (XSalsa20-Poly1305),
+/// а ключ к ним выводится из `localKey` в связке ключей под службой `Termius`.
+/// Прочитать эту связку может только сам Termius — чужому процессу система
+/// покажет диалог и спросит пароль учётной записи. Поэтому здесь честно берётся
+/// то, что лежит в открытую: журнал машин, к которым подключались, — адрес и
+/// геометка рядом с ним.
+///
+/// Разбор идёт по печатным строкам из файлов LevelDB: адрес и стоящая рядом
+/// метка города. Это приближение, и оно так и подписано — тегом
+/// `termius-history`, а не выдаётся за настоящий список серверов.
 public enum TermiusHistory {
     public struct Entry: Equatable, Sendable {
         public var address: String
@@ -68,8 +72,11 @@ public enum TermiusHistory {
     }
 
     /// Turns history into hosts to offer, deduplicating against what exists.
-    /// User and port are unknown here — they were encrypted — so the person
-    /// fills them in; the address and a hint of where it lives is the value.
+    ///
+    /// Логин и порт остались в зашифрованной части хранилища, поэтому здесь их
+    /// нет и выдумывать их нечем: подставляется имя текущего пользователя как
+    /// заготовка, которую человек правит в форме хоста. Ценность записи — в
+    /// адресе: он настоящий.
     public static func hosts(from entries: [Entry], existing: [ServerHost]) -> [ServerHost] {
         let taken = Set(existing.map { $0.address })
         return entries.filter { !taken.contains($0.address) }.map { entry in
@@ -114,13 +121,42 @@ public enum TermiusHistory {
                 var end = index
                 while end < scalars.count, scalars[end].isNumber || scalars[end] == "." { end += 1 }
                 let candidate = String(scalars[index..<end])
-                if isDottedQuad(candidate) { found.append(candidate) }
+                if isDottedQuad(candidate),
+                    isStandalone(scalars, start: index, end: end),
+                    isReachable(candidate)
+                {
+                    found.append(candidate)
+                }
                 index = end
             } else {
                 index += 1
             }
         }
         return found
+    }
+
+    /// Адрес сам по себе, а не кусок чего-то большего.
+    ///
+    /// `v1.2.3.4-beta` разбирается как безупречный dotted-quad — и он им не
+    /// является. Проверяем, что вплотную к числу не стоит буква: версия, путь
+    /// и имя файла так отсеиваются, а адрес в кавычках или в скобках остаётся.
+    private static func isStandalone(_ scalars: [Character], start: Int, end: Int) -> Bool {
+        let glued: (Character) -> Bool = { $0.isLetter || $0 == "-" || $0 == "_" || $0 == "/" }
+        if start > 0, glued(scalars[start - 1]) { return false }
+        if end < scalars.count, glued(scalars[end]) { return false }
+        return true
+    }
+
+    /// Адрес, к которому вообще можно подключиться.
+    ///
+    /// Нули, петля и служебные диапазоны в журнале встречаются, но сервером не
+    /// бывают: предложить их к импорту — значит завести хост, которого нет.
+    private static func isReachable(_ address: String) -> Bool {
+        let octets = address.split(separator: ".").compactMap { Int($0) }
+        guard octets.count == 4, let first = octets.first else { return false }
+        // 0.x — «этот узел», 127.x — петля, 224+ — многоадресные и служебные.
+        guard first != 0, first != 127, first < 224 else { return false }
+        return octets != [255, 255, 255, 255]
     }
 
     private static func isDottedQuad(_ text: String) -> Bool {

@@ -54,6 +54,28 @@ struct ImportTests {
         #expect(entries.map(\.address) == ["10.0.0.1"])
     }
 
+    @Test("версия, прилипшая к букве, адресом не считается")
+    func termiusRejectsGluedVersions() {
+        var bytes = Data()
+        // Всё это разбирается как безупречный dotted-quad и всё это не адреса.
+        for token in ["v1.2.3.4", "chrome-1.2.3.4", "sdk/9.8.7.6", "1.2.3.4-beta", "203.0.113.7"] {
+            bytes.append(contentsOf: token.utf8)
+            bytes.append(0)
+        }
+        #expect(TermiusHistory.parse(bytes).map(\.address) == ["203.0.113.7"])
+    }
+
+    @Test("петля и служебные диапазоны в список серверов не попадают")
+    func termiusRejectsUnreachable() {
+        var bytes = Data()
+        for token in ["127.0.0.1", "0.0.0.0", "255.255.255.255", "239.255.255.250", "192.0.2.5"] {
+            bytes.append(contentsOf: token.utf8)
+            bytes.append(0)
+        }
+        // Частные диапазоны остаются: 10.x и 192.168.x — это настоящие серверы.
+        #expect(TermiusHistory.parse(bytes).map(\.address) == ["192.0.2.5"])
+    }
+
     @Test("история превращается в хосты, уже добавленные — пропускаются")
     func termiusToHosts() {
         let entries = [

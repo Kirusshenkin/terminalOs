@@ -87,6 +87,22 @@ public final class TerminalSurface: LocalProcessTerminalView {
     /// висеть без единого зрителя.
     public func stop() { process?.terminate() }
 
+    /// Открывает постоянную сессию на этой машине.
+    ///
+    /// Ровно то же, что `startRemoteShell` делает на сервере, только tmux
+    /// здешний: `-A` значит «подключиться к существующей или создать», и
+    /// сессия переживает закрытие приложения. Путь к tmux и окружение приходят
+    /// снаружи: где он лежит на конкретном Маке, знает вызывающий, а не
+    /// эмулятор.
+    public func startLocalShell(tmux path: String, session: String, environment: [String]) {
+        startProcess(
+            executable: path,
+            args: ["new-session", "-A", "-s", session],
+            environment: environment,
+            execName: "tmux"
+        )
+    }
+
     /// Starts a login shell in the user's home directory.
     public func startLocalShell() {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"

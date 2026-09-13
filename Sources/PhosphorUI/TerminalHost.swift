@@ -72,17 +72,8 @@ public struct TerminalHost: NSViewRepresentable {
         case .local:
             surface.startLocalShell()
         case .localSession(let name, let tmux):
-            // Ровно то же, что делает `SSHInvocation` на сервере: подключиться
-            // к сессии или создать её. Запуск живёт здесь, а не в
-            // `TerminalCore`, только из-за раздела файлов между двумя парами
-            // рук; по-хорошему это `startLocalShell(tmuxSession:)` рядом с
-            // остальными способами открыть шелл.
-            surface.startProcess(
-                executable: tmux,
-                args: ["new-session", "-A", "-s", name],
-                environment: LocalTmux.environment(),
-                execName: "tmux"
-            )
+            surface.startLocalShell(
+                tmux: tmux, session: name, environment: LocalTmux.environment())
         case .remote(let host, let reach, let controlPath, let session):
             surface.startRemoteShell(
                 host: host, reach: reach, controlPath: controlPath, tmuxSession: session)

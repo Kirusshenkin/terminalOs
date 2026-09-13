@@ -373,6 +373,15 @@ extension Strings {
         ],
         "files.sameSSH": [.russian: "то же ssh-соединение", .english: "the same ssh connection"],
         "files.modified": [.russian: "изменён", .english: "modified"],
+        "files.download": [.russian: "скачать сюда", .english: "download here"],
+        "files.upload": [.russian: "залить на сервер", .english: "upload to the server"],
+        "files.downloading": [.russian: "скачиваю", .english: "downloading"],
+        "files.uploading": [.russian: "заливаю", .english: "uploading"],
+        "files.replace": [.russian: "заменить", .english: "replace"],
+        "files.exists": [
+            .russian: "уже есть по этому пути. заменить его тем, что переносим?",
+            .english: "already exists at that path. replace it with the one being copied?",
+        ],
         "files.size": [.russian: "размер", .english: "size"],
         "files.note": [
             .russian:

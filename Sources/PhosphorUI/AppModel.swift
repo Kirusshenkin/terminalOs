@@ -165,6 +165,26 @@ public final class AppModel {
     public internal(set) var localFiles: [RemoteFile] = []
     public internal(set) var remoteFiles: [RemoteFile] = []
     public internal(set) var filesError: String?
+    /// Что сейчас едет по проводу: имя файла и сторона. nil — очередь пуста.
+    /// Одна передача за раз: два scp по одному сокету делят полосу и время
+    /// выполнения обоих только растёт.
+    public internal(set) var transfer: FileTransfer?
+    /// Откуда брать файл, принесённый из Finder: он лежит вне локальной панели,
+    /// и его путь иначе было бы неоткуда взять.
+    var droppedSource: URL?
+    /// Передача, упирающаяся в уже существующий файл. Заменить или нет —
+    /// решает человек: молча затереть чужую работу нельзя.
+    public var pendingOverwrite: FileTransfer?
+
+    /// Одна передача файла: что, куда и в какую сторону.
+    public struct FileTransfer: Identifiable, Sendable, Equatable {
+        public enum Direction: Sendable { case download, upload }
+        public var id = UUID()
+        public var file: RemoteFile
+        public var direction: Direction
+        /// Полный путь на принимающей стороне — он же то, что может быть занято.
+        public var destination: String
+    }
 
     /// Журнал действий ИИ и режимы доступа по хостам.
     public internal(set) var auditEntries: [AuditEntry] = []

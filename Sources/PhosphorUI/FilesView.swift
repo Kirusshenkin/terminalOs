@@ -17,13 +17,26 @@ public struct FilesView: View {
                     title: strings("files.local"),
                     path: model.localPath,
                     files: model.localFiles,
-                    onOpen: { model.openLocal($0) }
+                    onOpen: { model.openLocal($0) },
+                    action: model.session == nil ? nil : .upload
                 )
                 Rectangle().fill(style.rule).frame(width: 1)
                 remotePanel
             }
+            if let transfer = model.transfer {
+                // Прогресса у scp нет, поэтому не выдумываем полосу: видно, что
+                // именно едет и в какую сторону, и что работа идёт.
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(
+                        "\(strings(transfer.direction == .download ? "files.downloading" : "files.uploading")) \(transfer.file.name)"
+                    )
+                    .font(style.font(11.5)).foregroundStyle(style.bright)
+                }
+            }
             if let error = model.filesError {
                 Text(error).font(style.font(11.5)).foregroundStyle(style.warning)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             hint
         }
@@ -44,14 +57,43 @@ public struct FilesView: View {
                 title: "\(model.connectedHostName) · \(strings("files.sameSSH"))",
                 path: model.remotePath,
                 files: model.remoteFiles,
-                onOpen: { file in Task { await model.openRemote(file) } }
+                onOpen: { file in Task { await model.openRemote(file) } },
+                action: .download
             )
+            // Принесённое из Finder едет на сервер: перетаскивание — это и есть
+            // загрузка, как и обещано в плане.
+            .dropDestination(for: URL.self) { urls, _ in
+                guard let first = urls.first else { return false }
+                Task { await model.upload(dropped: first) }
+                return true
+            }
+        }
+    }
+
+    /// Что делает кнопка на строке этой панели. nil — сервера нет, и переносить
+    /// некуда.
+    private enum RowAction {
+        case download
+        case upload
+
+        var symbol: String {
+            switch self {
+            case .download: "arrow.left"
+            case .upload: "arrow.right"
+            }
+        }
+        var titleKey: String {
+            switch self {
+            case .download: "files.download"
+            case .upload: "files.upload"
+            }
         }
     }
 
     private func panel(
         title: String, path: String, files: [RemoteFile],
-        onOpen: @escaping (RemoteFile) -> Void
+        onOpen: @escaping (RemoteFile) -> Void,
+        action: RowAction?
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Label2(title)
@@ -60,7 +102,7 @@ public struct FilesView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(files) { file in
-                        fileRow(file, onOpen: onOpen)
+                        fileRow(file, onOpen: onOpen, action: action)
                     }
                 }
             }
@@ -79,6 +121,38 @@ public struct FilesView: View {
     }
 
     private func fileRow(
+        _ file: RemoteFile, onOpen: @escaping (RemoteFile) -> Void, action: RowAction?
+    ) -> some View {
+        HStack(spacing: 6) {
+            nameButton(file, onOpen: onOpen)
+            if let action, file.name != ".." {
+                transferButton(file, action: action)
+            }
+        }
+    }
+
+    /// Кнопка переноса стоит на самой строке: путь до файла уже выбран тем, что
+    /// человек на него смотрит, и спрашивать его ещё раз панелью выбора незачем.
+    private func transferButton(_ file: RemoteFile, action: RowAction) -> some View {
+        Button {
+            Task {
+                switch action {
+                case .download: await model.download(file)
+                case .upload: await model.upload(file)
+                }
+            }
+        } label: {
+            Image(systemName: action.symbol)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(style.muted)
+                .padding(.horizontal, 4)
+        }
+        .buttonStyle(.plain)
+        .help(strings(action.titleKey))
+        .disabled(model.transfer != nil)
+    }
+
+    private func nameButton(
         _ file: RemoteFile, onOpen: @escaping (RemoteFile) -> Void
     ) -> some View {
         Button {

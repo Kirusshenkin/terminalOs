@@ -72,6 +72,21 @@ public struct RootView: View {
 
         func body(content: Content) -> some View {
             content
+                // Замена чужого файла — не то, что делают мимоходом: путь виден
+                // целиком, и согласие даётся на него, а не на «да».
+                .alert(item: $model.pendingOverwrite) { request in
+                    Alert(
+                        title: Text(request.file.name),
+                        message: Text(
+                            "\(request.destination) — \(model.strings("files.exists"))"),
+                        primaryButton: .destructive(Text(model.strings("files.replace"))) {
+                            Task { await model.confirmOverwrite() }
+                        },
+                        secondaryButton: .cancel(Text(model.strings("common.cancel"))) {
+                            model.cancelOverwrite()
+                        }
+                    )
+                }
                 .alert(item: $model.pendingHostRemoval) { host in
                     Alert(
                         title: Text("\(model.strings("common.delete")) «\(host.name)»?"),

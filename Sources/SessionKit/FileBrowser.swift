@@ -135,26 +135,34 @@ public actor FileBrowser {
         return (current as NSString).appendingPathComponent(name)
     }
 
-    /// Скачивает файл, переиспользуя то же соединение.
-    public func download(remote: String, to local: URL) async throws {
+    /// Скачивает файл или папку, переиспользуя то же соединение.
+    public func download(remote: String, to local: URL, directory: Bool = false) async throws {
         try await copy(
-            from: "\(SSHInvocation.target(host)):\(remote)",
-            to: local.path
+            from: "\(SSHInvocation.target(host)):\(Shell.quote(remote))",
+            to: local.path,
+            directory: directory
         )
     }
 
-    public func upload(local: URL, to remote: String) async throws {
+    public func upload(local: URL, to remote: String, directory: Bool = false) async throws {
         try await copy(
             from: local.path,
-            to: "\(SSHInvocation.target(host)):\(remote)"
+            to: "\(SSHInvocation.target(host)):\(Shell.quote(remote))",
+            directory: directory
         )
     }
 
     /// `scp` поверх того же управляющего сокета: без второго логина.
-    private func copy(from source: String, to destination: String) async throws {
+    ///
+    /// Удалённая сторона раскрывается шеллом сервера, поэтому путь туда уходит
+    /// в кавычках: без них файл с пробелом в имени превращается в два аргумента,
+    /// а файл с `;` — в команду.
+    private func copy(from source: String, to destination: String, directory: Bool) async throws {
         var arguments = SSHInvocation.arguments(host: host, reach: reach, controlPath: controlPath)
         // scp понимает те же -o, но порт задаётся большой буквой.
         arguments = arguments.map { $0 == "-p" ? "-P" : $0 }
+        // Папку без `-r` scp молча пропускает, сказав «not a regular file».
+        if directory { arguments.append("-r") }
         arguments += ["--", source, destination]
         let result = try await Subprocess.run(
             executable: "/usr/bin/scp", arguments: arguments, timeout: .seconds(3_600))

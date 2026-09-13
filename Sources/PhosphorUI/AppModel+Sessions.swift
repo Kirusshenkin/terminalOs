@@ -153,6 +153,10 @@ extension AppModel {
     ///
     /// Одному терминалу принадлежит несколько передних процессов (агент и всё,
     /// что он запустил), поэтому список, а не одна строка.
+    ///
+    /// Сами командные строки никуда не показываются и не пишутся: из них
+    /// берётся только имя агента. В argv попадают пароли и токены — им не
+    /// место ни в интерфейсе, ни в логе, ни в аудите.
     static func foreground(_ lines: [String]) -> [String: [String]] {
         var byTTY: [String: [String]] = [:]
         for line in lines {
@@ -416,6 +420,7 @@ extension AppModel {
     public func createSession() {
         let name = SSHInvocation.tmuxSessionName(newSessionName) ?? "main"
         newSessionName = ""
+        localFocused = false
         terminalSession = name
         if let host = selectedHost { spaceSessions[host] = name }
         screen = .terminal

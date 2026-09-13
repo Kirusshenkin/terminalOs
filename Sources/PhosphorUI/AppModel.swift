@@ -555,6 +555,9 @@ public final class AppModel {
             try await gate.authenticate(reason: strings("auth.reason"))
             await loadProfile()
             isUnlocked = true
+            // Дверь открыта — можно спрашивать о сессиях, не дожидаясь, пока
+            // человек сам зайдёт в раздел: метка о ждущем агенте нужна раньше.
+            startSessionWatch()
         } catch GateError.unavailable(let reason) {
             unlockError = "\(strings("auth.unavailable")) \(reason)"
         } catch GateError.lockedOut {

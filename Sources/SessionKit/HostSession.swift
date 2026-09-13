@@ -23,6 +23,11 @@ public struct SessionState: Sendable {
     public var stats: [String: ContainerStats] = [:]
     public var latest: Snapshot?
     public var previous: Snapshot?
+    /// Как метрики менялись на глазах: столько точек, сколько влезает в окно
+    /// графика. Буфер кольцевой — сессия, открытая на сутки, не растёт в памяти.
+    public internal(set) var history = RingBuffer<MetricPoint>(capacity: Self.historyLength)
+    /// Час при опросе раз в десять секунд — дальше по графику уже не читается.
+    static let historyLength = 360
 
     public init() {}
 
@@ -250,6 +255,11 @@ public actor HostSession {
         if snapshot.cpuModel.isEmpty { snapshot.cpuModel = constants.cpuModel }
         state.previous = state.latest
         state.latest = snapshot
+        // Точку кладём только когда есть с чем сравнивать: загрузка и скорости —
+        // это дельты между снимками.
+        if let previous = state.previous {
+            state.history.append(MetricPoint.between(previous, snapshot))
+        }
         publish()
     }
 

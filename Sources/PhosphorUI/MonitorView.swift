@@ -46,6 +46,17 @@ public struct MonitorView: View {
                     middle
                 }
             }
+        case .graphs:
+            if model.session == nil {
+                HostPicker(
+                    model: model,
+                    title: strings("tab.monitor"),
+                    note: strings("mon.pickNote")
+                )
+                .frame(maxWidth: 320, alignment: .leading)
+            } else {
+                MetricCharts(points: model.sessionState.history.elements, strings: strings)
+            }
         case .processes: processes
         case .storage: middle
         case .network: right

@@ -39,11 +39,12 @@ public enum DockerPage: String, SectionPage {
 }
 
 public enum MonitorPage: String, SectionPage {
-    case overview, processes, storage, network
+    case overview, graphs, processes, storage, network
 
     public var key: String {
         switch self {
         case .overview: "nav.overview"
+        case .graphs: "nav.graphs"
         case .processes: "nav.processes"
         case .storage: "nav.storage"
         case .network: "nav.netStat"

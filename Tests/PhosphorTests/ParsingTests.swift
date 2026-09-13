@@ -106,6 +106,24 @@ struct MetricsTests {
         #expect(steal[1] > 0)
     }
 
+    @Test("точка истории сворачивает снимок в то, что рисуется")
+    func historyPoint() throws {
+        let a = try #require(SnapshotParser.parse(first))
+        let b = try #require(SnapshotParser.parse(second))
+        let point = MetricPoint.between(a, b)
+        let usage = SnapshotParser.usage(from: a, to: b)
+        #expect(point.time == b.time)
+        // Процессор — среднее по ядрам, а не сумма: иначе на восьми ядрах
+        // график ушёл бы за сотни процентов.
+        #expect(abs(point.cpu - usage.reduce(0, +) / Double(usage.count)) < 0.001)
+        #expect(abs(point.memory - b.memoryUsage) < 0.001)
+        #expect(point.swap == 0)  // swap не тронут в обоих снимках
+        // Сеть — сумма по интерфейсам, кроме lo: разговор машины с самой собой
+        // на графике заслоняет настоящий трафик.
+        let network = SnapshotParser.throughput(from: a, to: b).filter { $0.name != "lo" }
+        #expect(abs(point.networkIn - network.reduce(0) { $0 + $1.down }) < 0.001)
+    }
+
     @Test("скорость сети — байты, делённые на реальный интервал")
     func throughput() throws {
         let a = try #require(SnapshotParser.parse(first))

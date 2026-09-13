@@ -88,3 +88,58 @@ struct PortForwardTests {
                 .contains("1024"))
     }
 }
+
+@Suite("Память о сервере после подключения")
+struct HostMemoryTests {
+    private func book() -> HostBook {
+        HostBook(hosts: [ServerHost(name: "prod-01", address: "10.0.0.1")])
+    }
+
+    @Test("проба заполняет систему и время, которых иначе не было бы")
+    func fillsFromProbe() {
+        var book = book()
+        let id = book.hosts[0].id
+        #expect(book.hosts[0].osName == nil)
+        #expect(book.hosts[0].lastSeen == nil)
+
+        let moment = Date(timeIntervalSince1970: 1_700_000_000)
+        let filled = book.remember(id, osName: "ubuntu", at: moment)
+        #expect(filled)
+        #expect(book.hosts[0].osName == "ubuntu")
+        #expect(book.hosts[0].lastSeen == moment)
+        // Значок на карточке перестаёт быть заглушкой ровно здесь.
+        #expect(book.hosts[0].osBadge == "UBU")
+    }
+
+    @Test("повтор в ту же минуту не считается изменением")
+    func doesNotRewriteOnEverySnapshot() {
+        var book = book()
+        let id = book.hosts[0].id
+        let moment = Date(timeIntervalSince1970: 1_700_000_000)
+        let first = book.remember(id, osName: "debian", at: moment)
+        let again = book.remember(id, osName: "debian", at: moment.addingTimeInterval(5))
+        let later = book.remember(id, osName: "debian", at: moment.addingTimeInterval(120))
+        #expect(first)
+        #expect(!again)
+        #expect(later)
+    }
+
+    @Test("проба, ничего не узнавшая, не затирает то, что знали")
+    func keepsKnownNameWhenProbeIsBlank() {
+        var book = book()
+        let id = book.hosts[0].id
+        book.remember(id, osName: "alpine", at: Date(timeIntervalSince1970: 1))
+        // `unknown` — это ответ пробы «не разобрал /etc/os-release», а не имя.
+        book.remember(id, osName: "unknown", at: Date(timeIntervalSince1970: 1_000))
+        book.remember(id, osName: nil, at: Date(timeIntervalSince1970: 2_000))
+        #expect(book.hosts[0].osName == "alpine")
+    }
+
+    @Test("чужой идентификатор ничего не меняет")
+    func unknownHostIsIgnored() {
+        var book = book()
+        let changed = book.remember(UUID(), osName: "ubuntu")
+        #expect(!changed)
+        #expect(book.hosts[0].osName == nil)
+    }
+}

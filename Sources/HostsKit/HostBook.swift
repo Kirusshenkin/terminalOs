@@ -57,6 +57,35 @@ public struct HostBook: Codable, Sendable {
         }
     }
 
+    /// Запоминает, что хост отозвался, и чем он оказался.
+    ///
+    /// Поля `lastSeen` и `osName` иначе остаются пустыми навсегда: пробу делает
+    /// сессия, а список хостов живёт отдельно от неё, и без этого шага карточка
+    /// сервера показывает «SRV» и ни слова о том, когда он последний раз был
+    /// жив. Имя системы берётся из пробы (`HostProfile.osName`) — гадать по
+    /// адресу нечего.
+    ///
+    /// Возвращает `true`, если что-то изменилось: запись профиля стоит дороже,
+    /// чем сравнение двух полей, и делать её на каждый снимок незачем.
+    @discardableResult
+    public mutating func remember(
+        _ id: ServerHost.ID, osName: String? = nil, at time: Date = Date()
+    ) -> Bool {
+        guard let index = hosts.firstIndex(where: { $0.id == id }) else { return false }
+        var changed = false
+        // Секунда туда-сюда — не изменение: иначе каждый снимок метрик тянул бы
+        // за собой перешифровку профиля.
+        if hosts[index].lastSeen.map({ time.timeIntervalSince($0) >= 60 }) ?? true {
+            hosts[index].lastSeen = time
+            changed = true
+        }
+        if let osName, !osName.isEmpty, osName != "unknown", hosts[index].osName != osName {
+            hosts[index].osName = osName
+            changed = true
+        }
+        return changed
+    }
+
     /// Number of hosts in each group, for the group cards.
     public func counts() -> [HostGroup.ID: Int] {
         var result: [HostGroup.ID: Int] = [:]

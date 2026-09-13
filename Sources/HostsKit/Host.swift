@@ -69,7 +69,10 @@ public struct ServerHost: Codable, Identifiable, Hashable, Sendable {
     /// Nil means inherit from the group.
     public var guardLevel: GuardLevel?
     public var mcpMode: MCPMode?
-    /// Filled in by the capability probe after the first connection.
+    /// Имя системы из пробы и время, когда сервер последний раз отозвался.
+    ///
+    /// Заполняются через `HostBook.remember(_:osName:at:)` — сама проба живёт в
+    /// сессии, а список хостов о сессиях ничего не знает.
     public var osName: String?
     public var lastSeen: Date?
 

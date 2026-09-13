@@ -5,7 +5,32 @@ import Security
 public enum SecretError: Error, Equatable {
     case notFound
     case denied
+    /// Набор отпечатков на этом Маке изменился с тех пор, как запись создали.
+    ///
+    /// Запись лежит под `biometryCurrentSet`, и это не сбой, а работающая
+    /// защита: добавленный или удалённый палец делает прежние записи
+    /// нечитаемыми навсегда — иначе чужой палец, добавленный в систему, открыл
+    /// бы твои серверы. Отличать этот случай от «отказано» обязательно: причина
+    /// разная, и делать человеку надо разное.
+    case enrollmentChanged
     case keychain(OSStatus)
+}
+
+extension SecretError: LocalizedError {
+    /// Что произошло и что с этим делать — без имён системных кодов.
+    public var errorDescription: String? {
+        switch self {
+        case .notFound:
+            "записи нет"
+        case .denied:
+            "подтверждение не получено"
+        case .enrollmentChanged:
+            "набор отпечатков Touch ID изменился — записи, сделанные под прежним "
+                + "набором, больше не открываются; восстанови профиль из экспорта"
+        case .keychain(let status):
+            "связка ключей отказала, код \(status)"
+        }
+    }
 }
 
 /// Somewhere small secrets live.
@@ -18,6 +43,15 @@ public protocol SecretStore: Sendable {
     func write(_ data: Data, account: String) async throws
     func delete(_ account: String) async throws
     func exists(_ account: String) async -> Bool
+    /// Сменился ли набор отпечатков с тех пор, как запись создавали.
+    ///
+    /// Спрашивается до чтения, чтобы объяснить заранее, а не после отказа.
+    func enrollmentChanged(_ account: String) async -> Bool
+}
+
+public extension SecretStore {
+    /// Хранилищу без биометрии нечему меняться.
+    func enrollmentChanged(_ account: String) async -> Bool { false }
 }
 
 /// Keychain-backed store where every item is gated by the system.
@@ -67,9 +101,14 @@ public struct KeychainSecretStore: SecretStore {
             guard let data = item as? Data else { throw SecretError.notFound }
             return data
         case errSecItemNotFound:
-            throw SecretError.notFound
-        case errSecUserCanceled, errSecAuthFailed:
+            // Система убирает протухшую запись сама, поэтому «нет записи» и
+            // «запись протухла» приходят одним и тем же кодом. Различает их
+            // свидетель — он хранится отдельно и переживает протухание.
+            throw hasNewEnrollment(account) ? SecretError.enrollmentChanged : SecretError.notFound
+        case errSecUserCanceled:
             throw SecretError.denied
+        case errSecAuthFailed, errSecInteractionNotAllowed:
+            throw hasNewEnrollment(account) ? SecretError.enrollmentChanged : SecretError.denied
         default:
             throw SecretError.keychain(status)
         }
@@ -86,9 +125,18 @@ public struct KeychainSecretStore: SecretStore {
         ]
         let status = SecItemAdd(query as CFDictionary, nil)
         guard status == errSecSuccess else { throw SecretError.keychain(status) }
+        rememberEnrollment(for: account)
     }
 
     public func delete(_ account: String) throws {
+        // Свидетель уходит вместе с записью: он не секрет, но и переживать её
+        // ему незачем — иначе следующая запись под тем же именем начнётся с
+        // чужого воспоминания.
+        try? deleteItem(account: Self.witnessAccount(account))
+        try deleteItem(account: account)
+    }
+
+    private func deleteItem(account: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -110,6 +158,69 @@ public struct KeychainSecretStore: SecretStore {
         ]
         let status = SecItemCopyMatching(query as CFDictionary, nil)
         return status == errSecSuccess || status == errSecInteractionNotAllowed
+    }
+
+    // MARK: - Свидетель набора отпечатков
+
+    /// Изменился ли набор отпечатков с тех пор, как запись создавали.
+    ///
+    /// Сравнивается слепок состояния биометрии — тот самый, по которому система
+    /// и решает, протухла запись или нет. Сам слепок секретом не является:
+    /// по нему нельзя ни узнать отпечаток, ни подделать его.
+    public func enrollmentChanged(_ account: String) -> Bool {
+        hasNewEnrollment(account)
+    }
+
+    private func hasNewEnrollment(_ account: String) -> Bool {
+        guard let witness = readWitness(for: account), let now = Self.biometryState() else {
+            // Не знаем, при каком наборе писали, или на этой машине биометрии
+            // нет вовсе, — значит и утверждать нечего.
+            return false
+        }
+        return witness != now
+    }
+
+    private static func witnessAccount(_ account: String) -> String {
+        account + ".enrollment"
+    }
+
+    /// Слепок текущего набора отпечатков, если биометрия здесь вообще есть.
+    static func biometryState() -> Data? {
+        let context = LAContext()
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
+        else { return nil }
+        if #available(macOS 15, *) { return context.domainState.biometry.stateHash }
+        return context.evaluatedPolicyDomainState
+    }
+
+    /// Кладёт слепок рядом с записью — без биометрического замка, иначе
+    /// прочитать его в момент разбора беды было бы нельзя.
+    private func rememberEnrollment(for account: String) {
+        guard let state = Self.biometryState() else { return }
+        let account = Self.witnessAccount(account)
+        // `try?`: свидетель — вспомогательная запись. Не удалось положить —
+        // теряем только точность объяснения, а не сам секрет.
+        try? deleteItem(account: account)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: state,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        _ = SecItemAdd(query as CFDictionary, nil)
+    }
+
+    private func readWitness(for account: String) -> Data? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: Self.witnessAccount(account),
+            kSecReturnData as String: true,
+        ]
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess else { return nil }
+        return item as? Data
     }
 }
 

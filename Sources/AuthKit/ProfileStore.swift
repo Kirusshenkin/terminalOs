@@ -27,6 +27,26 @@ public enum ProfileStoreError: Error, Equatable {
     /// This is the price of `ThisDeviceOnly`, and it is also a feature: deleting
     /// the key destroys the profile in a second, with no disk wiping.
     case keyLost
+    /// Ключ пропал по понятной причине: на Маке поменяли набор отпечатков.
+    ///
+    /// Тот же исход, что и `keyLost`, но причина известна — и это меняет
+    /// разговор с человеком. «Ключ утерян» звучит как поломка; «ты добавил
+    /// палец, и записи под прежним набором закрылись» — это объяснение, после
+    /// которого понятно, что делать.
+    case enrollmentChanged
+}
+
+extension ProfileStoreError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .empty:
+            "профиля ещё нет"
+        case .keyLost:
+            "профиль на месте, но ключ утерян — восстанови из экспорта"
+        case .enrollmentChanged:
+            SecretError.enrollmentChanged.errorDescription
+        }
+    }
 }
 
 /// Reads and writes the encrypted profile.
@@ -59,21 +79,51 @@ public actor ProfileStore {
     }
 
     /// Fetches the master key, creating one on first run.
-    private func masterKey(reason: String) async throws -> SymmetricKey {
+    ///
+    /// `replacingLostKey` меняет только один исход: когда ключа больше нет, а
+    /// профиль на диске есть. Обычно это тупик, о котором надо сказать вслух, —
+    /// но при импорте экспорта профиль всё равно затирается целиком, и держать
+    /// человека в этом тупике значит сломать ровно ту страховку, ради которой
+    /// экспорт и делался.
+    private func masterKey(
+        reason: String, replacingLostKey: Bool = false
+    ) async throws -> SymmetricKey {
         if let cachedKey { return cachedKey }
-        if await store.exists(Self.masterKeyAccount) {
-            let raw = try await store.read(Self.masterKeyAccount, reason: reason)
-            let key = SymmetricKey(data: raw)
-            cachedKey = key
-            return key
+        if let existing = try await existingKey(reason: reason, tolerateLoss: replacingLostKey) {
+            cachedKey = existing
+            return existing
         }
         // Refuse to silently mint a second key over an existing profile: that
         // would make the old one permanently unreadable without saying so.
-        guard !hasProfile() else { throw ProfileStoreError.keyLost }
+        if hasProfile(), !replacingLostKey {
+            // Ключа нет, а профиль есть. Спрашиваем, не сменился ли набор
+            // отпечатков: причина у этого исхода бывает ровно одна понятная, и
+            // назвать её лучше, чем оставить человека гадать.
+            throw await store.enrollmentChanged(Self.masterKeyAccount)
+                ? ProfileStoreError.enrollmentChanged
+                : ProfileStoreError.keyLost
+        }
         let key = Vault.generateKey()
         try await store.write(key.withUnsafeBytes { Data($0) }, account: Self.masterKeyAccount)
         cachedKey = key
         return key
+    }
+
+    /// Ключ из связки, если он там есть и читается.
+    ///
+    /// `tolerateLoss` глотает ровно два исхода — записи нет и запись протухла
+    /// вместе с набором отпечатков. Отказ человека (`denied`) не глотается
+    /// никогда: нажатая «Отмена» не должна приводить к новому ключу поверх
+    /// профиля, который прекрасно открылся бы со второй попытки.
+    private func existingKey(reason: String, tolerateLoss: Bool) async throws -> SymmetricKey? {
+        guard await store.exists(Self.masterKeyAccount) else { return nil }
+        do {
+            return SymmetricKey(data: try await store.read(Self.masterKeyAccount, reason: reason))
+        } catch SecretError.enrollmentChanged where tolerateLoss {
+            return nil
+        } catch SecretError.notFound where tolerateLoss {
+            return nil
+        }
     }
 
     /// Decrypts and decodes the profile.
@@ -109,7 +159,10 @@ public actor ProfileStore {
     /// Installs an exported profile, replacing whatever is here.
     public func importProfile(_ data: Data, passphrase: String, reason: String) async throws {
         let plain = try PassphraseBox.open(data, passphrase: passphrase)
-        let key = try await masterKey(reason: reason)
+        // Фраза подошла — значит содержимое у нас на руках, и прежний ключ
+        // больше ничего не решает. Если он утерян, заводим новый: иначе импорт
+        // спотыкался бы ровно в том случае, ради которого его и написали.
+        let key = try await masterKey(reason: reason, replacingLostKey: true)
         try AtomicFile.write(try Vault(key: key).seal(plain), to: url)
     }
 

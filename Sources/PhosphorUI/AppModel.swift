@@ -252,7 +252,7 @@ public final class AppModel {
     /// Сколько сессий ждут ответа человека. Ради этого числа в шапке горит
     /// метка у «Терминала», даже когда открыт другой раздел.
     public var blockedSessions: Int {
-        liveSessions.reduce(into: 0) { total, session in
+        (liveSessions + localSessions).reduce(into: 0) { total, session in
             if session.status == .blocked { total += 1 }
         }
     }
@@ -566,6 +566,9 @@ public final class AppModel {
 
     public func lock() {
         isUnlocked = false
+        // За закрытой дверью спрашивать не о чем: опрос сессий останавливаем
+        // вместе с интерфейсом. Сами сессии это не трогает — они на серверах.
+        stopSessionWatch()
     }
 
     private func loadProfile() async {
@@ -669,9 +672,9 @@ public final class AppModel {
         observerToken = nil
         sessionState = SessionState()
         sessionSocketPath = nil
-        // Спрашивать больше некого: слежение за сессиями останавливаем, а сам
-        // список гасим, чтобы в шапке не горела метка от мёртвого хоста.
-        stopSessionWatch()
+        // Список серверных сессий гасим, чтобы в шапке не горела метка от
+        // хоста, с которым мы уже простились. Слежение при этом продолжается:
+        // сессии на этом Маке живут и без соединения.
         liveSessions = []
     }
 

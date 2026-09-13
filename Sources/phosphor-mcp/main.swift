@@ -45,8 +45,8 @@ struct Shim {
     private static func toolSchemas() -> [[String: Any]] {
         BridgeLocation.descriptions().map { tool in
             var properties: [String: Any] = [:]
-            for name in tool.arguments {
-                properties[name] = ["type": "string", "description": hint(for: name)]
+            for argument in tool.arguments {
+                properties[argument.name] = ["type": "string", "description": argument.hint]
             }
             return [
                 "name": tool.name,
@@ -54,22 +54,9 @@ struct Shim {
                 "inputSchema": [
                     "type": "object",
                     "properties": properties,
-                    "required": tool.arguments.filter { $0 == "host" },
+                    "required": tool.arguments.filter(\.isRequired).map(\.name),
                 ],
             ]
-        }
-    }
-
-    private static func hint(for argument: String) -> String {
-        switch argument {
-        case "host": "идентификатор хоста из list_hosts"
-        case "command": "команда для выполнения на сервере"
-        case "container": "имя или идентификатор контейнера"
-        case "action": "start, stop, restart, pause, unpause, kill или remove"
-        case "tail": "сколько последних строк вернуть"
-        case "operation": "add или remove"
-        case "key": "строка ключа в формате authorized_keys"
-        default: argument
         }
     }
 

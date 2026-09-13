@@ -7,6 +7,7 @@ import Testing
 @testable import MCPBridge
 @testable import MetricsKit
 @testable import PhosphorCore
+@testable import SSHKit
 @testable import SessionKit
 
 @Suite("Политика доступа MCP")
@@ -487,7 +488,9 @@ struct SocketServerTests {
         #expect(write?.description.contains("изменяет сервер") == true)
         let read = descriptions.first { $0.name == "list_containers" }
         #expect(read?.description.contains("изменяет") == false)
-        #expect(descriptions.first { $0.name == "run_command" }?.arguments.contains("command") == true)
+        #expect(
+            descriptions.first { $0.name == "run_command" }?.argumentNames.contains("command")
+                == true)
     }
 }
 
@@ -640,3 +643,112 @@ struct HostEditToolTests {
     }
 }
 
+/// Транспорт, который отвечает на всё одинаково: проверяем маршрутизацию
+/// вызова, а не поведение сервера.
+private actor EchoTransport: SSHTransport {
+    nonisolated let host: ServerHost
+    private(set) var executed: [String] = []
+
+    init(host: ServerHost) {
+        self.host = host
+    }
+
+    func run(_ command: String, timeout: Duration) async throws -> CommandResult {
+        executed.append(command)
+        return CommandResult(status: 0, stdout: "ok", stderr: "")
+    }
+
+    func stream(_ command: String, onLine: @escaping @Sendable (String) -> Void) async throws {}
+    func close() async {}
+}
+
+@Suite("Каталог инструментов исполним целиком")
+struct ToolCatalogCoverageTests {
+    private func temporaryURL() -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("phosphor-\(UUID().uuidString)/audit.jsonl")
+    }
+
+    /// Правдоподобное значение аргумента, чтобы вызов дошёл до исполнения, а не
+    /// упёрся в проверку «не указано».
+    private func value(for argument: String, tool: String, host: ServerHost) -> String {
+        switch argument {
+        case "host": host.id.uuidString
+        case "command": "uptime"
+        case "container": "api"
+        // «start» для контейнера и «add» для ключа — одно имя, разные словари.
+        case "action": tool == "manage_authorized_key" ? "add" : "start"
+        case "tail": "10"
+        case "address": "10.0.0.9"
+        case "port": "22"
+        case "user": "root"
+        case "name": "новый"
+        case "tags": "one,two"
+        case "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH0000000000000000000000000000000000000 test"
+        case "fingerprint": "SHA256:неизвестный"
+        default: ""
+        }
+    }
+
+    @Test("каждый инструмент каталога выполняется, а не падает в «пока не реализован»")
+    func everyToolIsRouted() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+        let host = ServerHost(name: "prod-01", address: "10.0.0.1")
+        let book = HostBook(hosts: [host])
+        let policy = AccessPolicy()
+        await policy.setMode(.full, for: host.id)
+        let session = HostSession(host: host, transport: EchoTransport(host: host))
+        let audit = AuditLog(url: url)
+        let runner = ToolRunner(
+            policy: policy, audit: audit,
+            book: { book },
+            sessions: { _ in session },
+            confirm: { _, _ in true }
+        )
+
+        for tool in ToolCatalog.all {
+            var arguments: [String: String] = [:]
+            for argument in BridgeLocation.arguments(for: tool.name) {
+                arguments[argument.name] = value(for: argument.name, tool: tool.name, host: host)
+            }
+            let result = await runner.call(tool.name, arguments: arguments)
+            #expect(
+                !result.text.contains("пока не реализован"),
+                "инструмент \(tool.name) не исполняется")
+            // Ни один инструмент не должен жаловаться на аргумент, который
+            // каталог сам же и объявил: это и есть разъезд имён.
+            #expect(!result.text.contains("не указан"), "инструмент \(tool.name): \(result.text)")
+            #expect(!result.text.contains("нужен action"), "инструмент \(tool.name): \(result.text)")
+        }
+        await audit.close()
+    }
+
+    @Test("обязательные аргументы объявлены у всех, кому они нужны")
+    func requiredArgumentsDeclared() {
+        for tool in ToolCatalog.all {
+            let arguments = BridgeLocation.arguments(for: tool.name)
+            // Хост обязателен везде, кроме работы со списком серверов.
+            let hostless: Set<String> = ["list_hosts", "add_host"]
+            if !hostless.contains(tool.name) {
+                #expect(
+                    arguments.contains { $0.name == "host" && $0.isRequired },
+                    "инструмент \(tool.name) не требует хоста")
+            }
+            #expect(arguments.allSatisfy { !$0.hint.isEmpty })
+            #expect(Set(arguments.map(\.name)).count == arguments.count)
+        }
+    }
+
+    @Test("подсказка про действия над контейнером перечисляет то, что принимается")
+    func containerActionHintMatchesReality() {
+        let hint =
+            BridgeLocation.arguments(for: "container_action")
+            .first { $0.name == "action" }?.hint ?? ""
+        for action in ContainerAction.allCases {
+            #expect(hint.contains(action.rawValue))
+            #expect(ContainerAction(rawValue: action.rawValue) != nil)
+        }
+    }
+}

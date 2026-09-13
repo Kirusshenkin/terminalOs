@@ -38,10 +38,19 @@ public enum ToolCatalog {
         Tool(name: "list_containers", summary: "Контейнеры с состоянием и метриками", kind: .read),
         Tool(name: "container_logs", summary: "Последние строки логов", kind: .read),
         Tool(name: "container_inspect", summary: "Подробности контейнера", kind: .read),
-        Tool(name: "list_authorized_keys", summary: "Ключи на сервере", kind: .read),
+        Tool(
+            name: "list_authorized_keys",
+            summary: "Ключи на сервере: отпечаток, алгоритм, комментарий",
+            kind: .read),
         Tool(name: "run_command", summary: "Выполнить команду на хосте", kind: .write),
-        Tool(name: "container_action", summary: "start / stop / restart / rm", kind: .write),
-        Tool(name: "manage_authorized_key", summary: "Добавить или удалить ключ", kind: .write),
+        Tool(
+            name: "container_action",
+            summary: "start / stop / restart / pause / unpause / kill / remove",
+            kind: .write),
+        Tool(
+            name: "manage_authorized_key",
+            summary: "Добавить ключ по строке или убрать по отпечатку",
+            kind: .write),
         Tool(name: "add_host", summary: "Завести сервер в списке", kind: .write),
         Tool(name: "update_host", summary: "Изменить сервер в списке", kind: .write),
         Tool(name: "remove_host", summary: "Убрать сервер из списка", kind: .write),

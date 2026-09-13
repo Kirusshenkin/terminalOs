@@ -136,9 +136,25 @@ public actor ToolRunner {
         case "container_action":
             "\(arguments["action"] ?? "—") для контейнера \(arguments["container"] ?? "—")"
         case "manage_authorized_key":
-            "\(arguments["operation"] ?? "—") ключа \(arguments["fingerprint"] ?? "—")"
+            arguments["action"] == "add"
+                ? "добавил бы ключ \(Self.keyLabel(arguments["key"]))"
+                : "убрал бы ключ \(arguments["fingerprint"] ?? "—")"
         default: tool.summary
         }
+    }
+
+    /// Значение аргумента, если оно вообще что-то значит.
+    ///
+    /// Пустая строка от клиента — это «не задано», а не имя длиной ноль.
+    private static func nonEmpty(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    /// Как назвать ключ в плане, не выписывая в журнал всю его строку.
+    private static func keyLabel(_ line: String?) -> String {
+        guard let line, let key = AuthorizedKeysFile.parse(line).first else { return "—" }
+        return key.comment.map { "\($0) (\(key.fingerprint))" } ?? key.fingerprint
     }
 
     private func listHosts() async -> ToolResult {
@@ -165,7 +181,7 @@ public actor ToolRunner {
         case "container_logs": return await logs(state, session: session, arguments: arguments)
         case "container_inspect": return await inspect(state, session: session, arguments: arguments)
         case "list_authorized_keys":
-            return await run("cat ~/.ssh/authorized_keys 2>/dev/null || true", on: session)
+            return await authorizedKeys(session: session)
         case "run_command":
             guard let command = arguments["command"] else {
                 return ToolResult(text: "не указана команда", isError: true)
@@ -180,6 +196,30 @@ public actor ToolRunner {
         }
     }
 
+    /// Ключи сервера в том виде, в каком по ним можно действовать.
+    ///
+    /// Сырой файл здесь бесполезен: чтобы убрать ключ, нужен его отпечаток, а
+    /// он в файле не написан — он считается из тела ключа. Отдавать содержимое
+    /// и ждать, что собеседник посчитает SHA-256 в уме, — это инструмент,
+    /// которым нельзя воспользоваться.
+    private func authorizedKeys(session: HostSession) async -> ToolResult {
+        let read = await run(Self.readKeysCommand, on: session)
+        guard !read.isError else { return read }
+        let keys = AuthorizedKeysFile.parse(read.text == Self.empty ? "" : read.text)
+        guard !keys.isEmpty else { return ToolResult(text: "ключей на сервере нет") }
+        return ToolResult(
+            text: keys.map { key in
+                let state = key.isEnabled ? "" : "  (выключен)"
+                let weak = key.weakness.map { "  ⚠︎ \($0)" } ?? ""
+                return "\(key.fingerprint)  \(key.algorithm)  \(key.comment ?? "—")\(state)\(weak)"
+            }.joined(separator: "\n"))
+    }
+
+    /// Чтение файла ключей: отсутствующий файл — это ноль ключей, а не ошибка.
+    private static let readKeysCommand = "cat ~/.ssh/authorized_keys 2>/dev/null || true"
+    /// Что `run` возвращает вместо пустой строки.
+    private static let empty = "(пусто)"
+
     /// Добавляет или убирает ключ в `authorized_keys` на сервере.
     ///
     /// Защита от самоблокировки живёт здесь, а не в вызывающем: человек может
@@ -192,9 +232,9 @@ public actor ToolRunner {
         guard let action = arguments["action"], action == "add" || action == "remove" else {
             return ToolResult(text: "нужен action: add или remove", isError: true)
         }
-        let read = await run("cat ~/.ssh/authorized_keys 2>/dev/null || true", on: session)
+        let read = await run(Self.readKeysCommand, on: session)
         guard !read.isError else { return read }
-        let keys = AuthorizedKeysFile.parse(read.text == "(пусто)" ? "" : read.text)
+        let keys = AuthorizedKeysFile.parse(read.text == Self.empty ? "" : read.text)
 
         let updated: [AuthorizedKey]
         switch action {
@@ -259,10 +299,10 @@ public actor ToolRunner {
                 !address.isEmpty
             else { return ToolResult(text: "не указан адрес", isError: true) }
             let host = ServerHost(
-                name: arguments["name"]?.isEmpty == false ? arguments["name"]! : address,
+                name: Self.nonEmpty(arguments["name"]) ?? address,
                 address: address,
                 port: arguments["port"].flatMap(Int.init) ?? 22,
-                user: arguments["user"]?.isEmpty == false ? arguments["user"]! : "root",
+                user: Self.nonEmpty(arguments["user"]) ?? "root",
                 tags: (arguments["tags"] ?? "")
                     .split(separator: ",")
                     .map { $0.trimmingCharacters(in: .whitespaces) }
@@ -372,9 +412,18 @@ public actor ToolRunner {
     private func containerAction(
         _ state: SessionState, session: HostSession, arguments: [String: String]
     ) async -> ToolResult {
-        guard let raw = arguments["action"], let action = ContainerAction(rawValue: raw),
-            let container = container(in: state, arguments: arguments)
-        else { return ToolResult(text: "не указано действие или контейнер", isError: true) }
+        guard let raw = arguments["action"] else {
+            return ToolResult(text: "не указано действие", isError: true)
+        }
+        guard let action = ContainerAction(rawValue: raw) else {
+            // Различать «не сказали» и «сказали не то» стоит одной ветки: во
+            // втором случае собеседнику надо показать список принимаемых слов.
+            let known = ContainerAction.allCases.map(\.rawValue).joined(separator: ", ")
+            return ToolResult(text: "действие «\(raw)» не из списка: \(known)", isError: true)
+        }
+        guard let container = container(in: state, arguments: arguments) else {
+            return ToolResult(text: "контейнер не найден", isError: true)
+        }
         let outcome = await session.perform(action, on: container)
         return ToolResult(text: outcome.message, isError: !outcome.succeeded)
     }
@@ -388,7 +437,7 @@ public actor ToolRunner {
             let text = result.succeeded ? result.stdout : result.stderr
             let trimmed = String(text.prefix(16_000))
             return ToolResult(
-                text: trimmed.isEmpty ? "(пусто)" : trimmed,
+                text: trimmed.isEmpty ? Self.empty : trimmed,
                 isError: !result.succeeded
             )
         } catch {

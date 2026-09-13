@@ -34,11 +34,23 @@ public struct StepProgress: Identifiable, Sendable, Equatable {
 /// последним и только после того, как отдельное соединение по ключу реально
 /// открылось. Обычные скрипты ломаются именно на третьем.
 public actor ProvisionRunner {
-    public enum RunError: Error, Equatable {
+    /// Почему прогон не дошёл до конца.
+    ///
+    /// Не бросается наружу: рецепт исполняется по шагам, и остановка — это
+    /// состояние шага, а не обрыв всей работы. Здесь эти причины живут затем,
+    /// чтобы их текст был написан один раз, а не заново в каждой ветке.
+    public enum RunError: Equatable {
         /// Ключ не проверен, а шаг закрывает пароли — это прямой путь к тому,
         /// чтобы запереть себя снаружи.
         case keyNotProven
         case stopped
+
+        public var message: String {
+            switch self {
+            case .keyNotProven: "вход по ключу не подтверждён — пароли не закрываю"
+            case .stopped: "остановлено"
+            }
+        }
     }
 
     private let transport: any SSHTransport
@@ -95,7 +107,7 @@ public actor ProvisionRunner {
         let plan = recipe.plan(for: profile)
         for (index, entry) in plan.enumerated() {
             if stopRequested {
-                mark(index, .failed("остановлено"))
+                mark(index, .failed(RunError.stopped.message))
                 break
             }
             if let skip = entry.skip {
@@ -103,7 +115,7 @@ public actor ProvisionRunner {
                 continue
             }
             if entry.step.id == BuiltInRecipe.needsKeyProof, await !proveKeyAccess() {
-                mark(index, .failed("вход по ключу не подтверждён — пароли не закрываю"))
+                mark(index, .failed(RunError.keyNotProven.message))
                 continue
             }
             mark(index, .running)

@@ -6,7 +6,10 @@ public struct Container: Identifiable, Hashable, Sendable {
     public enum State: String, Sendable {
         case running, exited, paused, restarting, created, dead, unknown
 
-        public var isHealthyLooking: Bool { self == .running }
+        // `isHealthyLooking` убран, а не удалён: он говорил ровно то же, что
+        // `state == .running`, и рядом с `isUnhealthy` — настоящим здоровьем из
+        // `docker inspect` — читался как второе мнение о том же самом.
+        // public var isHealthyLooking: Bool { self == .running }
 
         public var title: String {
             switch self {

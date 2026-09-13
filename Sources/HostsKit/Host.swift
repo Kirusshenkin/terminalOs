@@ -130,8 +130,10 @@ public struct HostGroup: Codable, Identifiable, Hashable, Sendable {
     public var reach: Reach?
     public var guardLevel: GuardLevel
     public var mcpMode: MCPMode
-    /// Recipe offered for freshly provisioned members of this group.
-    public var recipeID: String?
+    // Рецепт группы убран, а не удалён: рецепт в приложении ровно один
+    // (`BuiltInRecipe.base`), выбирать не из чего, и поле только обещало
+    // настройку, которой нет. Вернуть его стоит вместе со вторым рецептом.
+    // public var recipeID: String?
 
     public init(
         id: ID = UUID(),
@@ -139,8 +141,7 @@ public struct HostGroup: Codable, Identifiable, Hashable, Sendable {
         themeID: String? = nil,
         reach: Reach? = nil,
         guardLevel: GuardLevel = .dangerous,
-        mcpMode: MCPMode = .disabled,
-        recipeID: String? = nil
+        mcpMode: MCPMode = .disabled
     ) {
         self.id = id
         self.name = name
@@ -148,6 +149,5 @@ public struct HostGroup: Codable, Identifiable, Hashable, Sendable {
         self.reach = reach
         self.guardLevel = guardLevel
         self.mcpMode = mcpMode
-        self.recipeID = recipeID
     }
 }

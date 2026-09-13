@@ -92,6 +92,17 @@ struct AccessPolicyTests {
         }
     }
 
+    @Test("смена режима отзывает выданное согласие")
+    func changingModeRevokes() async {
+        let policy = AccessPolicy()
+        await policy.setMode(.full, for: host)
+        await policy.grant(for: host)
+        // Правила поменяли — значит и ответ по прежним правилам больше не в
+        // силе: следующий пишущий вызов обязан снова спросить.
+        await policy.setMode(.confirm, for: host)
+        #expect(await policy.decide(tool: write, host: host, command: "ls") == .confirm("ls"))
+    }
+
     @Test("выключение хоста отзывает выданное согласие")
     func disablingRevokes() async {
         let policy = AccessPolicy()

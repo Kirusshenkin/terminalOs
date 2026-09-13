@@ -300,6 +300,20 @@ struct SSHConfigTests {
         #expect(skipped.contains { $0.lowercased().contains("match") })
     }
 
+    @Test("IdentityFile попадает в «не распознано», раз ключ никуда не едет")
+    func identityFileIsReported() {
+        let result = SSHConfigImport.parse(
+            """
+            Host prod
+                HostName 10.0.0.2
+                IdentityFile ~/.ssh/id_prod
+            """)
+        #expect(result.entries.count == 1)
+        // Молча принять и выбросить хуже, чем честно сказать: ключ для этого
+        // сервера придётся назначить самому.
+        #expect(result.skipped.contains { $0.directive.lowercased().contains("identityfile") })
+    }
+
     @Test("ProxyJump превращается в бастион")
     func resolvesJump() {
         let result = SSHConfigImport.parse(
@@ -692,8 +706,11 @@ struct DockerEnvironmentTests {
     func survivesJunk() {
         #expect(DockerCLI.parseEnvironment("не json").isEmpty)
         #expect(DockerCLI.parseEnvironment("[]").isEmpty)
-        #expect(DockerCLI.parseEnvironment("""
-            [{"Config":{"Env":["=нет имени","без знака равенства"]}}]
-            """).isEmpty)
+        #expect(
+            DockerCLI.parseEnvironment(
+                """
+                [{"Config":{"Env":["=нет имени","без знака равенства"]}}]
+                """
+            ).isEmpty)
     }
 }

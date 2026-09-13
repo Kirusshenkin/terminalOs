@@ -89,12 +89,16 @@ public struct SystemBiometricGate: BiometricGate {
     }
 }
 
-/// A gate that always succeeds. For tests and previews only.
-public struct OpenGate: BiometricGate {
-    public var reuseDuration: TimeInterval = 0
-    public init() {}
-    public func capability() -> GateCapability {
-        GateCapability(hasBiometry: true, hasWatch: false, hasPassword: true)
-    }
-    public func authenticate(reason: String) async throws {}
-}
+// Замок, который всегда открыт, убран, а не удалён: им никто не пользовался,
+// а в боевой сборке он лежал рядом с настоящим и отличался одной буквой в
+// имени. Если понадобится для превью — место вот оно, но жить он должен в
+// тестах, а не в отгружаемом коде.
+//
+// public struct OpenGate: BiometricGate {
+//     public var reuseDuration: TimeInterval = 0
+//     public init() {}
+//     public func capability() -> GateCapability {
+//         GateCapability(hasBiometry: true, hasWatch: false, hasPassword: true)
+//     }
+//     public func authenticate(reason: String) async throws {}
+// }

@@ -40,9 +40,15 @@ public actor AccessPolicy {
         modes[host] ?? .disabled
     }
 
+    /// Меняет режим хоста, отзывая выданное согласие.
+    ///
+    /// Согласие — это ответ на вопрос, заданный по прежним правилам. Человек,
+    /// переключивший хост с полного доступа на подтверждения, ждёт вопроса, а
+    /// не тишины до конца прежних пятнадцати минут.
     public func setMode(_ mode: MCPMode, for host: ServerHost.ID) {
+        guard modes[host] ?? .disabled != mode else { return }
         modes[host] = mode
-        if mode == .disabled { grants[host] = nil }
+        revoke(for: host)
     }
 
     /// Запоминает согласие человека на ближайшее время.

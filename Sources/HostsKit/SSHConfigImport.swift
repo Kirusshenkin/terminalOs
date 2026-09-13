@@ -11,7 +11,11 @@ public enum SSHConfigImport {
         public var hostName: String?
         public var user: String?
         public var port: Int?
-        public var identityFile: String?
+        // `IdentityFile` разбирался и выбрасывался: в модели хоста нет поля для
+        // ключа, а вызов ssh собирается без `-i` — ключ выбирает сам ssh по
+        // своим правилам. Разобрать значение и потерять его хуже, чем не
+        // разбирать: строка «понята» и при этом не работает.
+        // public var identityFile: String?
         public var proxyJump: String?
     }
 
@@ -21,8 +25,12 @@ public enum SSHConfigImport {
         public var skipped: [(directive: String, line: Int)]
     }
 
+    /// Директивы, которые действительно доезжают до хоста. `IdentityFile`
+    /// сюда не входит намеренно: его некуда положить, поэтому он попадает в
+    /// «не распознано» — человек увидит, что ключ для этого сервера придётся
+    /// назначить самому, а не обнаружит это при первом подключении.
     private static let understood: Set<String> = [
-        "host", "hostname", "user", "port", "identityfile", "proxyjump",
+        "host", "hostname", "user", "port", "proxyjump",
     ]
 
     /// Parses the subset we support. Wildcards, `Match` and `Include` are
@@ -77,7 +85,7 @@ public enum SSHConfigImport {
         case "hostname": entry?.hostName = value
         case "user": entry?.user = value
         case "port": entry?.port = Int(value)
-        case "identityfile": entry?.identityFile = value
+        // case "identityfile": entry?.identityFile = value
         case "proxyjump": entry?.proxyJump = value
         default: break
         }

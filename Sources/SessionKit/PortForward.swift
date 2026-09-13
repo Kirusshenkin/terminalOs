@@ -69,7 +69,11 @@ public actor ForwardManager {
     private let host: ServerHost
     private let reach: Reach
     private let controlPath: String
-    private var active: Set<UUID> = []
+    // Свой список поднятых пробросов убран, а не удалён: его никто не читал,
+    // потому что состояние держит приложение (`AppModel.activeForwards`) — там
+    // же, где кнопки. Две копии одного факта разъезжаются молча, а эта ещё и
+    // умирала вместе с менеджером при переподключении.
+    // private var active: Set<UUID> = []
 
     public init(host: ServerHost, reach: Reach, controlPath: String) {
         self.host = host
@@ -77,17 +81,12 @@ public actor ForwardManager {
         self.controlPath = controlPath
     }
 
-    public func isActive(_ forward: PortForward) -> Bool { active.contains(forward.id) }
-    public var activeIDs: Set<UUID> { active }
-
     public func start(_ forward: PortForward) async throws {
         try await control("forward", forward)
-        active.insert(forward.id)
     }
 
     public func stop(_ forward: PortForward) async throws {
         try await control("cancel", forward)
-        active.remove(forward.id)
     }
 
     private func control(_ verb: String, _ forward: PortForward) async throws {

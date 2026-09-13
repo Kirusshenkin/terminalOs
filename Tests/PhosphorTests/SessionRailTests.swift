@@ -50,6 +50,11 @@ struct SessionRailTests {
         #expect(AppModel.parseSessions("NOW 1000\n").isEmpty)
     }
 
+    @Test("маркер отсутствия tmux не превращается в сессию")
+    @MainActor func noTmuxMarker() {
+        #expect(AppModel.parseSessions(AppModel.noTmuxMarker).isEmpty)
+    }
+
     @Test("имя сессии очищается от запретных для tmux символов")
     func sanitise() {
         #expect(SSHInvocation.tmuxSessionName("prod.web:1") == "prod-web-1")

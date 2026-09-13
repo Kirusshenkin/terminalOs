@@ -289,6 +289,12 @@ extension Strings {
             .english: "no open spaces — press + and connect to a server",
         ],
         "term.sessions": [.russian: "сессии", .english: "sessions"],
+        "term.noTmux": [
+            .russian: "на сервере нет tmux — шелл начнётся с нуля при каждом заходе. "
+                + "поставьте его: apt install tmux",
+            .english: "no tmux on the server — the shell starts over on every visit. "
+                + "install it: apt install tmux",
+        ],
         "term.closeSpace": [.russian: "убрать спейс", .english: "close space"],
         "term.persist": [.russian: "постоянные сессии", .english: "persistent sessions"],
         "term.sessionName": [.russian: "имя сессии", .english: "session name"],

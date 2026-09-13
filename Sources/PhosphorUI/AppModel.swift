@@ -215,6 +215,10 @@ public final class AppModel {
     public var terminalSession: String?
     /// Живые tmux-сессии на выбранном хосте, для рейла сессий.
     public internal(set) var liveSessions: [TmuxSession] = []
+    /// Есть ли tmux на выбранном хосте. Нет — постоянные сессии невозможны, и
+    /// шелл каждый раз начинается с нуля. Про это говорят прямо: молчаливый
+    /// откат оставляет человека гадать, почему терминал всегда чистый.
+    public internal(set) var hasTmux = true
     /// Черновик имени при создании новой сессии.
     public var newSessionName = ""
 
@@ -320,25 +324,30 @@ public final class AppModel {
 
     /// Куда смотрит терминал: на локальный шелл или на выбранный сервер.
     public var terminalDestination: TerminalHost.Destination {
-        guard let id = selectedHost,
-            let host = book.hosts.first(where: { $0.id == id }),
-            let socket = sessionSocketPath
-        else { return .local }
-        // Постоянные сессии (herdr-стиль): шелл живёт внутри tmux на сервере и
-        // переживает закрытие приложения. Выключено — обычный одноразовый шелл.
-        let session = persistentSessions ? (terminalSession ?? "main") : nil
-        return .remote(
-            host: host, reach: book.reach(for: host), controlPath: socket, session: session)
+        destination(session: terminalSession ?? "main") ?? .local
     }
 
     /// Куда смотрит вторая панель сплита. nil — панели нет.
     public var secondDestination: TerminalHost.Destination? {
-        guard let second = secondSession, let id = selectedHost,
+        secondSession.flatMap { destination(session: $0) }
+    }
+
+    /// Адрес названной сессии на выбранном хосте. nil — смотреть не на что:
+    /// хост не выбран или соединение к нему ещё не поднято.
+    ///
+    /// Адрес — он же ключ живой поверхности, поэтому он обязан быть одним и тем
+    /// же при каждом обращении: иначе панель показывала бы новый шелл там, где
+    /// человек оставил работающий.
+    func destination(session name: String) -> TerminalHost.Destination? {
+        guard let id = selectedHost,
             let host = book.hosts.first(where: { $0.id == id }),
             let socket = sessionSocketPath
         else { return nil }
+        // Постоянные сессии (herdr-стиль): шелл живёт внутри tmux на сервере и
+        // переживает закрытие приложения. Выключено — обычный одноразовый шелл.
         return .remote(
-            host: host, reach: book.reach(for: host), controlPath: socket, session: second)
+            host: host, reach: book.reach(for: host), controlPath: socket,
+            session: persistentSessions ? name : nil)
     }
 
     /// Theme for the current context: a host's group can override the default,

@@ -16,19 +16,29 @@ extension AppModel {
     public func loadSessions() async {
         guard let session else {
             liveSessions = []
+            hasTmux = true
             return
         }
         // Одним заходом: время сервера (чтобы «свежесть» считать по его часам,
-        // а не по нашим) и панели каждой сессии с передним процессом.
+        // а не по нашим) и панели каждой сессии с передним процессом. Пустой
+        // список сессий — это ноль строк, а не ошибка, поэтому `|| true` стоит
+        // внутри группы: иначе отсутствие сессий читалось бы как отсутствие tmux.
         let command =
             "command -v tmux >/dev/null 2>&1 && { echo \"NOW $(date +%s)\"; "
             + "tmux list-panes -a -F "
             + "'#{session_name}\t#{pane_active}\t#{pane_current_command}\t"
-            + "#{session_windows}\t#{session_attached}\t#{session_activity}' 2>/dev/null; } "
-            + "|| true"
+            + "#{session_windows}\t#{session_attached}\t#{session_activity}' 2>/dev/null "
+            + "|| true; } || echo NOTMUX"
         let result = try? await session.run(command)
-        liveSessions = Self.parseSessions(result?.stdout ?? "")
+        let output = result?.stdout ?? ""
+        // Команда не дошла — это про связь, а не про tmux: прежний ответ не
+        // опровергнут, и пугать отсутствием tmux не за что.
+        if result != nil { hasTmux = !output.contains(Self.noTmuxMarker) }
+        liveSessions = Self.parseSessions(output)
     }
+
+    /// Что печатает сервер, на котором tmux не нашёлся.
+    static let noTmuxMarker = "NOTMUX"
 
     /// Шеллы, при которых сессия считается покоящейся (idle).
     static let shellCommands: Set<String> = [
@@ -86,7 +96,9 @@ extension AppModel {
         return .working
     }
 
-    /// Подключается к выбранной сессии: терминал перезапускается уже внутри неё.
+    /// Переводит терминал в выбранную сессию. Прежняя панель не гаснет: её
+    /// поверхность остаётся живой, и возврат к ней отдаёт ленту такой, какой
+    /// её оставили.
     public func attachSession(_ name: String) {
         guard terminalSession != name else { return }
         terminalSession = name
@@ -103,10 +115,11 @@ extension AppModel {
         screen = .terminal
     }
 
-    /// Убирает вторую панель. tmux-сессия за ней остаётся жить на сервере.
+    /// Убирает вторую панель. tmux-сессия за ней остаётся жить на сервере —
+    /// гаснет только наш `ssh`, смотреть в который стало некому.
     public func closeSplit() {
+        if let destination = secondDestination { surfaces.discard(destination) }
         secondSession = nil
-        surfaces.discard(.second)
     }
 
     /// Меняет ориентацию сплита: рядом ↔ одна над другой.
@@ -153,8 +166,12 @@ extension AppModel {
     /// Поэтому это делают явной кнопкой, а не мимоходом.
     public func killSession(_ name: String) async {
         guard let session else { return }
+        // Поверхность гасим до убийства сессии: за ней стоит ssh, который иначе
+        // остался бы висеть с мёртвым tmux на той стороне.
+        if let destination = destination(session: name) { surfaces.discard(destination) }
         _ = try? await session.run("tmux kill-session -t \(Shell.quote(name)) 2>/dev/null || true")
         if terminalSession == name { terminalSession = nil }
+        if secondSession == name { secondSession = nil }
         await loadSessions()
     }
 }

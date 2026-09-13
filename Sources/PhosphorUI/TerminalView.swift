@@ -54,7 +54,7 @@ public struct TerminalPane: View {
 
     /// Одна панель или две живые рядом/друг над другом.
     @ViewBuilder private var panes: some View {
-        let primary = hostSurface(model.terminalDestination, slot: .primary)
+        let primary = hostSurface(model.terminalDestination)
         if let second = model.secondDestination {
             let layout =
                 model.splitVertical
@@ -66,7 +66,7 @@ public struct TerminalPane: View {
                         width: model.splitVertical ? 1 : nil,
                         height: model.splitVertical ? nil : 1)
                 ZStack(alignment: .topTrailing) {
-                    hostSurface(second, slot: .second)
+                    hostSurface(second)
                     // Закрыть вторую панель — сессия за ней остаётся на сервере.
                     Button {
                         model.closeSplit()
@@ -83,11 +83,9 @@ public struct TerminalPane: View {
         }
     }
 
-    private func hostSurface(
-        _ destination: TerminalHost.Destination, slot: TerminalSurfaces.Slot
-    ) -> some View {
+    private func hostSurface(_ destination: TerminalHost.Destination) -> some View {
         TerminalHost(
-            theme: style.theme, surfaces: model.surfaces, slot: slot, destination: destination
+            theme: style.theme, surfaces: model.surfaces, destination: destination
         ) { request in
             Task { @MainActor in model.guardPrompt = GuardPrompt(request: request) }
         }

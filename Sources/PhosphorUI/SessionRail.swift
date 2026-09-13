@@ -65,6 +65,16 @@ struct SessionRail: View {
                 }
                 .padding(.horizontal, 12)
 
+                if !model.hasTmux {
+                    // Без tmux постоянных сессий не бывает: шелл каждый раз
+                    // начинается с нуля. Говорим это словами и сразу даём, что
+                    // сделать, — иначе пустой список выглядит поломкой.
+                    Text(model.strings("term.noTmux"))
+                        .font(style.font(11)).foregroundStyle(style.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12)
+                }
+
                 if adding { editor }
 
                 ScrollView {

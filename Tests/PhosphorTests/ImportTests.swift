@@ -58,7 +58,7 @@ struct ImportTests {
     func termiusRejectsGluedVersions() {
         var bytes = Data()
         // Всё это разбирается как безупречный dotted-quad и всё это не адреса.
-        for token in ["v1.2.3.4", "chrome-1.2.3.4", "sdk/9.8.7.6", "1.2.3.4-beta", "203.0.113.7"] {
+        for token in ["v1.2.3.4", "chrome-1.2.3.4", "sdk/198.51.100.9", "1.2.3.4-beta", "203.0.113.7"] {
             bytes.append(contentsOf: token.utf8)
             bytes.append(0)
         }

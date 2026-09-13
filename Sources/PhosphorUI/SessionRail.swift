@@ -167,7 +167,7 @@ struct SessionRail: View {
                         .font(style.font(12.5))
                         .foregroundStyle(active ? style.bright : style.text)
                         .lineLimit(1)
-                    Text("\(statusLabel(session.status)) · \(windowsLabel(session.windows))")
+                    Text(subtitle(session))
                         .font(style.font(10)).foregroundStyle(style.muted)
                 }
                 Spacer(minLength: 0)
@@ -205,6 +205,15 @@ struct SessionRail: View {
         guard !model.newSessionName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         model.createSession()
         adding = false
+    }
+
+    /// Вторая строка сессии. Если в ней живёт кодирующий агент — пишем его имя
+    /// и состояние: «Claude Code ждёт» говорит больше, чем «работает · 2 окна».
+    private func subtitle(_ session: AppModel.TmuxSession) -> String {
+        if let agent = session.agent {
+            return "\(agent.title) · \(statusLabel(session.status))"
+        }
+        return "\(statusLabel(session.status)) · \(windowsLabel(session.windows))"
     }
 
     private func windowsLabel(_ count: Int) -> String {

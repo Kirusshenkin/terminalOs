@@ -265,6 +265,10 @@ public final class AppModel {
         public var attached: Bool
         /// Что в ней происходит прямо сейчас — по переднему процессу.
         public var status: SessionStatus = .idle
+        /// Кодирующий агент, найденный в её панелях. nil — там обычная работа
+        /// руками. Ради этого поля рейл и отличается от списка процессов:
+        /// видно не «что-то крутится», а «Claude Code ждёт ответа».
+        public var agent: CodingAgent?
     }
 
     /// Состояние сессии, как у «агентов» herdr.

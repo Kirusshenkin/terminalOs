@@ -19,17 +19,7 @@ extension AppModel {
             hasTmux = true
             return
         }
-        // Одним заходом: время сервера (чтобы «свежесть» считать по его часам,
-        // а не по нашим) и панели каждой сессии с передним процессом. Пустой
-        // список сессий — это ноль строк, а не ошибка, поэтому `|| true` стоит
-        // внутри группы: иначе отсутствие сессий читалось бы как отсутствие tmux.
-        let command =
-            "command -v tmux >/dev/null 2>&1 && { echo \"NOW $(date +%s)\"; "
-            + "tmux list-panes -a -F "
-            + "'#{session_name}\t#{pane_active}\t#{pane_current_command}\t"
-            + "#{session_windows}\t#{session_attached}\t#{session_activity}' 2>/dev/null "
-            + "|| true; } || echo NOTMUX"
-        let result = try? await session.run(command)
+        let result = try? await session.run(Self.pollCommand)
         let output = result?.stdout ?? ""
         // Команда не дошла — это про связь, а не про tmux: прежний ответ не
         // опровергнут, и пугать отсутствием tmux не за что.
@@ -37,8 +27,36 @@ extension AppModel {
         liveSessions = Self.parseSessions(output)
     }
 
+    /// Один заход за всем сразу: время сервера (чтобы «свежесть» считать по его
+    /// часам, а не по нашим), панели каждой сессии и передние процессы их
+    /// терминалов целиком с аргументами.
+    ///
+    /// Аргументы нужны ради агентов: `claude` из npm виден в списке процессов
+    /// как `node`, и по одному имени процесса его не отличить от сборки.
+    /// Список передних процессов ограничен сверху — на занятом сервере их
+    /// сотни, а нам интересны только те, что стоят в панелях tmux.
+    ///
+    /// Пустой список сессий — это ноль строк, а не ошибка, поэтому `|| true`
+    /// стоит внутри группы: иначе отсутствие сессий читалось бы как отсутствие
+    /// tmux.
+    static let pollCommand =
+        "command -v tmux >/dev/null 2>&1 && { echo \"NOW $(date +%s)\"; "
+        + "echo \(panesMarker); "
+        + "tmux list-panes -a -F "
+        + "'#{session_name}\t#{pane_active}\t#{pane_current_command}\t"
+        + "#{session_windows}\t#{session_attached}\t#{session_activity}\t#{pane_tty}' 2>/dev/null "
+        + "|| true; echo \(procsMarker); "
+        + "ps -eo tty=,stat=,args= 2>/dev/null | awk '$2 ~ /\\+/' | head -\(foregroundLimit) "
+        + "|| true; } || echo NOTMUX"
+
     /// Что печатает сервер, на котором tmux не нашёлся.
     static let noTmuxMarker = "NOTMUX"
+    /// Заголовки разделов в ответе: сначала панели, потом передние процессы.
+    static let panesMarker = "PANES"
+    static let procsMarker = "PROCS"
+    /// Потолок на список передних процессов: буфер без границы — это утечка
+    /// с отложенным сроком, а панелей tmux всё равно единицы.
+    static let foregroundLimit = 80
 
     /// Шеллы, при которых сессия считается покоящейся (idle).
     static let shellCommands: Set<String> = [
@@ -48,44 +66,109 @@ extension AppModel {
     /// Насколько недавней должна быть активность, чтобы сессия считалась рабочей.
     static let workingWindowSeconds = 15
 
-    /// Разбирает вывод `tmux list-sessions` в объекты. Чистая функция —
-    /// проверяется на фикстуре, без сервера.
+    /// Разбирает вывод опроса в объекты. Чистая функция — проверяется на
+    /// фикстуре, без сервера.
+    ///
+    /// Ответ идёт разделами: `NOW`, затем `PANES` со строками панелей, затем
+    /// `PROCS` со строками `ps`. Без заголовков всё читается как панели: так
+    /// фикстура старого формата остаётся годной.
     public static func parseSessions(_ output: String) -> [TmuxSession] {
         var now = 0
-        // Строки: `session \t paneActive \t command \t windows \t attached \t activity`.
-        // Для каждой сессии берём активную панель — её передний процесс и решает
-        // статус. Порядок первого появления сохраняем.
-        var order: [String] = []
-        var byName: [String: TmuxSession] = [:]
-        var activePicked: Set<String> = []
+        var paneLines: [String] = []
+        var procLines: [String] = []
+        var inProcs = false
 
         for rawLine in output.split(separator: "\n") {
             let line = String(rawLine)
             if line.hasPrefix("NOW ") {
                 now = Int(line.dropFirst(4).trimmingCharacters(in: .whitespaces)) ?? 0
-                continue
+            } else if line == panesMarker {
+                inProcs = false
+            } else if line == procsMarker {
+                inProcs = true
+            } else if inProcs {
+                procLines.append(line)
+            } else {
+                paneLines.append(line)
             }
+        }
+        return assemble(paneLines, foreground: foreground(procLines), now: now)
+    }
+
+    /// Собирает сессии из строк панелей.
+    ///
+    /// Строка: `session \t paneActive \t command \t windows \t attached \t
+    /// activity \t tty`. Для каждой сессии статус решает активная панель, а имя
+    /// агента — та, в которой он нашёлся: агент часто сидит не в активной.
+    /// Порядок первого появления сохраняем.
+    static func assemble(
+        _ lines: [String], foreground: [String: [String]], now: Int
+    ) -> [TmuxSession] {
+        var order: [String] = []
+        var byName: [String: TmuxSession] = [:]
+        var activePicked: Set<String> = []
+
+        for line in lines {
             let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
             guard parts.count >= 6, !parts[0].isEmpty else { continue }
             let name = parts[0]
             let isActivePane = parts[1] == "1"
             let command = parts[2]
-            let windows = Int(parts[3]) ?? 1
-            let attached = parts[4] == "1"
             let activity = Int(parts[5]) ?? 0
+            let tty = parts.count > 6 ? parts[6] : ""
 
             if byName[name] == nil {
                 order.append(name)
                 byName[name] = TmuxSession(
-                    name: name, windows: windows, attached: attached, status: .idle)
+                    name: name, windows: Int(parts[3]) ?? 1, attached: parts[4] == "1",
+                    status: .idle)
             }
             // Статус берём с активной панели; если её не встретили — с первой.
             if isActivePane || !activePicked.contains(name) {
                 byName[name]?.status = status(command: command, activity: activity, now: now)
                 if isActivePane { activePicked.insert(name) }
             }
+            // Агент — первый найденный в сессии: он и есть то, ради чего
+            // на эту сессию смотрят.
+            if byName[name]?.agent == nil {
+                byName[name]?.agent = agent(command: command, tty: tty, foreground: foreground)
+            }
         }
         return order.compactMap { byName[$0] }
+    }
+
+    /// Кто стоит в панели: сначала смотрим на полные командные строки с её
+    /// терминала, и только если там ничего не узнали — на имя процесса от tmux.
+    static func agent(
+        command: String, tty: String, foreground: [String: [String]]
+    ) -> CodingAgent? {
+        for line in foreground[normalisedTTY(tty)] ?? [] {
+            if let found = CodingAgent.detect(commandLine: line) { return found }
+        }
+        return CodingAgent.detect(commandLine: command)
+    }
+
+    /// Передние процессы по терминалам: `tty stat args…` из `ps`.
+    ///
+    /// Одному терминалу принадлежит несколько передних процессов (агент и всё,
+    /// что он запустил), поэтому список, а не одна строка.
+    static func foreground(_ lines: [String]) -> [String: [String]] {
+        var byTTY: [String: [String]] = [:]
+        for line in lines {
+            let parts = line.split(whereSeparator: \.isWhitespace).map(String.init)
+            // tty, stat и хоть что-то от команды: без них строка бесполезна.
+            guard parts.count >= 3 else { continue }
+            let tty = normalisedTTY(parts[0])
+            guard tty != "?", !tty.isEmpty else { continue }
+            byTTY[tty, default: []].append(parts.dropFirst(2).joined(separator: " "))
+        }
+        return byTTY
+    }
+
+    /// Одно написание терминала для обеих сторон: tmux печатает `/dev/pts/3`,
+    /// `ps` — `pts/3` на Linux и `ttys003` на macOS.
+    static func normalisedTTY(_ raw: String) -> String {
+        raw.hasPrefix("/dev/") ? String(raw.dropFirst(5)) : raw
     }
 
     /// Эвристика статуса: шелл — покой; чужой процесс с недавней активностью —

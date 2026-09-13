@@ -271,9 +271,15 @@ public actor HostSession {
         // Точку кладём только когда есть с чем сравнивать: загрузка и скорости —
         // это дельты между снимками.
         if let previous = state.previous {
-            state.history.append(MetricPoint.between(previous, snapshot))
-            unsavedPoints += 1
-            if unsavedPoints >= Self.saveEvery { await saveHistory() }
+            let point = MetricPoint.between(previous, snapshot)
+            // Снимки датируются целыми секундами, а история ещё и подгружается
+            // с диска — две точки на одну секунду встречаются. На графике время
+            // и есть ключ точки, поэтому дубль там не безобиден.
+            if state.history.last?.time != point.time {
+                state.history.append(point)
+                unsavedPoints += 1
+                if unsavedPoints >= Self.saveEvery { await saveHistory() }
+            }
         }
         publish()
     }

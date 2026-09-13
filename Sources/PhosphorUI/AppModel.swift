@@ -588,6 +588,11 @@ public final class AppModel {
             book = HostBook()
         } catch ProfileStoreError.keyLost {
             unlockError = strings("vault.keyLost")
+        } catch ProfileStoreError.enrollmentChanged {
+            // Не «что-то пошло не так»: палец добавили или убрали, и записи под
+            // прежним набором больше не открываются никогда. Человеку нужно
+            // знать именно это — иначе он будет прикладывать палец по кругу.
+            unlockError = strings("vault.enrollmentChanged")
         } catch {
             unlockError = "\(strings("vault.unreadable")) \(error.localizedDescription)"
         }
@@ -659,6 +664,13 @@ public final class AppModel {
     private func adopt(_ state: SessionState) {
         profile = state.profile
         if let snapshot = state.latest { snapshots.append(snapshot) }
+        // «Когда я был здесь в прошлый раз» и «что это за система» — карточка
+        // хоста обещает и то и другое. Запись бережливая: чаще раза в минуту
+        // она не меняется, иначе каждый снимок метрик тянул бы перешифровку
+        // профиля.
+        if let id = selectedHost, book.remember(id, osName: state.profile?.osName) {
+            scheduleSave()
+        }
         // Свежий сервер предлагаем настроить один раз, а не при каждом обновлении.
         if let hostProfile = state.profile, hostProfile.isFresh, provisionOffer == nil {
             provisionOffer = hostProfile

@@ -99,7 +99,7 @@ public struct CRTFrame<Content: View>: View {
 
     public var body: some View {
         ZStack {
-            style.background
+            style.background.opacity(style.theme.windowOpacity)
             content
                 .padding(26)
             if style.theme.scanlines > 0 {
@@ -124,9 +124,30 @@ public struct CRTFrame<Content: View>: View {
                 .allowsHitTesting(false)
             }
         }
-        .background(.black)
+        .background(.black.opacity(style.theme.windowOpacity))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .padding(14)
+        .background { WindowGlass(opacity: style.theme.windowOpacity) }
+    }
+}
+
+/// Пропускает сквозь окно то, что за ним, ровно настолько, насколько просит тема.
+///
+/// Без этого `windowOpacity` оставалась числом в модели: окно красит система,
+/// и прозрачность содержимого сквозь непрозрачное окно не видна. Тема, которая
+/// называется «Стекло», обязана быть стеклом.
+struct WindowGlass: NSViewRepresentable {
+    let opacity: Double
+
+    func makeNSView(context: Context) -> NSView { NSView(frame: .zero) }
+
+    /// Окно появляется у вида не сразу, поэтому настройка живёт здесь: к
+    /// первому обновлению оно уже на месте.
+    func updateNSView(_ view: NSView, context: Context) {
+        guard let window = view.window else { return }
+        let glass = opacity < 1
+        window.isOpaque = !glass
+        window.backgroundColor = glass ? .clear : .windowBackgroundColor
     }
 }
 

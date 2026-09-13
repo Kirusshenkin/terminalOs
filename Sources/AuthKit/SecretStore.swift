@@ -69,13 +69,20 @@ public struct KeychainSecretStore: SecretStore {
     /// `biometryCurrentSet` invalidates the item when the enrolled fingerprints
     /// change — which is the point, and also why re-enrolment has to be handled
     /// gracefully rather than surfacing as `errSecAuthFailed`.
+    ///
+    /// На машине без сенсора этот флаг не создаёт замок вовсе, и запись секрета
+    /// падала бы с `errSecParam` — а значит, Mac mini без Touch ID не смог бы
+    /// сохранить ни одного пароля. Там замок держит пароль пользователя:
+    /// защита слабее биометрии, но это защита, а не её отсутствие.
     private func accessControl() throws -> SecAccessControl {
+        let flags: SecAccessControlCreateFlags =
+            Self.biometryState() == nil ? .userPresence : .biometryCurrentSet
         var error: Unmanaged<CFError>?
         guard
             let control = SecAccessControlCreateWithFlags(
                 nil,
                 kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-                .biometryCurrentSet,
+                flags,
                 &error
             )
         else {

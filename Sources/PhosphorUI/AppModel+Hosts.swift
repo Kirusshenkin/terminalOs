@@ -1,6 +1,7 @@
 public import Foundation
 public import HostsKit
 public import KeysKit
+import MetricsKit
 
 /// Правка списка хостов. Любое изменение сразу планирует запись профиля.
 @MainActor
@@ -223,6 +224,10 @@ extension AppModel {
             selectedHost = nil
             Task { await disconnect() }
         }
+        // Сервера больше нет — его ряд метрик тоже незачем держать. Потолок
+        // папки убрал бы его и сам, но не сегодня, а через шестьдесят четыре
+        // других хоста.
+        Task { await MetricStore.shared.forget(host: id) }
         scheduleSave()
     }
 

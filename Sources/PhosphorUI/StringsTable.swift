@@ -43,6 +43,12 @@ extension Strings {
             .english: "the profile is here but its key is gone — restore from an export",
         ],
         "vault.unreadable": [.russian: "профиль не читается:", .english: "the profile cannot be read:"],
+        "vault.enrollmentChanged": [
+            .russian: "набор отпечатков Touch ID изменился — записи под прежним набором "
+                + "больше не открываются. восстанови профиль из экспорта",
+            .english: "the Touch ID fingerprint set changed — secrets saved under the old set "
+                + "will not open. restore the profile from an export",
+        ],
         "bridge.locked": [
             .russian: "Phosphor заблокирован — приложи палец",
             .english: "Phosphor is locked — touch the sensor",

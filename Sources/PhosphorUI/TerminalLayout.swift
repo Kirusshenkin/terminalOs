@@ -23,6 +23,11 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
     public var secondSession: String?
     /// Панели рядом (true) или одна над другой.
     public var splitVertical: Bool
+    /// Сессия на этом Маке и то, смотрел ли терминал на него, а не на сервер.
+    /// Необязательные: раскладка прошлой версии должна читаться как есть, а не
+    /// теряться целиком из-за нового поля.
+    public var localSession: String?
+    public var localFocused: Bool?
 
     public init(
         spaces: [UUID] = [],
@@ -30,7 +35,9 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
         focused: UUID? = nil,
         session: String? = nil,
         secondSession: String? = nil,
-        splitVertical: Bool = true
+        splitVertical: Bool = true,
+        localSession: String? = nil,
+        localFocused: Bool? = nil
     ) {
         self.spaces = spaces
         self.spaceSessions = spaceSessions
@@ -38,6 +45,8 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
         self.session = session
         self.secondSession = secondSession
         self.splitVertical = splitVertical
+        self.localSession = localSession
+        self.localFocused = localFocused
     }
 
     /// Та же раскладка, но без хостов, которых больше нет в списке.

@@ -19,7 +19,7 @@ extension AppModel {
             hasTmux = true
             return
         }
-        let result = try? await session.run(Self.pollCommand)
+        let result = try? await session.run(Self.pollCommand())
         let output = result?.stdout ?? ""
         // Команда не дошла — это про связь, а не про tmux: прежний ответ не
         // опровергнут, и пугать отсутствием tmux не за что.
@@ -39,15 +39,16 @@ extension AppModel {
     /// Пустой список сессий — это ноль строк, а не ошибка, поэтому `|| true`
     /// стоит внутри группы: иначе отсутствие сессий читалось бы как отсутствие
     /// tmux.
-    static let pollCommand =
-        "command -v tmux >/dev/null 2>&1 && { echo \"NOW $(date +%s)\"; "
-        + "echo \(panesMarker); "
-        + "tmux list-panes -a -F "
-        + "'#{session_name}\t#{pane_active}\t#{pane_current_command}\t"
-        + "#{session_windows}\t#{session_attached}\t#{session_activity}\t#{pane_tty}' 2>/dev/null "
-        + "|| true; echo \(procsMarker); "
-        + "ps -eo tty=,stat=,args= 2>/dev/null | awk '$2 ~ /\\+/' | head -\(foregroundLimit) "
-        + "|| true; } || echo NOTMUX"
+    static func pollCommand(tmux: String = "tmux") -> String {
+        "command -v \(tmux) >/dev/null 2>&1 && { echo \"NOW $(date +%s)\"; "
+            + "echo \(panesMarker); "
+            + "\(tmux) list-panes -a -F "
+            + "'#{session_name}\t#{pane_active}\t#{pane_current_command}\t"
+            + "#{session_windows}\t#{session_attached}\t#{session_activity}\t#{pane_tty}' 2>/dev/null "
+            + "|| true; echo \(procsMarker); "
+            + "ps -eo tty=,stat=,args= 2>/dev/null | awk '$2 ~ /\\+/' | head -\(foregroundLimit) "
+            + "|| true; } || echo \(noTmuxMarker)"
+    }
 
     /// Что печатает сервер, на котором tmux не нашёлся.
     static let noTmuxMarker = "NOTMUX"
@@ -179,6 +180,55 @@ extension AppModel {
         return .working
     }
 
+    // MARK: - Этот Мак рядом с серверами
+
+    /// Читает живые сессии локального tmux. Его нет — список пуст, и рейл
+    /// говорит об этом словами, а не пустотой.
+    public func loadLocalSessions() async {
+        guard let tmux = localTmuxPath else {
+            localSessions = []
+            return
+        }
+        localSessions = Self.parseSessions(
+            await LocalTmux.run(Self.pollCommand(tmux: Shell.quote(tmux))))
+    }
+
+    /// Переводит терминал на этот Мак — в названную сессию или, если tmux
+    /// здесь нет, в обычный одноразовый шелл.
+    public func focusLocal(_ name: String?) {
+        localFocused = true
+        localSession = name
+        screen = .terminal
+        saveLayout()
+    }
+
+    /// Заводит локальную сессию с введённым именем и сразу открывает её.
+    /// Сама сессия появится в tmux при подключении: `new-session -A` — это
+    /// «подключиться или создать», второго способа тут не нужно.
+    public func createLocalSession() {
+        let name = SSHInvocation.tmuxSessionName(newSessionName) ?? "main"
+        newSessionName = ""
+        focusLocal(name)
+        if !localSessions.contains(where: { $0.name == name }) {
+            localSessions.append(TmuxSession(name: name, windows: 1, attached: true))
+        }
+    }
+
+    /// Снимает локальную сессию вместе со всем, что в ней запущено.
+    public func killLocalSession(_ name: String) async {
+        guard let tmux = localTmuxPath else { return }
+        // Поверхность гасим первой: за ней стоит tmux-клиент, которому иначе
+        // осталось бы разговаривать с мёртвой сессией.
+        if let safe = SSHInvocation.tmuxSessionName(name) {
+            surfaces.discard(.localSession(name: safe, tmux: tmux))
+        }
+        _ = await LocalTmux.run(
+            "\(Shell.quote(tmux)) kill-session -t \(Shell.quote(name)) 2>/dev/null || true")
+        if localSession == name { localSession = nil }
+        await loadLocalSessions()
+        saveLayout()
+    }
+
     // MARK: - Слежение за сессиями
 
     /// Начинает спрашивать сервер о сессиях, пока на окно смотрят.
@@ -188,11 +238,15 @@ extension AppModel {
     /// заглянет в раздел. Слежение одно на приложение: второй вызов ничего не
     /// заводит.
     public func startSessionWatch() {
-        guard sessionWatch == nil, windowActive, session != nil else { return }
+        guard sessionWatch == nil, windowActive, isUnlocked else { return }
         sessionWatch = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
-                await self.loadSessions()
+                // Спрашивать бывает некого: ни хоста, ни tmux на этом Маке.
+                // Тогда цикл просто ждёт — заводить и гасить его на каждое
+                // подключение значило бы держать две правды о том, идёт ли опрос.
+                if self.session != nil { await self.loadSessions() }
+                if self.localTmuxPath != nil { await self.loadLocalSessions() }
                 await AppModel.pause(seconds: self.watchInterval)
             }
         }
@@ -235,6 +289,8 @@ extension AppModel {
         secondSession = saved.secondSession
         terminalSession = saved.session
         pendingFocus = saved.focused
+        localSession = saved.localSession
+        localFocused = saved.localFocused ?? false
     }
 
     /// Пишет раскладку на диск. Вызывается из действий, меняющих вид раздела:
@@ -250,7 +306,9 @@ extension AppModel {
                 focused: selectedHost ?? pendingFocus,
                 session: terminalSession,
                 secondSession: secondSession,
-                splitVertical: splitVertical
+                splitVertical: splitVertical,
+                localSession: localSession,
+                localFocused: localFocused
             ))
     }
 
@@ -259,7 +317,7 @@ extension AppModel {
     /// Вызывается, когда человек открыл «Терминал»: соединение поднимается
     /// тогда, когда на него будут смотреть, а не на разблокировке окна.
     public func resumeLayout() async {
-        guard session == nil, let id = pendingFocus,
+        guard session == nil, !localFocused, let id = pendingFocus,
             let host = book.hosts.first(where: { $0.id == id })
         else { return }
         pendingFocus = nil
@@ -270,7 +328,8 @@ extension AppModel {
     /// поверхность остаётся живой, и возврат к ней отдаёт ленту такой, какой
     /// её оставили.
     public func attachSession(_ name: String) {
-        guard terminalSession != name else { return }
+        guard terminalSession != name || localFocused else { return }
+        localFocused = false
         terminalSession = name
         if let host = selectedHost { spaceSessions[host] = name }
         screen = .terminal
@@ -304,8 +363,15 @@ extension AppModel {
     /// Переключает фокус на другой спейс (хост). tmux на прежнем хосте
     /// продолжает работать — мы просто отводим от него взгляд.
     public func switchSpace(_ id: ServerHost.ID) {
-        guard id != selectedHost, let host = book.hosts.first(where: { $0.id == id }) else { return }
+        guard id != selectedHost || localFocused,
+            let host = book.hosts.first(where: { $0.id == id })
+        else { return }
+        localFocused = false
         screen = .terminal
+        guard id != selectedHost else {
+            saveLayout()
+            return
+        }
         Task { await connect(to: host) }
     }
 

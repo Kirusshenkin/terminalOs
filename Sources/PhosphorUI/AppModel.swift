@@ -265,6 +265,18 @@ public final class AppModel {
     /// в «main», когда переключаешься обратно.
     var spaceSessions: [ServerHost.ID: String] = [:]
 
+    /// Путь к tmux на этом Маке. nil — его тут нет, и локальные сессии
+    /// перезапуск не переживут. Ищется фактом при запуске.
+    public internal(set) var localTmuxPath: String?
+    /// Живые локальные сессии — те же, что у сервера, только здесь. У herdr
+    /// локальные рабочие пространства стоят в одном списке с серверными.
+    public internal(set) var localSessions: [TmuxSession] = []
+    /// Локальная сессия, на которую смотрит терминал. nil — обычный
+    /// одноразовый шелл.
+    public var localSession: String?
+    /// Смотрит ли терминал на этот Мак, а не на сервер.
+    public var localFocused = false
+
     /// Куда пишется раскладка раздела «Терминал». Читается она не здесь, а
     /// когда откроется профиль: до него список хостов пуст, и сверить
     /// идентификаторы спейсов не с чем.
@@ -370,14 +382,28 @@ public final class AppModel {
         return #"{"mcpServers":{"phosphor":{"command":"\#(shim)"}}}"#
     }
 
-    /// Куда смотрит терминал: на локальный шелл или на выбранный сервер.
+    /// Куда смотрит терминал: на этот Мак или на выбранный сервер.
     public var terminalDestination: TerminalHost.Destination {
-        destination(session: terminalSession ?? "main") ?? .local
+        if localFocused { return localDestination }
+        return destination(session: terminalSession ?? "main") ?? .local
+    }
+
+    /// Куда смотрит терминал на этом Маке: в постоянную сессию, если она
+    /// выбрана и tmux здесь есть, иначе — обычный одноразовый шелл.
+    public var localDestination: TerminalHost.Destination {
+        guard persistentSessions, let name = localSession, let tmux = localTmuxPath,
+            let safe = SSHInvocation.tmuxSessionName(name)
+        else { return .local }
+        return .localSession(name: safe, tmux: tmux)
     }
 
     /// Куда смотрит вторая панель сплита. nil — панели нет.
+    ///
+    /// Сплит принадлежит серверному спейсу: смотрим на этот Мак — показываем
+    /// одну панель, а вторая ждёт возвращения на хост вместе со своей лентой.
     public var secondDestination: TerminalHost.Destination? {
-        secondSession.flatMap { destination(session: $0) }
+        guard !localFocused else { return nil }
+        return secondSession.flatMap { destination(session: $0) }
     }
 
     /// Адрес названной сессии на выбранном хосте. nil — смотреть не на что:
@@ -469,6 +495,9 @@ public final class AppModel {
         motion = MotionAmount(rawValue: saved.motion ?? "") ?? .full
         connectMotion = ConnectMotion(rawValue: saved.connectMotion ?? "") ?? .sweep
         logMotion = LogMotion(rawValue: saved.logMotion ?? "") ?? .rise
+        // tmux на этом Маке ищем сразу: от ответа зависит, обещает ли рейл
+        // локальные сессии или честно говорит, что их не будет.
+        localTmuxPath = LocalTmux.find()
     }
 
     /// Сохраняет внешний вид. Вызывается из представлений при изменении.

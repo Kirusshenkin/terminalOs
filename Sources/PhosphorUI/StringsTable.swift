@@ -301,6 +301,14 @@ extension Strings {
         "term.killSession": [.russian: "снять сессию на сервере", .english: "kill session on server"],
         "term.window": [.russian: "окно", .english: "window"],
         "term.windows": [.russian: "окон", .english: "windows"],
+        "term.thisMac": [.russian: "этот Мак", .english: "this Mac"],
+        "term.plainShell": [.russian: "обычный шелл", .english: "plain shell"],
+        "term.noLocalTmux": [
+            .russian: "на этом Маке нет tmux — локальная сессия не переживёт перезапуск. "
+                + "поставь: brew install tmux",
+            .english: "no tmux on this Mac — a local session will not survive a restart. "
+                + "install it: brew install tmux",
+        ],
         "term.blockedHint": [
             .russian: "в сессии кто-то ждёт ответа",
             .english: "something in a session is waiting for an answer",

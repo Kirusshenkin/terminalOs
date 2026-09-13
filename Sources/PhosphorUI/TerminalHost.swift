@@ -14,7 +14,12 @@ public struct TerminalHost: NSViewRepresentable {
     /// Куда открывать шелл. Он же ключ поверхности: разные сессии на одном
     /// хосте — это разные ленты, и каждая живёт своей жизнью.
     public enum Destination: Hashable {
+        /// Обычный одноразовый шелл на этом Маке: закрыл — и нет его.
         case local
+        /// Постоянная сессия на этом Маке: тот же tmux, что и на сервере,
+        /// только здесь. Путь к нему часть адреса потому, что он же ключ
+        /// поверхности, а ставят tmux один раз и надолго.
+        case localSession(name: String, tmux: String)
         case remote(host: ServerHost, reach: Reach, controlPath: String, session: String?)
     }
 
@@ -66,6 +71,18 @@ public struct TerminalHost: NSViewRepresentable {
         switch destination {
         case .local:
             surface.startLocalShell()
+        case .localSession(let name, let tmux):
+            // Ровно то же, что делает `SSHInvocation` на сервере: подключиться
+            // к сессии или создать её. Запуск живёт здесь, а не в
+            // `TerminalCore`, только из-за раздела файлов между двумя парами
+            // рук; по-хорошему это `startLocalShell(tmuxSession:)` рядом с
+            // остальными способами открыть шелл.
+            surface.startProcess(
+                executable: tmux,
+                args: ["new-session", "-A", "-s", name],
+                environment: LocalTmux.environment(),
+                execName: "tmux"
+            )
         case .remote(let host, let reach, let controlPath, let session):
             surface.startRemoteShell(
                 host: host, reach: reach, controlPath: controlPath, tmuxSession: session)

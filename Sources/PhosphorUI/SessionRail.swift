@@ -10,11 +10,18 @@ struct SessionRail: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
     @State private var adding = false
+    @State private var addingLocal = false
 
     private var current: String { model.terminalSession ?? "main" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // Этот Мак — такое же рабочее место, как сервер, и стоит в том же
+            // списке: у herdr локальные пространства не отдельная сущность.
+            localGroup
+            Rectangle().fill(style.rule.opacity(0.5)).frame(height: 1)
+                .padding(.horizontal, 12)
+
             // Спейсы: открытые хосты. Между ними переключаешься, tmux на каждом
             // продолжает работать — herdr-мысль «несколько рабочих мест сразу».
             HStack {
@@ -75,7 +82,7 @@ struct SessionRail: View {
                         .padding(.horizontal, 12)
                 }
 
-                if adding { editor }
+                if adding { editor(create: create) }
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
@@ -103,6 +110,95 @@ struct SessionRail: View {
         .background(style.surface.opacity(0.4))
         .task(id: model.selectedHost) { await model.loadSessions() }
         .task(id: model.terminalSession) { await model.loadSessions() }
+        // Сессии этого Мака — сразу при входе, дальше их обновляет слежение.
+        .task { await model.loadLocalSessions() }
+        .task { model.startSessionWatch() }
+    }
+
+    // MARK: - Этот Мак
+
+    /// Локальное рабочее место: постоянные сессии этого Мака, если здесь есть
+    /// tmux, и обычный шелл, если нет.
+    @ViewBuilder private var localGroup: some View {
+        HStack {
+            Label2(model.strings("term.thisMac"))
+            Spacer()
+            if model.localTmuxPath != nil {
+                Button {
+                    addingLocal.toggle()
+                } label: {
+                    Image(systemName: "plus").font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(style.muted)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12).padding(.top, 12)
+
+        if model.localTmuxPath == nil {
+            // Без tmux локальная сессия не переживёт даже закрытия вкладки.
+            // Говорим это прямо и сразу даём, что сделать.
+            Text(model.strings("term.noLocalTmux"))
+                .font(style.font(11)).foregroundStyle(style.warning)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 12)
+        }
+
+        if addingLocal { editor(create: createLocal) }
+
+        VStack(alignment: .leading, spacing: 2) {
+            // Обычный шелл есть всегда: он не переживает перезапуск, но он и
+            // не обещает этого.
+            localRow(name: nil, title: model.strings("term.plainShell"), status: nil, agent: nil)
+            ForEach(model.localSessions) { session in
+                localRow(
+                    name: session.name, title: session.name, status: session.status,
+                    agent: session.agent)
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+
+    private func localRow(
+        name: String?, title: String, status: AppModel.SessionStatus?, agent: CodingAgent?
+    ) -> some View {
+        let active = model.localFocused && model.localSession == name
+        return Button {
+            model.focusLocal(name)
+        } label: {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(status.map(statusColour) ?? style.muted.opacity(0.5))
+                    .frame(width: 7, height: 7)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(style.font(12.5))
+                        .foregroundStyle(active ? style.bright : style.text)
+                        .lineLimit(1)
+                    if let status {
+                        Text(agent.map { "\($0.title) · \(statusLabel(status))" } ?? statusLabel(status))
+                            .font(style.font(10)).foregroundStyle(style.muted).lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8).padding(.vertical, 6)
+            .background(active ? style.text.opacity(0.08) : .clear)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            if let name {
+                Button(model.strings("term.killSession"), role: .destructive) {
+                    Task { await model.killLocalSession(name) }
+                }
+            }
+        }
+    }
+
+    private func createLocal() {
+        guard !model.newSessionName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        model.createLocalSession()
+        addingLocal = false
     }
 
     /// Открытые спейсы как хосты; неизвестные id (хост удалили) отсеиваем.
@@ -111,7 +207,7 @@ struct SessionRail: View {
     }
 
     private func spaceRow(_ host: ServerHost) -> some View {
-        let active = host.id == model.selectedHost
+        let active = host.id == model.selectedHost && !model.localFocused
         return Button {
             model.switchSpace(host.id)
         } label: {
@@ -153,7 +249,7 @@ struct SessionRail: View {
     }
 
     private func row(_ session: AppModel.TmuxSession) -> some View {
-        let active = session.name == current
+        let active = session.name == current && !model.localFocused
         return Button {
             model.attachSession(session.name)
         } label: {
@@ -183,7 +279,9 @@ struct SessionRail: View {
         }
     }
 
-    private var editor: some View {
+    /// Поле ввода имени новой сессии. Одно на оба списка: заводится сессия
+    /// там, откуда нажали «+», а выглядеть по-разному этому незачем.
+    private func editor(create: @escaping () -> Void) -> some View {
         HStack(spacing: 6) {
             TextField(model.strings("term.sessionName"), text: $model.newSessionName)
                 .textFieldStyle(.plain)

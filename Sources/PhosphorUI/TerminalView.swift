@@ -42,13 +42,16 @@ public struct TerminalPane: View {
                 if let offer = model.rememberOffer {
                     rememberBanner(offer)
                 }
-                if let note = phaseNote {
+                // Про соединение с сервером — только когда на него и смотрим:
+                // у панели этого Мака своё состояние, и «подключаюсь…» над ней
+                // означало бы неправду.
+                if let note = phaseNote, !model.localFocused {
                     Text(note)
                         .font(style.font(12))
                         .foregroundStyle(isFailure ? style.warning : style.muted)
                         .padding(.bottom, 8)
                 }
-                if model.session != nil { splitBar }
+                if model.session != nil, !model.localFocused { splitBar }
                 panes
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

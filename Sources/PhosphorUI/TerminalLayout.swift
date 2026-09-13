@@ -18,9 +18,14 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
     public var spaceSessions: [String: String]
     /// На какой спейс смотрели последним — туда и возвращаемся.
     public var focused: UUID?
-    /// Сессия основной панели и второй, если экран был разделён.
+    /// Сессия основной панели.
     public var session: String?
+    /// Вторая панель — как её писала прошлая версия. Оставлено ради файлов,
+    /// записанных до того, как панелей стало больше двух: новое поле `panes`
+    /// главнее, а это читается, когда его нет.
     public var secondSession: String?
+    /// Дополнительные панели в порядке появления.
+    public var panes: [String]?
     /// Панели рядом (true) или одна над другой.
     public var splitVertical: Bool
     /// Сессия на этом Маке и то, смотрел ли терминал на него, а не на сервер.
@@ -36,6 +41,7 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
         session: String? = nil,
         secondSession: String? = nil,
         splitVertical: Bool = true,
+        panes: [String]? = nil,
         localSession: String? = nil,
         localFocused: Bool? = nil
     ) {
@@ -45,6 +51,7 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
         self.session = session
         self.secondSession = secondSession
         self.splitVertical = splitVertical
+        self.panes = panes
         self.localSession = localSession
         self.localFocused = localFocused
     }

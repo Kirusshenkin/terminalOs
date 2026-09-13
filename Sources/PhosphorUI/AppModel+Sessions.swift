@@ -286,7 +286,9 @@ extension AppModel {
         }
         spaceSessions = restoredSessions
         splitVertical = saved.splitVertical
-        secondSession = saved.secondSession
+        // Раскладка прошлой версии знала только про одну вторую панель — она
+        // и читается как список из неё одной.
+        extraSessions = saved.panes ?? saved.secondSession.map { [$0] } ?? []
         terminalSession = saved.session
         pendingFocus = saved.focused
         localSession = saved.localSession
@@ -305,8 +307,9 @@ extension AppModel {
                 spaceSessions: sessions,
                 focused: selectedHost ?? pendingFocus,
                 session: terminalSession,
-                secondSession: secondSession,
+                secondSession: extraSessions.first,
                 splitVertical: splitVertical,
+                panes: extraSessions,
                 localSession: localSession,
                 localFocused: localFocused
             ))
@@ -336,21 +339,41 @@ extension AppModel {
         saveLayout()
     }
 
-    /// Делит терминал на две живые панели. Вторая садится в отдельную сессию
-    /// на том же хосте (не в ту же, что первая, — иначе это одна и та же лента).
+    /// Добавляет ещё одну живую панель. Каждая садится в свою сессию на том же
+    /// хосте (не в ту же, что соседняя, — иначе это одна и та же лента).
     public func splitTerminal() {
-        guard secondSession == nil else { return }
-        let primary = terminalSession ?? "main"
-        secondSession = primary == "side" ? "side2" : "side"
+        guard extraSessions.count + 1 < Self.paneLimit else { return }
+        var taken = Set(extraSessions)
+        taken.insert(terminalSession ?? "main")
+        extraSessions.append(Self.nextPaneName(taken: taken))
         screen = .terminal
         saveLayout()
     }
 
-    /// Убирает вторую панель. tmux-сессия за ней остаётся жить на сервере —
+    /// Имя для новой панели: первое свободное из `side`, `side2`, `side3`…
+    /// Чистая функция — занятые имена приходят снаружи.
+    static func nextPaneName(taken: Set<String>) -> String {
+        if !taken.contains("side") { return "side" }
+        for index in 2...Self.paneLimit + 8 where !taken.contains("side\(index)") {
+            return "side\(index)"
+        }
+        // Столько имён занять нельзя при потолке в несколько панелей, но
+        // вернуть что-то осмысленное нужно и здесь.
+        return "side\(UUID().uuidString.prefix(4))"
+    }
+
+    /// Убирает последнюю панель. tmux-сессия за ней остаётся жить на сервере —
     /// гаснет только наш `ssh`, смотреть в который стало некому.
     public func closeSplit() {
-        if let destination = secondDestination { surfaces.discard(destination) }
-        secondSession = nil
+        guard let last = extraSessions.last else { return }
+        closePane(last)
+    }
+
+    /// Убирает названную панель.
+    public func closePane(_ name: String) {
+        guard let index = extraSessions.firstIndex(of: name) else { return }
+        if let destination = destination(session: name) { surfaces.discard(destination) }
+        extraSessions.remove(at: index)
         saveLayout()
     }
 
@@ -413,7 +436,7 @@ extension AppModel {
         if let destination = destination(session: name) { surfaces.discard(destination) }
         _ = try? await session.run("tmux kill-session -t \(Shell.quote(name)) 2>/dev/null || true")
         if terminalSession == name { terminalSession = nil }
-        if secondSession == name { secondSession = nil }
+        extraSessions.removeAll { $0 == name }
         saveLayout()
         await loadSessions()
     }

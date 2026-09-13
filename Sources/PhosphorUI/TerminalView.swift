@@ -59,35 +59,42 @@ public struct TerminalPane: View {
         }
     }
 
-    /// Одна панель или две живые рядом/друг над другом.
+    /// Одна панель или несколько живых рядом/друг над другом.
     @ViewBuilder private var panes: some View {
-        let primary = hostSurface(model.terminalDestination)
-        if let second = model.secondDestination {
+        let extras = model.extraPanes
+        if extras.isEmpty {
+            hostSurface(model.terminalDestination)
+        } else {
             let layout =
                 model.splitVertical
                 ? AnyLayout(HStackLayout(spacing: 1)) : AnyLayout(VStackLayout(spacing: 1))
             layout {
-                primary
-                Rectangle().fill(style.rule)
-                    .frame(
-                        width: model.splitVertical ? 1 : nil,
-                        height: model.splitVertical ? nil : 1)
-                ZStack(alignment: .topTrailing) {
-                    hostSurface(second)
-                    // Закрыть вторую панель — сессия за ней остаётся на сервере.
-                    Button {
-                        model.closeSplit()
-                    } label: {
-                        Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(style.muted)
-                            .padding(5)
+                hostSurface(model.terminalDestination)
+                ForEach(extras) { pane in
+                    divider
+                    ZStack(alignment: .topTrailing) {
+                        hostSurface(pane.destination)
+                        // Закрыть панель — сессия за ней остаётся на сервере.
+                        Button {
+                            model.closePane(pane.name)
+                        } label: {
+                            Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(style.muted)
+                                .padding(5)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
-        } else {
-            primary
         }
+    }
+
+    /// Волосяная линия между панелями — по той стороне, вдоль которой они идут.
+    private var divider: some View {
+        Rectangle().fill(style.rule)
+            .frame(
+                width: model.splitVertical ? 1 : nil,
+                height: model.splitVertical ? nil : 1)
     }
 
     private func hostSurface(_ destination: TerminalHost.Destination) -> some View {
@@ -102,14 +109,17 @@ public struct TerminalPane: View {
     private var splitBar: some View {
         HStack(spacing: 10) {
             Spacer()
-            if model.secondSession == nil {
+            // Добавить панель можно, пока их меньше потолка: за каждой стоит
+            // живой ssh, и «ещё одна» без края — это утечка на экране.
+            if model.extraSessions.count + 1 < AppModel.paneLimit {
                 Button {
                     model.splitTerminal()
                 } label: {
                     Label2(model.strings("term.split"))
                 }
                 .buttonStyle(.plain)
-            } else {
+            }
+            if !model.extraSessions.isEmpty {
                 Button {
                     model.flipSplit()
                 } label: {

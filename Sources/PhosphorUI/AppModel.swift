@@ -286,9 +286,23 @@ public final class AppModel {
     /// не то, чего ждёшь от входа по отпечатку.
     var pendingFocus: ServerHost.ID?
 
-    /// Вторая панель сплита: имя её tmux-сессии на том же хосте. nil — одна
-    /// панель. Обе панели живые: как claude и dev-сервер рядом у herdr.
-    public var secondSession: String?
+    /// Дополнительные панели: имена tmux-сессий рядом с основной, в порядке
+    /// появления. Пусто — одна панель.
+    ///
+    /// Раньше здесь была ровно одна «вторая панель» (`secondSession`), но у
+    /// herdr панелей внутри рабочего места столько, сколько нужно: агент,
+    /// его же тесты и лог рядом — это три ленты, а не две.
+    public var extraSessions: [String] = []
+    /// Сколько панелей держим одновременно. За каждой стоит живой `ssh` и свой
+    /// скроллбэк, а на экране ноутбука пятая панель — это уже не работа.
+    public static let paneLimit = 4
+
+    /// Одна панель сплита: имя сессии и её адрес.
+    public struct Pane: Identifiable {
+        public var id: String { name }
+        public var name: String
+        public var destination: TerminalHost.Destination
+    }
     /// Делить экран по вертикали (панели рядом) или по горизонтали (одна над
     /// другой).
     public var splitVertical = true
@@ -397,13 +411,16 @@ public final class AppModel {
         return .localSession(name: safe, tmux: tmux)
     }
 
-    /// Куда смотрит вторая панель сплита. nil — панели нет.
+    /// Дополнительные панели с их адресами. Пусто — панель одна.
     ///
     /// Сплит принадлежит серверному спейсу: смотрим на этот Мак — показываем
-    /// одну панель, а вторая ждёт возвращения на хост вместе со своей лентой.
-    public var secondDestination: TerminalHost.Destination? {
-        guard !localFocused else { return nil }
-        return secondSession.flatMap { destination(session: $0) }
+    /// одну панель, а остальные ждут возвращения на хост вместе со своими
+    /// лентами.
+    public var extraPanes: [Pane] {
+        guard !localFocused else { return [] }
+        return extraSessions.compactMap { name in
+            destination(session: name).map { Pane(name: name, destination: $0) }
+        }
     }
 
     /// Адрес названной сессии на выбранном хосте. nil — смотреть не на что:

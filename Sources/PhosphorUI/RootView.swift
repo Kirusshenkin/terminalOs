@@ -209,6 +209,15 @@ public struct RootView: View {
                                 }
                             }
                         Text(model.strings(tab.0).uppercased())
+                        // Метка у «Терминала»: где-то в сессии агент упёрся в
+                        // вопрос. Видно из любого раздела — иначе про него
+                        // узнаёшь, только когда сам заглянешь.
+                        if tab.1 == .terminal, model.blockedSessions > 0 {
+                            Text("●")
+                                .font(model.style.font(7))
+                                .foregroundStyle(model.style.warning)
+                                .help(model.strings("term.blockedHint"))
+                        }
                     }
                     .font(model.style.font(11)).tracking(1.2)
                     .foregroundStyle(colour(for: tab.1))

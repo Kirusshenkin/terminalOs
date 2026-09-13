@@ -301,6 +301,10 @@ extension Strings {
         "term.killSession": [.russian: "снять сессию на сервере", .english: "kill session on server"],
         "term.window": [.russian: "окно", .english: "window"],
         "term.windows": [.russian: "окон", .english: "windows"],
+        "term.blockedHint": [
+            .russian: "в сессии кто-то ждёт ответа",
+            .english: "something in a session is waiting for an answer",
+        ],
         "hosts.known": [.russian: "известные хосты", .english: "known hosts"],
         "hosts.termius": [.russian: "импорт из Termius", .english: "import from Termius"],
         "hosts.noNew": [.russian: "новых нет", .english: "nothing new"],

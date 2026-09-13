@@ -242,6 +242,21 @@ public final class AppModel {
     /// Черновик имени при создании новой сессии.
     public var newSessionName = ""
 
+    /// Слежение за сессиями: агент упирается в вопрос молча, и если не
+    /// спрашивать сервер, человек узнает об этом, только когда сам заглянет
+    /// в раздел. nil — слежение не идёт.
+    var sessionWatch: Task<Void, Never>?
+    /// Смотрит ли кто-нибудь на окно. Опрос замирает, когда нет.
+    var windowActive = true
+
+    /// Сколько сессий ждут ответа человека. Ради этого числа в шапке горит
+    /// метка у «Терминала», даже когда открыт другой раздел.
+    public var blockedSessions: Int {
+        liveSessions.reduce(into: 0) { total, session in
+            if session.status == .blocked { total += 1 }
+        }
+    }
+
     /// Открытые «спейсы» — хосты, к которым в этой сессии подключались, в
     /// порядке открытия. Рейл терминала показывает их сверху; между ними
     /// переключаются, не теряя того, что крутится на сервере в tmux.
@@ -249,6 +264,15 @@ public final class AppModel {
     /// Какая сессия была открыта в каждом спейсе — чтобы вернуться в неё, а не
     /// в «main», когда переключаешься обратно.
     var spaceSessions: [ServerHost.ID: String] = [:]
+
+    /// Куда пишется раскладка раздела «Терминал». Читается она не здесь, а
+    /// когда откроется профиль: до него список хостов пуст, и сверить
+    /// идентификаторы спейсов не с чем.
+    let layoutStore = TerminalLayoutStore()
+    /// Спейс, в который вернёмся, когда человек откроет «Терминал». Само
+    /// подключение отложено намеренно: лезть в сеть на разблокировке окна —
+    /// не то, чего ждёшь от входа по отпечатку.
+    var pendingFocus: ServerHost.ID?
 
     /// Вторая панель сплита: имя её tmux-сессии на том же хосте. nil — одна
     /// панель. Обе панели живые: как claude и dev-сервер рядом у herdr.
@@ -502,6 +526,9 @@ public final class AppModel {
         do {
             book = try await profiles.load(HostBook.self, reason: strings("auth.reason"))
             syncForwardsFromBook()
+            // Список хостов на месте — значит есть с чем сверить спейсы из
+            // прошлого запуска.
+            restoreLayout()
         } catch ProfileStoreError.empty {
             // Первый запуск: список пуст. Ничего не выдумываем — человек либо
             // импортирует свои серверы (~/.ssh, известные хосты, история
@@ -543,6 +570,8 @@ public final class AppModel {
         if !spaces.contains(host.id) { spaces.append(host.id) }
         // Возвращаемся в ту сессию, что была открыта в этом спейсе.
         terminalSession = spaceSessions[host.id]
+        // Спейс открыт — запоминаем раскладку, чтобы перезапуск её вернул.
+        saveLayout()
         let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
         sessionSocketPath = transport.socketPath
         let fresh = HostSession(host: host, transport: transport)
@@ -561,6 +590,8 @@ public final class AppModel {
         switch await fresh.current.phase {
         case .ready:
             await record(.connected, host: host)
+            // Есть живое соединение — значит есть у кого спрашивать про сессии.
+            startSessionWatch()
             await startAutoForwards()
             // Подключились к тому, чего нет в списке, — предлагаем запомнить.
             // Именно предлагаем: список засоряется, только если человек согласен.
@@ -592,11 +623,23 @@ public final class AppModel {
         observerToken = nil
         sessionState = SessionState()
         sessionSocketPath = nil
+        // Спрашивать больше некого: слежение за сессиями останавливаем, а сам
+        // список гасим, чтобы в шапке не горела метка от мёртвого хоста.
+        stopSessionWatch()
+        liveSessions = []
     }
 
     /// Приостанавливает опрос, когда окно ушло на второй план.
     public func setWindowActive(_ active: Bool) async {
+        windowActive = active
         await session?.setActive(active)
+        // Слежение за сессиями — такой же опрос: фоновому окну незачем будить
+        // ни процессор, ни сервер.
+        if active {
+            startSessionWatch()
+        } else {
+            stopSessionWatch()
+        }
     }
 
     /// Планирует запись профиля, схлопывая частые правки в одну.

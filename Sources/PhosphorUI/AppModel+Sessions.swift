@@ -179,6 +179,93 @@ extension AppModel {
         return .working
     }
 
+    // MARK: - Слежение за сессиями
+
+    /// Начинает спрашивать сервер о сессиях, пока на окно смотрят.
+    ///
+    /// Иначе статус обновлялся бы только при смене хоста или сессии, а агент,
+    /// упёршийся в вопрос, оставался бы «работающим», пока человек сам не
+    /// заглянет в раздел. Слежение одно на приложение: второй вызов ничего не
+    /// заводит.
+    public func startSessionWatch() {
+        guard sessionWatch == nil, windowActive, session != nil else { return }
+        sessionWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                await self.loadSessions()
+                await AppModel.pause(seconds: self.watchInterval)
+            }
+        }
+    }
+
+    /// Останавливает слежение: окно ушло в фон или соединения больше нет.
+    public func stopSessionWatch() {
+        sessionWatch?.cancel()
+        sessionWatch = nil
+    }
+
+    /// Как часто спрашивать. Тот же интервал, что у метрик, но не чаще двух
+    /// секунд: это ssh-команда, а не локальное чтение.
+    var watchInterval: Double { max(2, pollSeconds) }
+
+    /// Пауза между опросами.
+    ///
+    /// Это не «поспать и считать, что готово»: готовность здесь — ответ
+    /// сервера, и его мы ждём по факту, внутри `loadSessions`. Таймер задаёт
+    /// только промежуток между вопросами.
+    static func pause(seconds: Double) async {
+        try? await Task.sleep(for: .seconds(seconds))
+    }
+
+    // MARK: - Раскладка, которая переживает перезапуск
+
+    /// Поднимает раскладку прошлого запуска: те же спейсы, те же сессии, тот же
+    /// сплит. Хосты, которых больше нет в списке, отсеиваются — иначе в рейле
+    /// висел бы спейс, ведущий в никуда.
+    func restoreLayout() {
+        let saved = layoutStore.load().keeping(hosts: Set(book.hosts.map(\.id)))
+        spaces = saved.spaces
+        var restoredSessions: [ServerHost.ID: String] = [:]
+        for (rawID, name) in saved.spaceSessions {
+            guard let id = UUID(uuidString: rawID) else { continue }
+            restoredSessions[id] = name
+        }
+        spaceSessions = restoredSessions
+        splitVertical = saved.splitVertical
+        secondSession = saved.secondSession
+        terminalSession = saved.session
+        pendingFocus = saved.focused
+    }
+
+    /// Пишет раскладку на диск. Вызывается из действий, меняющих вид раздела:
+    /// файл крошечный, а терять открытые спейсы обиднее, чем лишний раз его
+    /// переписать.
+    func saveLayout() {
+        var sessions: [String: String] = [:]
+        for (id, name) in spaceSessions { sessions[id.uuidString] = name }
+        layoutStore.save(
+            TerminalLayout(
+                spaces: spaces,
+                spaceSessions: sessions,
+                focused: selectedHost ?? pendingFocus,
+                session: terminalSession,
+                secondSession: secondSession,
+                splitVertical: splitVertical
+            ))
+    }
+
+    /// Возвращается в спейс, на который смотрели перед закрытием приложения.
+    ///
+    /// Вызывается, когда человек открыл «Терминал»: соединение поднимается
+    /// тогда, когда на него будут смотреть, а не на разблокировке окна.
+    public func resumeLayout() async {
+        guard session == nil, let id = pendingFocus,
+            let host = book.hosts.first(where: { $0.id == id })
+        else { return }
+        pendingFocus = nil
+        await connect(to: host)
+    }
+
     /// Переводит терминал в выбранную сессию. Прежняя панель не гаснет: её
     /// поверхность остаётся живой, и возврат к ней отдаёт ленту такой, какой
     /// её оставили.
@@ -187,6 +274,7 @@ extension AppModel {
         terminalSession = name
         if let host = selectedHost { spaceSessions[host] = name }
         screen = .terminal
+        saveLayout()
     }
 
     /// Делит терминал на две живые панели. Вторая садится в отдельную сессию
@@ -196,6 +284,7 @@ extension AppModel {
         let primary = terminalSession ?? "main"
         secondSession = primary == "side" ? "side2" : "side"
         screen = .terminal
+        saveLayout()
     }
 
     /// Убирает вторую панель. tmux-сессия за ней остаётся жить на сервере —
@@ -203,11 +292,13 @@ extension AppModel {
     public func closeSplit() {
         if let destination = secondDestination { surfaces.discard(destination) }
         secondSession = nil
+        saveLayout()
     }
 
     /// Меняет ориентацию сплита: рядом ↔ одна над другой.
     public func flipSplit() {
         splitVertical.toggle()
+        saveLayout()
     }
 
     /// Переключает фокус на другой спейс (хост). tmux на прежнем хосте
@@ -223,6 +314,7 @@ extension AppModel {
     public func closeSpace(_ id: ServerHost.ID) {
         spaces.removeAll { $0 == id }
         spaceSessions[id] = nil
+        saveLayout()
         guard id == selectedHost else { return }
         if let next = spaces.first, let host = book.hosts.first(where: { $0.id == next }) {
             Task { await connect(to: host) }
@@ -238,6 +330,7 @@ extension AppModel {
         terminalSession = name
         if let host = selectedHost { spaceSessions[host] = name }
         screen = .terminal
+        saveLayout()
         // Список обновится по факту подключения; но покажем её сразу, чтобы рейл
         // не выглядел пустым, пока идёт attach.
         if !liveSessions.contains(where: { $0.name == name }) {
@@ -255,6 +348,7 @@ extension AppModel {
         _ = try? await session.run("tmux kill-session -t \(Shell.quote(name)) 2>/dev/null || true")
         if terminalSession == name { terminalSession = nil }
         if secondSession == name { secondSession = nil }
+        saveLayout()
         await loadSessions()
     }
 }

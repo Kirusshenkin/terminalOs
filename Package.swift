@@ -18,7 +18,7 @@ let package = Package(
     ],
     dependencies: [
         // Готовый эмулятор VT100/xterm: писать свой — это год работы.
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.2.0"),
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.2.0")
     ],
     targets: [
         // Shared primitives: no dependencies, no I/O.
@@ -40,7 +40,13 @@ let package = Package(
         .target(name: "DockerKit", dependencies: ["PhosphorCore"], swiftSettings: strict),
 
         // /proc snapshot parsing and ring buffers.
-        .target(name: "MetricsKit", dependencies: ["PhosphorCore", "SSHKit"], swiftSettings: strict),
+        .target(
+            name: "MetricsKit",
+            // VaultKit — ради атомарной записи: история метрик ложится на диск по
+            // тем же правилам, что и профиль.
+            dependencies: ["PhosphorCore", "SSHKit", "VaultKit"],
+            swiftSettings: strict
+        ),
 
         // authorized_keys parsing, fingerprints, safe rewrites.
         .target(name: "KeysKit", dependencies: ["PhosphorCore", "SSHKit"], swiftSettings: strict),
@@ -54,16 +60,20 @@ let package = Package(
         // Terminal emulator wiring: local PTY and remote channels.
         .target(
             name: "TerminalCore",
-            dependencies: ["PhosphorCore", "ThemeKit", "HostsKit", "SSHKit",
-                           .product(name: "SwiftTerm", package: "SwiftTerm")],
+            dependencies: [
+                "PhosphorCore", "ThemeKit", "HostsKit", "SSHKit",
+                .product(name: "SwiftTerm", package: "SwiftTerm"),
+            ],
             swiftSettings: strict
         ),
 
         // Live per-host session: probe, containers, metrics.
         .target(
             name: "SessionKit",
-            dependencies: ["PhosphorCore", "SSHKit", "DockerKit", "MetricsKit",
-                           "ProvisionKit", "HostsKit", "KeysKit"],
+            dependencies: [
+                "PhosphorCore", "SSHKit", "DockerKit", "MetricsKit",
+                "ProvisionKit", "HostsKit", "KeysKit",
+            ],
             swiftSettings: strict
         ),
 
@@ -91,9 +101,11 @@ let package = Package(
 
         .testTarget(
             name: "PhosphorTests",
-            dependencies: ["PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit",
-                           "DockerKit", "MetricsKit", "KeysKit", "ThemeKit",
-                           "ProvisionKit", "SessionKit", "MCPBridge", "PhosphorUI"],
+            dependencies: [
+                "PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit",
+                "DockerKit", "MetricsKit", "KeysKit", "ThemeKit",
+                "ProvisionKit", "SessionKit", "MCPBridge", "PhosphorUI",
+            ],
             swiftSettings: strict
         ),
     ]

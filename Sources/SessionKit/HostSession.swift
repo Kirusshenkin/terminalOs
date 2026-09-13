@@ -26,8 +26,9 @@ public struct SessionState: Sendable {
     /// Как метрики менялись на глазах: столько точек, сколько влезает в окно
     /// графика. Буфер кольцевой — сессия, открытая на сутки, не растёт в памяти.
     public internal(set) var history = RingBuffer<MetricPoint>(capacity: Self.historyLength)
-    /// Час при опросе раз в десять секунд — дальше по графику уже не читается.
-    static let historyLength = 360
+    /// Столько же, сколько переживает перезапуск: две разные границы означали
+    /// бы, что часть графика исчезает не тогда, когда её перестали хранить.
+    static let historyLength = MetricStore.capacity
 
     public init() {}
 
@@ -92,6 +93,13 @@ public actor HostSession {
     private var pollTask: Task<Void, Never>?
     private var metricsTask: Task<Void, Never>?
     private var observers: [UUID: @Sendable (SessionState) -> Void] = [:]
+    /// Куда ложится история, чтобы пережить закрытие приложения.
+    private let archive: MetricStore
+    /// Сколько точек набежало с прошлой записи на диск.
+    private var unsavedPoints = 0
+    /// Пишем не на каждой точке: при опросе раз в две секунды это была бы
+    /// тысяча записей в час ради данных, которые и так лежат в памяти.
+    private static let saveEvery = 30
 
     /// How often the container list is refreshed while the window is in front.
     public private(set) var pollInterval: Duration = .seconds(4)
@@ -106,14 +114,16 @@ public actor HostSession {
     /// day; a background window has no business waking the CPU.
     public private(set) var isActive = true
 
-    public init(host: ServerHost, reach: Reach) {
+    public init(host: ServerHost, reach: Reach, archive: MetricStore = .shared) {
         self.host = host
         self.transport = SystemSSHTransport(host: host, reach: reach)
+        self.archive = archive
     }
 
-    public init(host: ServerHost, transport: any SSHTransport) {
+    public init(host: ServerHost, transport: any SSHTransport, archive: MetricStore = .shared) {
         self.host = host
         self.transport = transport
+        self.archive = archive
     }
 
     /// Текущее состояние одним значением.
@@ -157,6 +167,9 @@ public actor HostSession {
                 let parsed = SnapshotParser.parse(once.stdout + "\n---")
                 constants = (parsed?.kernel ?? "", parsed?.cpuModel ?? "")
             }
+            // История — раньше первой новой точки: иначе она легла бы поверх
+            // пустого графика, который человек уже успел увидеть.
+            for point in await archive.load(host: host.id) { state.history.append(point) }
             set(phase: .ready)
             startPolling()
             startMetrics()
@@ -249,7 +262,7 @@ public actor HostSession {
         try await transport.stream(command, onLine: onLine)
     }
 
-    private func accept(block: String) {
+    private func accept(block: String) async {
         guard var snapshot = SnapshotParser.parse(block) else { return }
         if snapshot.kernel.isEmpty { snapshot.kernel = constants.kernel }
         if snapshot.cpuModel.isEmpty { snapshot.cpuModel = constants.cpuModel }
@@ -259,8 +272,17 @@ public actor HostSession {
         // это дельты между снимками.
         if let previous = state.previous {
             state.history.append(MetricPoint.between(previous, snapshot))
+            unsavedPoints += 1
+            if unsavedPoints >= Self.saveEvery { await saveHistory() }
         }
         publish()
+    }
+
+    /// Складывает накопленный ряд на диск.
+    private func saveHistory() async {
+        guard unsavedPoints > 0 else { return }
+        unsavedPoints = 0
+        await archive.save(state.history.elements, host: host.id)
     }
 
     /// Выполняет действие над контейнером и сразу обновляет список.
@@ -329,6 +351,9 @@ public actor HostSession {
     }
 
     public func stop() async {
+        // Пишем до того, как гасим задачи: иначе последние минуты графика
+        // теряются ровно в тот момент, ради которого архив и заводили.
+        await saveHistory()
         pollTask?.cancel()
         metricsTask?.cancel()
         pollTask = nil

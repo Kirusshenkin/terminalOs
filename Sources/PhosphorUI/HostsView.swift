@@ -25,13 +25,16 @@ public struct HostsView: View {
     @ViewBuilder private var page: some View {
         switch model.page {
         case .hosts:
-            VStack(alignment: .leading, spacing: 16) {
-                searchRow
-                actionRow
-                recent
-                groups
-                hosts
-                Spacer(minLength: 0)
+            // Шапка прокручивается вместе со списком: хостов бывает больше, чем влезает в окно.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    searchRow
+                    actionRow
+                    recent
+                    groups
+                    hosts
+                }
+                .padding(.trailing, 12)
             }
             .task { await model.loadConnectionLog() }
         case .keys: KeysView(model: model)

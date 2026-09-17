@@ -1,6 +1,8 @@
 public import AppKit
+import AuthKit
 public import Foundation
 public import HostsKit
+import Security
 
 /// Экспорт и импорт всего профиля одним зашифрованным файлом.
 ///
@@ -54,5 +56,38 @@ extension AppModel {
         biometricReuseSeconds = seconds
         gate.reuseDuration = seconds
         saveAppearance()
+    }
+}
+
+/// Запись профиля на диск.
+@MainActor
+extension AppModel {
+    /// Записывает профиль сразу, не дожидаясь схлопывания правок.
+    ///
+    /// Для тех, кому нужен ответ: импорт стирает исходный файл только после
+    /// того, как хосты действительно легли в профиль.
+    func saveNow() async -> Bool {
+        saveTask?.cancel()
+        return await writeProfile()
+    }
+
+    @discardableResult
+    func writeProfile() async -> Bool {
+        do {
+            try await profiles.save(book, reason: strings("auth.saveReason"))
+            saveError = nil
+            return true
+        } catch SecretError.keychain(errSecMissingEntitlement) {
+            // Сборка без подписи с доступом к связке ключей: macOS не заводит
+            // запись под замком, сколько ни повторяй.
+            saveError = strings("vault.saveUnsigned")
+        } catch ProfileStoreError.enrollmentChanged {
+            saveError = strings("vault.enrollmentChanged")
+        } catch ProfileStoreError.keyLost {
+            saveError = strings("vault.keyLost")
+        } catch {
+            saveError = "\(strings("vault.saveFailed")) \(error.localizedDescription)"
+        }
+        return false
     }
 }

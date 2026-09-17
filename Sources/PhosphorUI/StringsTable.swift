@@ -43,6 +43,22 @@ extension Strings {
             .english: "the profile is here but its key is gone — restore from an export",
         ],
         "vault.unreadable": [.russian: "профиль не читается:", .english: "the profile cannot be read:"],
+        "vault.saveUnsigned": [
+            .russian: "профиль не сохраняется: сборка подписана без доступа к связке ключей, "
+                + "и macOS не даёт завести ключ профиля. серверы пропадут при закрытии окна — "
+                + "поставь сборку, подписанную сертификатом разработчика",
+            .english: "the profile is not being saved: this build is signed without keychain access, "
+                + "so macOS refuses to create the profile key. servers will be gone when the window closes — "
+                + "install a build signed with a developer certificate",
+        ],
+        "vault.saveFailed": [
+            .russian: "профиль не сохранён, изменения пропадут при закрытии окна:",
+            .english: "the profile was not saved, changes will be lost when the window closes:",
+        ],
+        "hosts.termiusDumpLeft": [
+            .russian: "хосты Termius в профиле, но открытый дамп не удалился — удали его руками:",
+            .english: "the Termius hosts are in the profile, but the plain dump was not deleted — remove it by hand:",
+        ],
         "vault.enrollmentChanged": [
             .russian: "набор отпечатков Touch ID изменился — записи под прежним набором "
                 + "больше не открываются. восстанови профиль из экспорта",

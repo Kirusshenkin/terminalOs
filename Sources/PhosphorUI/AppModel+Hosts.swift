@@ -53,15 +53,28 @@ extension AppModel {
         // именами и юзерами) — берём его; иначе довольствуемся историей IP.
         if let (vault, url) = readTermiusVault() {
             let report = appendNew(vault, source: strings("hosts.termius"))
-            // Хосты теперь в шифрованном профиле — плейнтекст-дамп больше не
-            // нужен и не должен лежать на диске (см. §8 плана: секреты живут
-            // в Keychain и шифрованном профиле, а не в открытом файле).
-            try? FileManager.default.removeItem(at: url)
+            Task { await retireTermiusDump(at: url) }
             return report
         }
         let entries = TermiusHistory.scan()
         return appendNew(
             TermiusHistory.hosts(from: entries, existing: book.hosts), source: strings("hosts.termius"))
+    }
+
+    /// Стирает открытый дамп Termius, когда хосты уже лежат в профиле.
+    ///
+    /// Плейнтекст-дамп не должен жить на диске (§8 плана), но пока профиль не
+    /// записан, он — единственная копия этих хостов вне памяти. Стереть его
+    /// раньше значит потерять серверы при первом же закрытии окна.
+    private func retireTermiusDump(at url: URL) async {
+        guard await saveNow() else { return }
+        do {
+            try FileManager.default.removeItem(at: url)
+        } catch CocoaError.fileNoSuchFile {
+            // Уже стёрт — например, повторным импортом. Цель достигнута.
+        } catch {
+            saveError = "\(strings("hosts.termiusDumpLeft")) \(url.path)"
+        }
     }
 
     /// Хост из расшифрованного дампа Termius.

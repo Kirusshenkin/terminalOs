@@ -175,6 +175,20 @@ public struct RootView: View {
             VStack(alignment: .leading, spacing: 0) {
                 header
                 Rule().padding(.top, 6).padding(.bottom, 14)
+                // Над любым разделом: несохранённый профиль касается всего
+                // окна, и узнавать об этом на одной вкладке из восьми поздно.
+                if let saveError = model.saveError {
+                    Text(saveError)
+                        .font(model.style.font(11.5))
+                        .foregroundStyle(model.style.warning)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(model.style.surface)
+                        .overlay(
+                            Rectangle().stroke(model.style.warning.opacity(0.4), lineWidth: 1)
+                        )
+                        .padding(.bottom, 12)
+                }
                 screenBody
                     .id(model.screen)
                     .transition(

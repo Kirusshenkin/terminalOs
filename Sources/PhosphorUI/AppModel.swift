@@ -41,6 +41,11 @@ public final class AppModel {
     public private(set) var gateCapability = GateCapability(
         hasBiometry: false, hasWatch: false, hasPassword: true)
     public private(set) var unlockError: String?
+    /// Почему профиль не записался в последний раз; `nil` — записан.
+    ///
+    /// Молча упавшая запись — худшая из ошибок этого приложения: человек видит
+    /// свои серверы, а после закрытия окна их больше нет.
+    public internal(set) var saveError: String?
     public private(set) var isUnlocking = false
     public var screen: Section = .hosts
     public var language: Language = .system
@@ -481,7 +486,7 @@ public final class AppModel {
     var gate: any BiometricGate
     let profiles: ProfileStore
     /// Отложенное сохранение: правки копятся и уходят одной записью.
-    private var saveTask: Task<Void, Never>?
+    var saveTask: Task<Void, Never>?
 
     public init(
         gate: any BiometricGate = SystemBiometricGate(),
@@ -709,10 +714,12 @@ public final class AppModel {
     /// Планирует запись профиля, схлопывая частые правки в одну.
     public func scheduleSave() {
         saveTask?.cancel()
-        saveTask = Task { [profiles, book] in
+        saveTask = Task {
+            // `try?`: сон прерывает только отмена, а отмена значит, что пришла
+            // правка новее и её запись уже запланирована.
             try? await Task.sleep(for: .milliseconds(700))
             guard !Task.isCancelled else { return }
-            try? await profiles.save(book, reason: strings("auth.saveReason"))
+            await writeProfile()
         }
     }
 

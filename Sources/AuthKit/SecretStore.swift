@@ -59,8 +59,17 @@ public extension SecretStore {
 /// The important part is not the dialog but the access control: the item is
 /// created so that macOS itself refuses to hand the bytes over without a fresh
 /// check. Showing a prompt and then reading a plaintext file would be theatre.
+///
+/// Запасной путь для сборок без подписи разработчика: macOS заводит записи под
+/// замком только приложению с entitlement связки ключей, остальным отвечает
+/// `errSecMissingEntitlement`. Тогда запись ложится без системного замка, с
+/// меткой, а подтверждение перед чтением спрашивает само приложение. Защита
+/// слабее — байты стережёт процесс, а не macOS, — но без неё сборка без
+/// подписи не сохраняет профиль вовсе. Подписанная сборка идёт основным путём.
 public struct KeychainSecretStore: SecretStore {
     private let service: String
+    /// Метка записи, подтверждение к которой спрашивает приложение.
+    private static let appGatedMarker = Data("phosphor.app-gated".utf8)
 
     public init(service: String = "dev.phosphor.terminal") {
         self.service = service
@@ -92,6 +101,7 @@ public struct KeychainSecretStore: SecretStore {
     }
 
     public func read(_ account: String, reason: String) async throws -> Data {
+        if isAppGated(account) { try await confirmOwner(reason: reason) }
         let context = LAContext()
         context.localizedReason = reason
         let query: [String: Any] = [
@@ -123,16 +133,59 @@ public struct KeychainSecretStore: SecretStore {
 
     public func write(_ data: Data, account: String) throws {
         try? delete(account)
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
             kSecAttrAccessControl as String: try accessControl(),
         ]
-        let status = SecItemAdd(query as CFDictionary, nil)
+        var status = SecItemAdd(query as CFDictionary, nil)
+        if status == errSecMissingEntitlement {
+            // Сборка без entitlement: системный замок недоступен, ставим
+            // метку, по которой чтение спросит подтверждение само.
+            query[kSecAttrAccessControl as String] = nil
+            query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            query[kSecAttrGeneric as String] = Self.appGatedMarker
+            status = SecItemAdd(query as CFDictionary, nil)
+        }
         guard status == errSecSuccess else { throw SecretError.keychain(status) }
         rememberEnrollment(for: account)
+    }
+
+    /// Лежит ли запись без системного замка, под подтверждением приложения.
+    ///
+    /// Спрашиваются только атрибуты: у записи под системным замком они
+    /// читаются без диалога, а сами байты не трогаются.
+    private func isAppGated(_ account: String) -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnAttributes as String: true,
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+        ]
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+            let attributes = item as? [String: Any]
+        else { return false }
+        return attributes[kSecAttrGeneric as String] as? Data == Self.appGatedMarker
+    }
+
+    /// Подтверждение человека перед выдачей записи без системного замка.
+    ///
+    /// Та же политика, что у экрана входа: Touch ID, а без него часы или
+    /// пароль учётной записи — запереть человека снаружи хуже, чем спросить
+    /// пароль.
+    private func confirmOwner(reason: String) async throws {
+        let context = LAContext()
+        do {
+            try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
+        } catch let failure as LAError
+            where [.userCancel, .appCancel, .systemCancel, .userFallback].contains(failure.code)
+        {
+            throw SecretError.denied
+        }
     }
 
     public func delete(_ account: String) throws {

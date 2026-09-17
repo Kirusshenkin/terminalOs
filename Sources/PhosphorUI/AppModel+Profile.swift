@@ -41,9 +41,11 @@ extension AppModel {
     public func performImport(from url: URL, passphrase: String) async {
         do {
             let data = try Data(contentsOf: url)
-            try await profiles.importProfile(
-                data, passphrase: passphrase, reason: strings("auth.saveReason"))
-            book = try await profiles.load(HostBook.self, reason: strings("auth.reason"))
+            book = try await profiles.importProfile(
+                data, as: HostBook.self, passphrase: passphrase, reason: strings("auth.saveReason"))
+            // Профиль снова на диске и прочитан — писать в него безопасно.
+            profileWritable = true
+            saveError = nil
             syncForwardsFromBook()
             profileNote = strings("profile.imported")
         } catch {
@@ -71,8 +73,20 @@ extension AppModel {
         return await writeProfile()
     }
 
+    /// Пускает в окно с непрочитанным профилем, но не даёт его затереть.
+    ///
+    /// Внутри окна лежит единственный выход — импорт экспорта в настройках,
+    /// поэтому держать человека на экране входа нельзя.
+    func holdWrites(_ reason: String) {
+        book = HostBook()
+        saveError = "\(reason). \(strings("vault.writesHeld"))"
+    }
+
     @discardableResult
     func writeProfile() async -> Bool {
+        // Профиль на диске не прочитан — значит в памяти не он, а пустышка.
+        // Запись затёрла бы настоящие серверы; причина уже на плашке.
+        guard profileWritable else { return false }
         do {
             try await profiles.save(book, reason: strings("auth.saveReason"))
             saveError = nil

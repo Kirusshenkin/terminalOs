@@ -307,7 +307,7 @@ struct ProfileStoreTests {
 
         let bundle = try await first.export(passphrase: "длинная фраза", reason: "тест")
         let second = ProfileStore(store: MemorySecretStore(), url: target)
-        try await second.importProfile(bundle, passphrase: "длинная фраза", reason: "тест")
+        _ = try await second.importProfile(bundle, as: Sample.self, passphrase: "длинная фраза", reason: "тест")
         #expect(try await second.load(Sample.self, reason: "тест") == value)
     }
 
@@ -325,8 +325,34 @@ struct ProfileStoreTests {
 
         let second = ProfileStore(store: MemorySecretStore(), url: target)
         await #expect(throws: PassphraseBox.BoxError.wrongPassphrase) {
-            try await second.importProfile(bundle, passphrase: "неправильная", reason: "тест")
+            _ = try await second.importProfile(bundle, as: Sample.self, passphrase: "неправильная", reason: "тест")
         }
+    }
+
+    @Test("экспорт чужого формата отвергается и не затирает рабочий профиль")
+    func foreignImportKeepsProfile() async throws {
+        let source = temporaryURL()
+        let target = temporaryURL()
+        defer {
+            try? FileManager.default.removeItem(at: source.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: target.deletingLastPathComponent())
+        }
+        let foreign = ProfileStore(store: MemorySecretStore(), url: source)
+        try await foreign.save(["не": "профиль"], reason: "тест")
+        let bundle = try await foreign.export(passphrase: "фраза", reason: "тест")
+
+        let secrets = MemorySecretStore()
+        let working = ProfileStore(store: secrets, url: target)
+        let value = Sample(hosts: ["prod-01"], note: "рабочий")
+        try await working.save(value, reason: "тест")
+
+        await #expect(throws: DecodingError.self) {
+            _ = try await working.importProfile(
+                bundle, as: Sample.self, passphrase: "фраза", reason: "тест")
+        }
+        #expect(
+            try await ProfileStore(store: secrets, url: target).load(Sample.self, reason: "тест")
+                == value)
     }
 
     @Test("уничтожение стирает и файл, и ключ")

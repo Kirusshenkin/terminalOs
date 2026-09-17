@@ -46,6 +46,8 @@ public final class AppModel {
     /// Молча упавшая запись — худшая из ошибок этого приложения: человек видит
     /// свои серверы, а после закрытия окна их больше нет.
     public internal(set) var saveError: String?
+    /// Можно ли писать профиль: он прочитан с диска или его там ещё не было.
+    var profileWritable = false
     public private(set) var isUnlocking = false
     public var screen: Section = .hosts
     public var language: Language = .system
@@ -558,7 +560,7 @@ public final class AppModel {
 
         do {
             try await gate.authenticate(reason: strings("auth.reason"))
-            await loadProfile()
+            guard await loadProfile() else { return }
             isUnlocked = true
             // Дверь открыта — можно спрашивать о сессиях, не дожидаясь, пока
             // человек сам зайдёт в раздел: метка о ждущем агенте нужна раньше.
@@ -579,7 +581,14 @@ public final class AppModel {
         stopSessionWatch()
     }
 
-    private func loadProfile() async {
+    /// Читает профиль. `false` — окно остаётся на экране входа.
+    ///
+    /// Пустой список в памяти не должен выглядеть как первый запуск, когда
+    /// профиль на диске есть, но не открылся: первая же правка записала бы
+    /// пустышку поверх настоящих серверов. Поэтому запись разрешается, только
+    /// если профиль прочитан или его действительно ещё нет.
+    private func loadProfile() async -> Bool {
+        profileWritable = false
         do {
             book = try await profiles.load(HostBook.self, reason: strings("auth.reason"))
             syncForwardsFromBook()
@@ -591,16 +600,27 @@ public final class AppModel {
             // импортирует свои серверы (~/.ssh, известные хосты, история
             // Termius), либо заводит хост руками. Экран хостов подсказывает как.
             book = HostBook()
+        } catch SecretError.denied {
+            // «Отмена» на запросе связки ключей — не повод открывать окно:
+            // вторая попытка откроет профиль как обычно.
+            unlockError = strings("auth.cancelled")
+            return false
         } catch ProfileStoreError.keyLost {
-            unlockError = strings("vault.keyLost")
-        } catch ProfileStoreError.enrollmentChanged {
+            holdWrites(strings("vault.keyLost"))
+            return true
+        } catch ProfileStoreError.enrollmentChanged, SecretError.enrollmentChanged {
             // Не «что-то пошло не так»: палец добавили или убрали, и записи под
             // прежним набором больше не открываются никогда. Человеку нужно
             // знать именно это — иначе он будет прикладывать палец по кругу.
-            unlockError = strings("vault.enrollmentChanged")
+            holdWrites(strings("vault.enrollmentChanged"))
+            return true
         } catch {
-            unlockError = "\(strings("vault.unreadable")) \(error.localizedDescription)"
+            holdWrites("\(strings("vault.unreadable")) \(error.localizedDescription)")
+            return true
         }
+        profileWritable = true
+        saveError = nil
+        return true
     }
 
     /// Выполняет то, на что человек согласился в диалоге терминала.

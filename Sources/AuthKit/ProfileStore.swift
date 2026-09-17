@@ -157,13 +157,21 @@ public actor ProfileStore {
     }
 
     /// Installs an exported profile, replacing whatever is here.
-    public func importProfile(_ data: Data, passphrase: String, reason: String) async throws {
+    ///
+    /// Содержимое разбирается как `type` до записи: фраза подходит и к файлу
+    /// чужого формата, а затереть рабочий профиль тем, что потом не откроется,
+    /// хуже, чем отказать в импорте.
+    public func importProfile<T: Decodable>(
+        _ data: Data, as type: T.Type, passphrase: String, reason: String
+    ) async throws -> T {
         let plain = try PassphraseBox.open(data, passphrase: passphrase)
+        let value = try JSONDecoder().decode(T.self, from: plain)
         // Фраза подошла — значит содержимое у нас на руках, и прежний ключ
         // больше ничего не решает. Если он утерян, заводим новый: иначе импорт
         // спотыкался бы ровно в том случае, ради которого его и написали.
         let key = try await masterKey(reason: reason, replacingLostKey: true)
         try AtomicFile.write(try Vault(key: key).seal(plain), to: url)
+        return value
     }
 
     /// Destroys the profile by forgetting how to read it.

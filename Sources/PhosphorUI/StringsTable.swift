@@ -51,6 +51,12 @@ extension Strings {
                 + "so macOS refuses to create the profile key. servers will be gone when the window closes — "
                 + "install a build signed with a developer certificate",
         ],
+        "vault.writesHeld": [
+            .russian: "изменения не записываются, чтобы не затереть профиль пустым — "
+                + "восстанови его из экспорта в настройках",
+            .english: "changes are not being written so the profile is not overwritten with an empty one — "
+                + "restore it from an export in settings",
+        ],
         "vault.saveFailed": [
             .russian: "профиль не сохранён, изменения пропадут при закрытии окна:",
             .english: "the profile was not saved, changes will be lost when the window closes:",

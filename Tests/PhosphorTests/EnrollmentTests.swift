@@ -142,7 +142,7 @@ struct EnrollmentTests {
         await secrets.become(.enrollmentMovedItemGone)
 
         let recovered = ProfileStore(store: secrets, url: target)
-        try await recovered.importProfile(bundle, passphrase: "длинная фраза", reason: "тест")
+        _ = try await recovered.importProfile(bundle, as: Sample.self, passphrase: "длинная фраза", reason: "тест")
         await secrets.become(.normal)
         #expect(try await recovered.load(Sample.self, reason: "тест") == value)
     }
@@ -159,7 +159,7 @@ struct EnrollmentTests {
         await secrets.become(.cancelled)
         let fresh = ProfileStore(store: secrets, url: url)
         await #expect(throws: SecretError.denied) {
-            try await fresh.importProfile(bundle, passphrase: "фраза", reason: "тест")
+            _ = try await fresh.importProfile(bundle, as: Sample.self, passphrase: "фраза", reason: "тест")
         }
 
         // Отказ ничего не испортил: профиль открывается, как открывался.

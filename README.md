@@ -240,6 +240,11 @@ Every release ships `SHA256SUMS.txt`; verify with
 There is no in-app updater yet — check the releases page. The version you are
 running is in the About panel.
 
+### Getting started
+
+A guided walkthrough of the first run: [`docs/GUIDE.ru.md`](docs/GUIDE.ru.md)
+(Russian), [`docs/GUIDE.en.md`](docs/GUIDE.en.md) (English).
+
 ### For AI agents
 
 Each release carries `latest.json`, so nothing has to be scraped:

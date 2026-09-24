@@ -308,6 +308,7 @@ cd terminalOs
 swift build
 swift test
 ./.github/scripts/check.sh     # format, lint, build, tests — before every commit
+git config core.hooksPath .github/hooks   # once: blocks commits with real addresses or keys
 ```
 
 ## Layout

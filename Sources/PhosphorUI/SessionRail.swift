@@ -34,6 +34,7 @@ struct SessionRail: View {
                         .foregroundStyle(style.muted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(model.strings("nav.addHost"))
             }
             .padding(.horizontal, 12).padding(.top, 12)
 
@@ -69,6 +70,7 @@ struct SessionRail: View {
                             .foregroundStyle(style.muted)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(model.strings("nav.newSession"))
                 }
                 .padding(.horizontal, 12)
 
@@ -96,6 +98,14 @@ struct SessionRail: View {
                 }
             }
             Spacer(minLength: 0)
+
+            // Питомец живёт в пустом низу рейла, а не поверх вывода терминала:
+            // там он закрывал строки. Выбрать или выключить — в настройках.
+            if model.petVisible {
+                PetCorner(pet: $model.pet, showsPicker: false)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+            }
 
             // Тумблер постоянства — рядом с сессиями, где он и осмыслен.
             Toggle(isOn: $model.persistentSessions) {
@@ -131,6 +141,7 @@ struct SessionRail: View {
                         .foregroundStyle(style.muted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(model.strings("nav.newSession"))
             }
         }
         .padding(.horizontal, 12).padding(.top, 12)
@@ -293,6 +304,7 @@ struct SessionRail: View {
                     .foregroundStyle(style.bright)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(model.strings("nav.createSession"))
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
         .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))

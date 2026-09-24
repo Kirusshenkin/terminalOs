@@ -73,10 +73,25 @@ public struct HostsView: View {
 
     private var actionRow: some View {
         HStack(spacing: 10) {
-            PhButton(strings("hosts.new")) { model.isAddingHost = true }
-            PhButton(strings("hosts.import")) { model.importReport = model.importSSHConfig() }
-            PhButton(strings("hosts.known")) { model.importReport = model.importKnownHosts() }
-            PhButton(strings("hosts.termius")) { model.importReport = model.importTermiusHistory() }
+            PhButton(strings("nav.addHost")) { model.isAddingHost = true }
+            Menu {
+                Button(strings("nav.importSSHConfig")) {
+                    model.importReport = model.importSSHConfig()
+                }
+                Button(strings("nav.importKnownHosts")) {
+                    model.importReport = model.importKnownHosts()
+                }
+                Button(strings("nav.importTermius")) {
+                    model.importReport = model.importTermiusHistory()
+                }
+            } label: {
+                Text(strings("nav.importMenu"))
+                    .font(style.font(12))
+                    .foregroundStyle(style.bright)
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .overlay(Rectangle().stroke(style.bright.opacity(0.4), lineWidth: 1))
+            }
+            .menuStyle(.borderlessButton)
             Spacer()
             if let report = model.importReport {
                 Text(importSummary(report))

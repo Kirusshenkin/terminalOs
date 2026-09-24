@@ -251,9 +251,44 @@ public struct RootView: View {
                 )
             }
             Spacer()
-            Text(headerRight)
-                .font(model.style.font(11)).tracking(1.2)
-                .foregroundStyle(model.style.muted)
+            Menu {
+                if model.book.hosts.isEmpty {
+                    Text(model.strings("common.noHosts"))
+                    Divider()
+                    Button(model.strings("common.addHost")) {
+                        model.screen = .hosts
+                        model.isAddingHost = true
+                    }
+                } else {
+                    ForEach(model.book.hosts) { host in
+                        Button(action: { Task { await model.connect(to: host) } }) {
+                            HStack {
+                                if model.selectedHost == host.id {
+                                    Image(systemName: "checkmark")
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(host.name)
+                                    Text("\(host.user)@\(host.address)")
+                                        .font(.system(.caption))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    Divider()
+                    Button(model.strings("common.addHost")) {
+                        model.screen = .hosts
+                        model.isAddingHost = true
+                    }
+                }
+            } label: {
+                Text(headerRight)
+                    .font(model.style.font(11)).tracking(1.2)
+                    .foregroundStyle(model.style.muted)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .menuStyle(.borderlessButton)
         }
     }
 
@@ -282,7 +317,7 @@ public struct RootView: View {
         [
             ("nav.hosts", .hosts), ("tab.terminal", .terminal), ("tab.files", .files),
             ("tab.docker", .docker), ("tab.monitor", .monitor),
-            ("tab.provision", .provision), ("tab.activity", .activity),
+            ("tab.provision", .provision), ("nav.aiAccess", .activity),
             ("tab.theme", .theme),
         ]
     }

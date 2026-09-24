@@ -63,7 +63,8 @@ extension Strings {
         ],
         "hosts.termiusDumpLeft": [
             .russian: "хосты Termius в профиле, но открытый дамп не удалился — удали его руками:",
-            .english: "the Termius hosts are in the profile, but the plain dump was not deleted — remove it by hand:",
+            .english:
+                "the Termius hosts are in the profile, but the plain dump was not deleted — remove it by hand:",
         ],
         "vault.enrollmentChanged": [
             .russian: "набор отпечатков Touch ID изменился — записи под прежним набором "
@@ -730,5 +731,19 @@ extension Strings {
         ],
         "egg.waitForIt": [.russian: "это будет… подожди…", .english: "it's gonna be… wait for it…"],
         "egg.legendary": [.russian: "…легендарно", .english: "…legendary"],
+
+        // Навигация
+        "nav.addHost": [.russian: "добавить хост", .english: "add host"],
+        "nav.importMenu": [.russian: "импорт…", .english: "import…"],
+        "nav.importSSHConfig": [.russian: "из ~/.ssh/config", .english: "from ~/.ssh/config"],
+        "nav.importKnownHosts": [.russian: "из known_hosts", .english: "from known_hosts"],
+        "nav.importTermius": [.russian: "из Termius", .english: "from Termius"],
+        "nav.aiAccess": [.russian: "доступ ИИ", .english: "ai access"],
+        "files.pickNote": [
+            .russian: "файлы идут по тому же ssh-соединению — выбери, к какому хосту подключиться",
+            .english: "files go over the same ssh connection — pick a host to connect to",
+        ],
+        "nav.newSession": [.russian: "новая сессия", .english: "new session"],
+        "nav.createSession": [.russian: "создать сессию", .english: "create session"],
     ]
 }

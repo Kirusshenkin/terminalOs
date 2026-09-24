@@ -45,13 +45,11 @@ public struct FilesView: View {
 
     @ViewBuilder private var remotePanel: some View {
         if model.session == nil {
-            VStack(spacing: 12) {
-                Text(strings("files.noLink"))
-                    .font(style.font(14)).foregroundStyle(style.muted)
-                Text(strings("files.pickOnHosts"))
-                    .font(style.font(11.5)).foregroundStyle(style.muted)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Выбор хоста прямо здесь, как в мониторинге и Docker: отправлять
+            // человека на другую вкладку ради одного клика незачем.
+            HostPicker(model: model, title: strings("files.noLink"), note: strings("files.pickNote"))
+                .frame(maxWidth: 320)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             panel(
                 title: "\(model.connectedHostName) · \(strings("files.sameSSH"))",
@@ -148,6 +146,7 @@ public struct FilesView: View {
                 .padding(.horizontal, 4)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(strings(action.titleKey))
         .help(strings(action.titleKey))
         .disabled(model.transfer != nil)
     }

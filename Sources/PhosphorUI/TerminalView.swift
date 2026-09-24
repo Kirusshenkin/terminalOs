@@ -37,25 +37,22 @@ public struct TerminalPane: View {
     }
 
     private var terminal: some View {
-        ZStack(alignment: .bottomTrailing) {
-            VStack(alignment: .leading, spacing: 0) {
-                if let offer = model.rememberOffer {
-                    rememberBanner(offer)
-                }
-                // Про соединение с сервером — только когда на него и смотрим:
-                // у панели этого Мака своё состояние, и «подключаюсь…» над ней
-                // означало бы неправду.
-                if let note = phaseNote, !model.localFocused {
-                    Text(note)
-                        .font(style.font(12))
-                        .foregroundStyle(isFailure ? style.warning : style.muted)
-                        .padding(.bottom, 8)
-                }
-                if model.session != nil, !model.localFocused { splitBar }
-                panes
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(alignment: .leading, spacing: 0) {
+            if let offer = model.rememberOffer {
+                rememberBanner(offer)
             }
-            PetCorner(pet: $model.pet) { model.saveAppearance() }
+            // Про соединение с сервером — только когда на него и смотрим:
+            // у панели этого Мака своё состояние, и «подключаюсь…» над ней
+            // означало бы неправду.
+            if let note = phaseNote, !model.localFocused {
+                Text(note)
+                    .font(style.font(12))
+                    .foregroundStyle(isFailure ? style.warning : style.muted)
+                    .padding(.bottom, 8)
+            }
+            if model.session != nil, !model.localFocused { splitBar }
+            panes
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -83,6 +80,7 @@ public struct TerminalPane: View {
                                 .padding(5)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(strings("common.close"))
                     }
                 }
             }
@@ -186,40 +184,46 @@ public struct PetCorner: View {
     @Environment(\.style) private var style
     @Binding var pet: Pet
     private let onChange: () -> Void
+    private let showsPicker: Bool
 
-    public init(pet: Binding<Pet>, onChange: @escaping () -> Void = {}) {
+    public init(pet: Binding<Pet>, showsPicker: Bool = true, onChange: @escaping () -> Void = {}) {
         self._pet = pet
+        self.showsPicker = showsPicker
         self.onChange = onChange
     }
 
     public var body: some View {
         VStack(alignment: .trailing, spacing: 6) {
-            HStack(spacing: 6) {
-                ForEach(Pet.allCases, id: \.self) { option in
-                    Button {
-                        pet = option
-                    } label: {
-                        Text(option.title)
-                            .font(style.font(10))
-                            .tracking(1.6)
-                            .padding(.horizontal, 9).padding(.vertical, 2)
-                            .foregroundStyle(pet == option ? style.background : style.muted)
-                            .background(pet == option ? style.accent : .clear)
-                            .overlay(
-                                Rectangle().stroke(
-                                    pet == option ? style.accent : style.text.opacity(0.3), lineWidth: 1
-                                ))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+            if showsPicker { picker }
             scene
-                .frame(width: 260, height: 130)
+                .frame(width: 200, height: 100)
                 .allowsHitTesting(false)
                 .opacity(0.4)
         }
         .padding(.trailing, 4)
         .padding(.bottom, 8)
+    }
+
+    private var picker: some View {
+        HStack(spacing: 6) {
+            ForEach(Pet.allCases, id: \.self) { option in
+                Button {
+                    pet = option
+                } label: {
+                    Text(option.title)
+                        .font(style.font(10))
+                        .tracking(1.6)
+                        .padding(.horizontal, 9).padding(.vertical, 2)
+                        .foregroundStyle(pet == option ? style.background : style.muted)
+                        .background(pet == option ? style.accent : .clear)
+                        .overlay(
+                            Rectangle().stroke(
+                                pet == option ? style.accent : style.text.opacity(0.3), lineWidth: 1
+                            ))
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     @ViewBuilder private var scene: some View {

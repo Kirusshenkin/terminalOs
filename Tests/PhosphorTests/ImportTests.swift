@@ -161,3 +161,37 @@ struct ImportTests {
         _ = LocalKeys.scan()  // не должно бросать/падать
     }
 }
+
+@Suite("Дамп хостов Termius")
+struct TermiusDumpTests {
+    private func file(_ text: String?) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("termius-\(UUID().uuidString).json")
+        if let text { try Data(text.utf8).write(to: url) }
+        return url
+    }
+
+    @Test("нет файла — это не ошибка, а «дампа нет»")
+    func missingIsNil() throws {
+        #expect(try TermiusDump.load(from: file(nil)) == nil)
+    }
+
+    @Test("битый дамп — ошибка, а не тихий переход на историю адресов")
+    func brokenIsAnError() throws {
+        let url = try file(#"[{"name": "api", "address": "#)
+        defer { try? FileManager.default.removeItem(at: url) }
+        #expect(throws: TermiusDump.Problem.badFormat) { try TermiusDump.load(from: url) }
+        #expect(throws: TermiusDump.Problem.badFormat) { try TermiusDump.parse(Data(#"{"hosts": []}"#.utf8)) }
+    }
+
+    @Test("целый дамп отдаёт имена, юзеров, порты и теги")
+    func parsesHosts() throws {
+        let url = try file(
+            #"[{"name":"api","address":"192.0.2.10","port":2222,"user":"deploy","tags":["prod"]}]"#)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let hosts = try #require(try TermiusDump.load(from: url))
+        #expect(hosts.count == 1)
+        #expect(hosts[0].name == "api" && hosts[0].user == "deploy" && hosts[0].port == 2222)
+        #expect(hosts[0].tags == ["prod"])
+    }
+}

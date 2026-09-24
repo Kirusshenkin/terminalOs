@@ -191,3 +191,50 @@ public enum TermiusHistory {
             && !parts[0].isEmpty && parts[0].first?.isLetter == true
     }
 }
+
+/// Расшифрованные хосты Termius, выгруженные рядом с профилем
+/// (`termius-hosts.json`): настоящие имена, юзеры, порты и теги.
+///
+/// Битый дамп — это не «дампа нет»: молча взять вместо него историю адресов
+/// значит добавить голые IP с неверным юзером, и человек будет думать, что
+/// импортировал свои серверы (#9). Поэтому здесь различаются все три исхода.
+public enum TermiusDump {
+    public enum Problem: Error, Sendable, Equatable {
+        /// Файл есть, но не читается.
+        case unreadable
+        /// Файл читается, но это не список хостов в ожидаемом виде.
+        case badFormat
+    }
+
+    private struct Entry: Decodable {
+        var name: String
+        var address: String
+        var port: Int
+        var user: String
+        var tags: [String]
+    }
+
+    public static func parse(_ data: Data) throws(Problem) -> [ServerHost] {
+        let entries: [Entry]
+        do {
+            entries = try JSONDecoder().decode([Entry].self, from: data)
+        } catch {
+            throw .badFormat
+        }
+        return entries.map {
+            ServerHost(name: $0.name, address: $0.address, port: $0.port, user: $0.user, tags: $0.tags)
+        }
+    }
+
+    /// Дамп из файла; `nil` — файла нет, и это не ошибка.
+    public static func load(from url: URL) throws(Problem) -> [ServerHost]? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            throw .unreadable
+        }
+        return try parse(data)
+    }
+}

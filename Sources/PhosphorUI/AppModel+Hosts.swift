@@ -14,11 +14,17 @@ extension AppModel {
         public var source: String
         public var added: Int
         public var skipped: [(directive: String, line: Int)]
+        /// Источник есть, но прочитать его не вышло — что случилось и что делать.
+        public var problem: String?
 
-        public init(source: String, added: Int, skipped: [(directive: String, line: Int)] = []) {
+        public init(
+            source: String, added: Int, skipped: [(directive: String, line: Int)] = [],
+            problem: String? = nil
+        ) {
             self.source = source
             self.added = added
             self.skipped = skipped
+            self.problem = problem
         }
     }
 
@@ -45,20 +51,48 @@ extension AppModel {
         return appendNew(KnownHostsFile.servers(text), source: "known_hosts")
     }
 
-    /// Адреса из истории подключений Termius. Юзер и порт там были
-    /// зашифрованы — их проставит человек; ценно то, что адрес реальный.
+    /// Хосты Termius: из расшифрованного дампа, если он лежит рядом с
+    /// профилем, иначе — адреса из истории подключений.
     @discardableResult
     public func importTermiusHistory() -> ImportReport {
-        // Если рядом лежит расшифрованное хранилище Termius (реальные хосты с
-        // именами и юзерами) — берём его; иначе довольствуемся историей IP.
-        if let (vault, url) = readTermiusVault() {
-            let report = appendNew(vault, source: strings("hosts.termius"))
+        let source = strings("hosts.termius")
+        switch termiusSource() {
+        case .dump(let hosts, let url):
+            let report = appendNew(hosts, source: source)
             Task { await retireTermiusDump(at: url) }
             return report
+        case .broken(let problem, let url):
+            return ImportReport(source: source, added: 0, problem: termiusProblem(problem, url: url))
+        case .history(let hosts):
+            return appendNew(hosts, source: source)
         }
-        let entries = TermiusHistory.scan()
-        return appendNew(
-            TermiusHistory.hosts(from: entries, existing: book.hosts), source: strings("hosts.termius"))
+    }
+
+    /// Откуда брать хосты Termius. Один ответ и для кнопки импорта, и для
+    /// предложения первого запуска — иначе они считали бы разное (#4).
+    private enum TermiusSource {
+        case dump([ServerHost], URL)
+        case broken(TermiusDump.Problem, URL)
+        case history([ServerHost])
+    }
+
+    private func termiusSource() -> TermiusSource {
+        let url = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("Phosphor/termius-hosts.json")
+        if let url {
+            do {
+                if let hosts = try TermiusDump.load(from: url) { return .dump(hosts, url) }
+            } catch {
+                return .broken(error, url)
+            }
+        }
+        return .history(TermiusHistory.hosts(from: TermiusHistory.scan(), existing: book.hosts))
+    }
+
+    private func termiusProblem(_ problem: TermiusDump.Problem, url: URL) -> String {
+        let what = strings(problem == .unreadable ? "hosts.termiusUnreadable" : "hosts.termiusBadFormat")
+        return "\(what): \(url.path). \(strings("hosts.termiusRedo"))"
     }
 
     /// Стирает открытый дамп Termius, когда хосты уже лежат в профиле.
@@ -77,33 +111,6 @@ extension AppModel {
         }
     }
 
-    /// Хост из расшифрованного дампа Termius.
-    private struct TermiusVaultHost: Decodable {
-        var name: String
-        var address: String
-        var port: Int
-        var user: String
-        var tags: [String]
-    }
-
-    /// Читает расшифрованные хосты Termius, если дамп подготовлен рядом с
-    /// профилем. Пустой или отсутствующий файл — не ошибка: тогда работает
-    /// импорт истории.
-    private func readTermiusVault() -> (hosts: [ServerHost], url: URL)? {
-        let base = FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        guard let url = base?.appendingPathComponent("Phosphor/termius-hosts.json"),
-            let data = try? Data(contentsOf: url),
-            let decoded = try? JSONDecoder().decode([TermiusVaultHost].self, from: data)
-        else { return nil }
-        let hosts = decoded.map {
-            ServerHost(
-                name: $0.name, address: $0.address, port: $0.port,
-                user: $0.user, tags: $0.tags)
-        }
-        return (hosts, url)
-    }
-
     /// Считает, сколько серверов лежит в каждом источнике и ещё не в списке.
     ///
     /// Дёшево: три чтения локальных файлов. Дороже было бы спросить человека
@@ -119,6 +126,12 @@ extension AppModel {
 
     /// Переносит всё из источника и обновляет предложения.
     public func take(_ offer: ImportOffer) {
+        // Termius — через тот же путь, что кнопка: он же убирает открытый дамп.
+        if offer.source == .termius {
+            importReport = importTermiusHistory()
+            refreshImportOffers()
+            return
+        }
         let fresh = candidates(from: offer.source)
         guard !fresh.isEmpty else { return }
         book.hosts.append(contentsOf: fresh)
@@ -143,7 +156,13 @@ extension AppModel {
                     .compactMap(\.host)
                     .map { ServerHost(name: $0, address: $0) })
         case .termius:
-            return unseen(TermiusHistory.hosts(from: TermiusHistory.scan(), existing: book.hosts))
+            switch termiusSource() {
+            case .dump(let hosts, _): return unseen(hosts)
+            case .history(let hosts): return unseen(hosts)
+            // Битый дамп не подменяется историей: предложение исчезает, а
+            // причину покажет кнопка импорта.
+            case .broken: return []
+            }
         }
     }
 

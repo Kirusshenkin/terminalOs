@@ -185,5 +185,18 @@ extension Strings {
             .english: "key login is not confirmed — passwords stay open",
         ],
         "recipe.stopped": [.russian: "остановлено", .english: "stopped"],
+
+        // Импорт Termius
+        "hosts.termiusUnreadable": [
+            .russian: "дамп Termius не читается", .english: "the Termius dump cannot be read",
+        ],
+        "hosts.termiusBadFormat": [
+            .russian: "дамп Termius повреждён или в другом формате",
+            .english: "the Termius dump is damaged or in another format",
+        ],
+        "hosts.termiusRedo": [
+            .russian: "Выгрузи хосты из Termius заново или удали файл — тогда возьмётся история адресов",
+            .english: "Export the hosts from Termius again, or delete the file to use the address history",
+        ],
     ]
 }

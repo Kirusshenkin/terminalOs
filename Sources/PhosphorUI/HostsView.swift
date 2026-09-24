@@ -96,7 +96,7 @@ public struct HostsView: View {
             if let report = model.importReport {
                 Text(importSummary(report))
                     .font(style.font(11))
-                    .foregroundStyle(report.skipped.isEmpty ? style.muted : style.warning)
+                    .foregroundStyle(report.skipped.isEmpty && report.problem == nil ? style.muted : style.warning)
             } else {
                 Text(
                     model.selectedGroup == nil
@@ -110,6 +110,7 @@ public struct HostsView: View {
 
     /// Итог импорта словами: сколько взяли и сколько не поняли.
     private func importSummary(_ report: AppModel.ImportReport) -> String {
+        if let problem = report.problem { return "\(report.source): \(problem)" }
         if report.added == 0, report.skipped.isEmpty {
             return "\(report.source): \(strings("hosts.noNew"))"
         }

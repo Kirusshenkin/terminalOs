@@ -70,6 +70,11 @@ public struct PhMenu: View {
                 dismiss()
                 item.action()
             }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction {
+                dismiss()
+                item.action()
+            }
     }
 
     private func colour(_ item: MenuItem, hovered: Bool) -> Color {

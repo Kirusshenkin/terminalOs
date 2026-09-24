@@ -244,6 +244,9 @@ public struct RootView: View {
                     .foregroundStyle(colour(for: tab.1))
                 }
                 .buttonStyle(PressFeedback())
+                // Маркер «▸» и точка — украшение; имя вкладки — её название (#6).
+                .accessibilityLabel(model.strings(tab.0))
+                .accessibilityAddTraits(model.screen == tab.1 ? .isSelected : [])
                 .onHover { inside in
                     // Подсветка под курсором мгновенная: это отклик, а не
                     // анимация, и ждать его нельзя.

@@ -122,6 +122,8 @@ public struct SectionNav<Page: SectionPage>: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressFeedback())
+                .accessibilityLabel(strings(item.key))
+                .accessibilityAddTraits(page == item ? .isSelected : [])
                 .onHover { inside in
                     hovered = inside ? item : (hovered == item ? nil : hovered)
                 }

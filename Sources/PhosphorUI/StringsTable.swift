@@ -744,6 +744,7 @@ extension Strings {
             .english: "files go over the same ssh connection — pick a host to connect to",
         ],
         "nav.newSession": [.russian: "новая сессия", .english: "new session"],
+        "nav.flipSplit": [.russian: "повернуть разделение", .english: "rotate the split"],
         "nav.createSession": [.russian: "создать сессию", .english: "create session"],
 
         // Горячие клавиши и меню

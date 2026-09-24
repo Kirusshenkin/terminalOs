@@ -130,6 +130,8 @@ public struct TerminalPane: View {
                     .font(.system(size: 11)).foregroundStyle(style.muted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(strings("nav.flipSplit"))
+                .help(strings("nav.flipSplit"))
                 Button {
                     model.closeSplit()
                 } label: {

@@ -60,6 +60,12 @@ struct QuickConnect: View {
                         highlighted = index
                         connect()
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction {
+                        highlighted = index
+                        connect()
+                    }
             }
             Text(model.strings("qc.hint"))
                 .font(style.font(10.5)).foregroundStyle(style.muted)

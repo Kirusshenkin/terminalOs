@@ -199,6 +199,9 @@ public struct PhButton: View {
                 .overlay(Rectangle().stroke(border, lineWidth: 1))
         }
         .buttonStyle(PressFeedback())
+        // Имя кнопки — её надпись без капса: VoiceOver и автоматизация ищут
+        // кнопку по нему, а не по координатам (#6).
+        .accessibilityLabel(title)
     }
 
     private var foreground: Color {

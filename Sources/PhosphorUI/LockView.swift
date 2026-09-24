@@ -92,6 +92,10 @@ public struct LockView: View {
             }
             .contentShape(Circle())
             .onTapGesture { begin() }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(strings("lock.touch"))
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { begin() }
 
             VStack(spacing: 9) {
                 Text(strings(phase == .waiting ? "lock.touch" : "lock.reading"))

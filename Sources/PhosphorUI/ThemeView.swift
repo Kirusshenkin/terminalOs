@@ -298,6 +298,8 @@ public struct ThemeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     /// Список тем и куда они привязаны.

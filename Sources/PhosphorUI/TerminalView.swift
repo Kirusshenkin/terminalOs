@@ -65,10 +65,24 @@ public struct TerminalPane: View {
             let layout =
                 model.splitVertical
                 ? AnyLayout(HStackLayout(spacing: 1)) : AnyLayout(VStackLayout(spacing: 1))
-            layout {
-                hostSurface(model.terminalDestination)
-                ForEach(extras) { pane in
-                    divider
+            GeometryReader { geometry in
+                let total = model.splitVertical ? geometry.size.width : geometry.size.height
+                layout {
+                    hostSurface(model.terminalDestination)
+                        .frame(
+                            width: model.splitVertical ? total * model.splitRatio : nil,
+                            height: model.splitVertical ? nil : total * model.splitRatio)
+                    handle(total: total)
+                    extraPanes(extras)
+                }
+                .coordinateSpace(.named(Self.splitSpace))
+            }
+        }
+    }
+
+    @ViewBuilder private func extraPanes(_ extras: [AppModel.Pane]) -> some View {
+                ForEach(Array(extras.enumerated()), id: \.element.id) { index, pane in
+                    if index > 0 { divider }
                     ZStack(alignment: .topTrailing) {
                         hostSurface(pane.destination)
                         // Закрыть панель — сессия за ней остаётся на сервере.
@@ -84,9 +98,35 @@ public struct TerminalPane: View {
                         .help("\(strings("cmd.closePane")) ⌘W")
                     }
                 }
-            }
-        }
     }
+
+    /// Граница между главной панелью и остальными: тянется мышью, двойной
+    /// щелчок возвращает пополам. Двигается сама граница, без анимации.
+    private func handle(total: CGFloat) -> some View {
+        divider
+            .padding(model.splitVertical ? .horizontal : .vertical, 2)
+            .contentShape(Rectangle())
+            .onHover { inside in
+                let cursor: NSCursor = model.splitVertical ? .resizeLeftRight : .resizeUpDown
+                if inside { cursor.push() } else { NSCursor.pop() }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1, coordinateSpace: .named(Self.splitSpace))
+                    .onChanged { drag in
+                        guard total > 0 else { return }
+                        let position = model.splitVertical ? drag.location.x : drag.location.y
+                        model.splitRatio = AppModel.clampedRatio(position / total)
+                    }
+                    .onEnded { _ in model.saveLayout() }
+            )
+            .onTapGesture(count: 2) {
+                model.splitRatio = 0.5
+                model.saveLayout()
+            }
+            .accessibilityLabel(strings("nav.splitHandle"))
+    }
+
+    private static let splitSpace = "split"
 
     /// Волосяная линия между панелями — по той стороне, вдоль которой они идут.
     private var divider: some View {

@@ -745,6 +745,7 @@ extension Strings {
         ],
         "nav.newSession": [.russian: "новая сессия", .english: "new session"],
         "nav.flipSplit": [.russian: "повернуть разделение", .english: "rotate the split"],
+        "nav.splitHandle": [.russian: "граница панелей", .english: "pane divider"],
         "nav.createSession": [.russian: "создать сессию", .english: "create session"],
 
         // Горячие клавиши и меню

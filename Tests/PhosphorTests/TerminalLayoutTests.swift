@@ -93,4 +93,22 @@ struct TerminalLayoutTests {
         #expect(kept.session == "main" && kept.secondSession == "side")
         #expect(kept.splitVertical == false)
     }
+
+    @Test("границу сплита не утащить до щели, а битое значение — это пополам")
+    @MainActor func splitRatio() throws {
+        #expect(AppModel.clampedRatio(0.35) == 0.35)
+        #expect(AppModel.clampedRatio(0.01) == 0.2)
+        #expect(AppModel.clampedRatio(1.5) == 0.8)
+        #expect(AppModel.clampedRatio(.nan) == 0.5)
+        #expect(AppModel.clampedRatio(.infinity) == 0.5)
+
+        let (store, directory) = store()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        store.save(TerminalLayout(splitVertical: true, splitRatio: 0.3))
+        #expect(store.load().splitRatio == 0.3)
+        // Файл прошлой версии без поля — граница по середине.
+        try Data(#"{"spaces":[],"spaceSessions":{},"splitVertical":true}"#.utf8)
+            .write(to: directory.appendingPathComponent("terminal.json"))
+        #expect(store.load().splitRatio == nil)
+    }
 }

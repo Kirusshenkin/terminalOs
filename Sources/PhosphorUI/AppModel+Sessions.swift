@@ -332,6 +332,7 @@ extension AppModel {
         }
         spaceSessions = restoredSessions
         splitVertical = saved.splitVertical
+        splitRatio = Self.clampedRatio(saved.splitRatio ?? 0.5)
         // Раскладка прошлой версии знала только про одну вторую панель — она
         // и читается как список из неё одной.
         extraSessions = saved.panes ?? saved.secondSession.map { [$0] } ?? []
@@ -357,8 +358,16 @@ extension AppModel {
                 splitVertical: splitVertical,
                 panes: extraSessions,
                 localSession: localSession,
-                localFocused: localFocused
+                localFocused: localFocused,
+                splitRatio: splitRatio
             ))
+    }
+
+    /// Доля главной панели не уже пятой части и не шире четырёх пятых: иначе
+    /// соседняя сжимается до нескольких колонок, и в ней не прочесть строку.
+    static func clampedRatio(_ ratio: Double) -> Double {
+        guard ratio.isFinite else { return 0.5 }
+        return min(max(ratio, 0.2), 0.8)
     }
 
     /// Возвращается в спейс, на который смотрели перед закрытием приложения.

@@ -320,6 +320,8 @@ public final class AppModel {
     /// Делить экран по вертикали (панели рядом) или по горизонтали (одна над
     /// другой).
     public var splitVertical = true
+    /// Доля главной панели в сплите; остальные делят остаток поровну.
+    public var splitRatio = 0.5
 
     /// Одна tmux-сессия на сервере: имя, сколько окон, подключён ли кто-то.
     public struct TmuxSession: Identifiable, Sendable, Equatable {

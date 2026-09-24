@@ -453,7 +453,7 @@ struct ProvisionTests {
         #expect(
             plan.allSatisfy { step, skip in
                 step.id == "passwords"
-                    || { if case .unsupported = skip { return true } else { return false } }()
+                    || skip?.isUnsupported == true
             })
     }
 
@@ -462,7 +462,7 @@ struct ProvisionTests {
         let profile = HostProbe.parse(livedInOutput)
         let plan = BuiltInRecipe.base(RecipeInputs()).plan(for: profile)
         let docker = try? #require(plan.first { $0.step.id == "docker" })
-        if case .alreadyDone = docker?.skip {} else { Issue.record("docker должен пропускаться") }
+        if case .alreadyInstalled = docker?.skip {} else { Issue.record("docker должен пропускаться") }
     }
 
     @Test("пароли закрываются последними и только когда есть ключ")
@@ -472,7 +472,7 @@ struct ProvisionTests {
         var noKeys = HostProbe.parse(freshOutput)
         noKeys.authorizedKeyCount = 0
         let plan = recipe.plan(for: noKeys)
-        if case .unsupported = plan.last?.skip {} else { Issue.record("без ключей пароли закрывать нельзя") }
+        if plan.last?.skip != .noKeys { Issue.record("без ключей пароли закрывать нельзя") }
     }
 
     @Test("certbot появляется только с валидным доменом и почтой")

@@ -10,12 +10,13 @@ public struct StepProgress: Identifiable, Sendable, Equatable {
         case waiting
         case running
         case done
-        case skipped(String)
-        case failed(String)
+        case skipped(RecipeStep.Skip)
+        case failed(StepFailure)
     }
 
     public var id: String
-    public var title: String
+    /// Отличие этого шага, например домен certbot; название — по `id`.
+    public var detail: String?
     public var status: Status = .waiting
 
     public var isFinished: Bool {
@@ -34,25 +35,6 @@ public struct StepProgress: Identifiable, Sendable, Equatable {
 /// последним и только после того, как отдельное соединение по ключу реально
 /// открылось. Обычные скрипты ломаются именно на третьем.
 public actor ProvisionRunner {
-    /// Почему прогон не дошёл до конца.
-    ///
-    /// Не бросается наружу: рецепт исполняется по шагам, и остановка — это
-    /// состояние шага, а не обрыв всей работы. Здесь эти причины живут затем,
-    /// чтобы их текст был написан один раз, а не заново в каждой ветке.
-    public enum RunError: Equatable {
-        /// Ключ не проверен, а шаг закрывает пароли — это прямой путь к тому,
-        /// чтобы запереть себя снаружи.
-        case keyNotProven
-        case stopped
-
-        public var message: String {
-            switch self {
-            case .keyNotProven: "вход по ключу не подтверждён — пароли не закрываю"
-            case .stopped: "остановлено"
-            }
-        }
-    }
-
     private let transport: any SSHTransport
     private let recipe: Recipe
     private let profile: HostProfile
@@ -74,7 +56,7 @@ public actor ProvisionRunner {
         self.recipe = recipe
         self.profile = profile
         self.proveKeyAccess = proveKeyAccess
-        self.progress = recipe.steps.map { StepProgress(id: $0.id, title: $0.title) }
+        self.progress = recipe.steps.map { StepProgress(id: $0.id, detail: $0.detail) }
     }
 
     public var steps: [StepProgress] { progress }
@@ -82,10 +64,8 @@ public actor ProvisionRunner {
     /// Все команды, которые могут уйти на сервер, в порядке выполнения.
     ///
     /// Показывается до запуска целиком: скрытых действий здесь нет.
-    public func plannedCommands() -> [(step: String, commands: [String])] {
-        recipe.plan(for: profile).compactMap { step, skip in
-            skip == nil ? (step.title, step.commands) : nil
-        }
+    public func plannedCommands() -> [RecipeStep] {
+        recipe.plan(for: profile).compactMap { step, skip in skip == nil ? step : nil }
     }
 
     public func observe(
@@ -107,15 +87,15 @@ public actor ProvisionRunner {
         let plan = recipe.plan(for: profile)
         for (index, entry) in plan.enumerated() {
             if stopRequested {
-                mark(index, .failed(RunError.stopped.message))
+                mark(index, .failed(.stopped))
                 break
             }
             if let skip = entry.skip {
-                mark(index, .skipped(Self.describe(skip)))
+                mark(index, .skipped(skip))
                 continue
             }
             if entry.step.id == BuiltInRecipe.needsKeyProof, await !proveKeyAccess() {
-                mark(index, .failed(RunError.keyNotProven.message))
+                mark(index, .failed(.keyNotProven))
                 continue
             }
             mark(index, .running)
@@ -127,8 +107,8 @@ public actor ProvisionRunner {
         }
     }
 
-    /// Выполняет команды шага, возвращая описание ошибки или nil.
-    private func execute(_ step: RecipeStep) async -> String? {
+    /// Выполняет команды шага, возвращая причину остановки или nil.
+    private func execute(_ step: RecipeStep) async -> StepFailure? {
         for command in step.commands {
             onLine?("$ \(command)")
             do {
@@ -136,12 +116,13 @@ public actor ProvisionRunner {
                 for line in result.stdout.split(separator: "\n") { onLine?(String(line)) }
                 for line in result.stderr.split(separator: "\n") { onLine?(String(line)) }
                 if !result.succeeded {
-                    return String(result.stderr.prefix(160))
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                        .ifEmpty("код возврата \(result.status)")
+                    let output = String(result.stderr.prefix(160)).trimmingCharacters(in: .whitespacesAndNewlines)
+                    return output.isEmpty ? .exitCode(result.status) : .output(output)
                 }
+            } catch let error as TransportError {
+                return .transport(error)
             } catch {
-                return "\(error)"
+                return .output(error.localizedDescription)
             }
         }
         return nil
@@ -153,14 +134,20 @@ public actor ProvisionRunner {
         onProgress?(progress)
     }
 
-    private static func describe(_ skip: RecipeStep.Skip) -> String {
-        switch skip {
-        case .alreadyDone(let reason): reason
-        case .unsupported(let reason): reason
-        }
-    }
 }
 
-private extension String {
-    func ifEmpty(_ fallback: String) -> String { isEmpty ? fallback : self }
+/// Почему шаг автонастройки не выполнился.
+///
+/// Остановка — состояние шага, а не обрыв всей работы, поэтому это не ошибка
+/// для `throw`, а значение. Слова для каждой причины — в интерфейсе.
+public enum StepFailure: Sendable, Equatable {
+    /// Вход по ключу не подтверждён, а шаг закрывает пароли — прямой путь
+    /// к тому, чтобы запереть себя снаружи.
+    case keyNotProven
+    case stopped
+    /// Команда упала молча, только с кодом возврата.
+    case exitCode(Int32)
+    /// Команда упала и сказала почему; её слова — как есть.
+    case output(String)
+    case transport(TransportError)
 }

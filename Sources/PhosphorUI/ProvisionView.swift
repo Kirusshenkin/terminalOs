@@ -50,7 +50,7 @@ public struct ProvisionView: View {
                     Text(mark(step.status))
                         .foregroundStyle(colour(step.status))
                         .frame(width: 14, alignment: .leading)
-                    Text(step.title)
+                    Text(strings.stepTitle(id: step.id, detail: step.detail))
                         .foregroundStyle(colour(step.status))
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Text(note(step.status))
@@ -124,9 +124,9 @@ public struct ProvisionView: View {
             Text(strings("common.whatGoes")).font(style.font(15)).foregroundStyle(style.bright)
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    ForEach(model.plannedCommands, id: \.step) { entry in
+                    ForEach(model.plannedCommands, id: \.id) { entry in
                         VStack(alignment: .leading, spacing: 4) {
-                            Label2(entry.step)
+                            Label2(strings.stepTitle(id: entry.id, detail: entry.detail))
                             ForEach(entry.commands, id: \.self) { command in
                                 Text(command)
                                     .font(style.font(11.5))
@@ -173,8 +173,8 @@ public struct ProvisionView: View {
         case .waiting: strings("provision.waiting")
         case .running: strings("provision.running")
         case .done: strings("provision.done")
-        case .skipped(let reason): reason
-        case .failed(let reason): reason
+        case .skipped(let skip): strings.stepSkip(skip)
+        case .failed(let failure): strings.stepFailure(failure)
         }
     }
 }

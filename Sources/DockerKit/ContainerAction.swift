@@ -20,18 +20,6 @@ public enum ContainerAction: String, CaseIterable, Sendable {
         }
     }
 
-    public var title: String {
-        switch self {
-        case .start: "запустить"
-        case .stop: "остановить"
-        case .restart: "перезапустить"
-        case .pause: "приостановить"
-        case .unpause: "продолжить"
-        case .kill: "убить"
-        case .remove: "удалить"
-        }
-    }
-
     /// Which actions make sense in a given state, so the interface offers only
     /// those and never sends a command the daemon will refuse.
     public static func available(for state: Container.State) -> [ContainerAction] {

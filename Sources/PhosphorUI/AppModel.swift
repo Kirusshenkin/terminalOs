@@ -356,7 +356,7 @@ public final class AppModel {
     public internal(set) var provisionSteps: [StepProgress] = []
     public internal(set) var provisionLog = RingBuffer<String>(capacity: 4_000)
     public internal(set) var isProvisioning = false
-    public internal(set) var plannedCommands: [(step: String, commands: [String])] = []
+    public internal(set) var plannedCommands: [RecipeStep] = []
     public var showsPlannedCommands = false
     var runner: ProvisionRunner?
 

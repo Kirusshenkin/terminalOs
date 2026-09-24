@@ -9,6 +9,7 @@ import Testing
 @testable import AuthKit
 @testable import SSHKit
 @testable import PhosphorCore
+@testable import ProvisionKit
 
 /// Всё, что приходит из пакетов, подписывается по таблице на обоих языках.
 ///
@@ -97,6 +98,22 @@ struct PackageStringsTests {
                 #expect(text.range(of: "\\p{Cyrillic}", options: .regularExpression) == nil, "\(text)")
             }
         }
+    }
+
+    @Test("у каждого шага автонастройки есть название и причины на обоих языках", arguments: languages)
+    func provisioningTranslated(language: Language) {
+        let strings = Strings(language: language)
+        let recipe = BuiltInRecipe.base(RecipeInputs(domain: "a.example.com", email: "k@example.com"))
+        // Без домена: в нём самом есть точка, и проверка ключей споткнулась бы.
+        var texts = recipe.steps.map { strings.stepTitle(id: $0.id, detail: nil) }
+        texts += [RecipeStep.Skip.alreadyInstalled("docker"), .needsApt, .noKeys].map(strings.stepSkip)
+        texts += [StepFailure.keyNotProven, .stopped, .exitCode(2)].map(strings.stepFailure)
+        for text in texts {
+            #expect(text.range(of: #"\b[a-z]+\.[a-zA-Z]+\b"#, options: .regularExpression) == nil, "\(text)")
+            #expect(!text.contains("%@"), "\(text)")
+        }
+        let certbot = recipe.steps.first { $0.id == "certbot" }
+        #expect(certbot.map { strings.stepTitle(id: $0.id, detail: $0.detail) }?.hasSuffix("· a.example.com") == true)
     }
 
     @Test("русские подписи остались прежними")

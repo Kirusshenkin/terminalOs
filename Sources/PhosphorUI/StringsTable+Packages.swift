@@ -164,5 +164,26 @@ extension Strings {
             .english: "this Mac has neither Touch ID nor an account password",
         ],
         "auth.password": [.russian: "пароль", .english: "password"],
+
+        // Автонастройка: шаги по id, причины пропуска и остановки
+        "recipe.packages": [
+            .russian: "обновить пакеты и unattended-upgrades", .english: "update packages and unattended-upgrades",
+        ],
+        "recipe.docker": [.russian: "Docker и Compose с лимитом логов", .english: "Docker and Compose with a log limit"],
+        "recipe.nginx": [.russian: "nginx", .english: "nginx"],
+        "recipe.certbot": [.russian: "certbot", .english: "certbot"],
+        "recipe.ufw": [.russian: "UFW: только 22, 80, 443", .english: "UFW: only 22, 80, 443"],
+        "recipe.passwords": [.russian: "закрыть вход по паролю", .english: "close password login"],
+        "recipe.installed": [.russian: "%@ уже установлен", .english: "%@ is already installed"],
+        "recipe.needsApt": [.russian: "нужен apt: Ubuntu или Debian", .english: "needs apt: Ubuntu or Debian"],
+        "recipe.noKeys": [
+            .russian: "нет ни одного ключа — закрывать пароли нельзя",
+            .english: "there is no key at all — closing passwords would lock you out",
+        ],
+        "recipe.keyNotProven": [
+            .russian: "вход по ключу не подтверждён — пароли не закрываю",
+            .english: "key login is not confirmed — passwords stay open",
+        ],
+        "recipe.stopped": [.russian: "остановлено", .english: "stopped"],
     ]
 }

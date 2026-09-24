@@ -4,14 +4,21 @@ public import PhosphorCore
 /// One step of a provisioning recipe.
 public struct RecipeStep: Identifiable, Sendable, Equatable {
     public enum Skip: Sendable, Equatable {
-        /// Already satisfied on this host.
-        case alreadyDone(String)
-        /// Cannot run here at all.
-        case unsupported(String)
+        /// Already satisfied on this host: the named tool is installed.
+        case alreadyInstalled(String)
+        /// Cannot run here: no apt, so not Ubuntu or Debian.
+        case needsApt
+        /// Cannot run here: closing passwords with no key locks the door.
+        case noKeys
+
+        /// Cannot run here at all, as opposed to not being needed.
+        public var isUnsupported: Bool { self == .needsApt || self == .noKeys }
     }
 
+    /// Stable identifier; the interface names the step by it.
     public var id: String
-    public var title: String
+    /// What sets this instance apart, such as the certbot domain.
+    public var detail: String?
     /// Commands in order. Every one is shown before anything runs.
     public var commands: [String]
     /// Decides whether the step is needed on this host.
@@ -19,12 +26,12 @@ public struct RecipeStep: Identifiable, Sendable, Equatable {
 
     public init(
         id: String,
-        title: String,
+        detail: String? = nil,
         commands: [String],
         skipReason: @escaping @Sendable (HostProfile) -> Skip? = { _ in nil }
     ) {
         self.id = id
-        self.title = title
+        self.detail = detail
         self.commands = commands
         self.skipReason = skipReason
     }
@@ -69,17 +76,16 @@ public enum BuiltInRecipe {
         if let certbot = certbot(inputs) { steps.append(certbot) }
         steps.append(firewall())
         steps.append(closePasswords())
-        return Recipe(id: "base", name: "базовый", steps: steps)
+        return Recipe(id: "base", name: "base", steps: steps)
     }
 
     private static func requiresApt(_ profile: HostProfile) -> RecipeStep.Skip? {
-        profile.isProvisionable ? nil : .unsupported("нужен apt: Ubuntu или Debian")
+        profile.isProvisionable ? nil : .needsApt
     }
 
     private static func packages() -> RecipeStep {
         RecipeStep(
             id: "packages",
-            title: "обновить пакеты и unattended-upgrades",
             commands: [
                 "export DEBIAN_FRONTEND=noninteractive",
                 "apt-get update -qq",
@@ -102,7 +108,6 @@ public enum BuiltInRecipe {
         let daemon = #"{"log-driver":"json-file","log-opts":{"max-size":"10m","max-file":"3"}}"#
         return RecipeStep(
             id: "docker",
-            title: "Docker и Compose с лимитом логов",
             commands: [
                 "install -m 0755 -d /etc/apt/keyrings",
                 "curl -fsSL https://download.docker.com/linux/ubuntu/gpg"
@@ -121,7 +126,7 @@ public enum BuiltInRecipe {
             ],
             skipReason: { profile in
                 if let skip = requiresApt(profile) { return skip }
-                return profile.dockerPath != nil ? .alreadyDone("docker уже установлен") : nil
+                return profile.dockerPath != nil ? .alreadyInstalled("docker") : nil
             }
         )
     }
@@ -129,11 +134,10 @@ public enum BuiltInRecipe {
     private static func nginx() -> RecipeStep {
         RecipeStep(
             id: "nginx",
-            title: "nginx",
             commands: ["apt-get install -y -qq nginx", "systemctl enable --now nginx"],
             skipReason: { profile in
                 if let skip = requiresApt(profile) { return skip }
-                return profile.hasNginx ? .alreadyDone("nginx уже установлен") : nil
+                return profile.hasNginx ? .alreadyInstalled("nginx") : nil
             }
         )
     }
@@ -152,7 +156,7 @@ public enum BuiltInRecipe {
             + " || { echo 'DNS домена не указывает на этот сервер'; exit 1; }"
         return RecipeStep(
             id: "certbot",
-            title: "certbot · \(domain)",
+            detail: domain,
             commands: [
                 "apt-get install -y -qq certbot python3-certbot-nginx",
                 dnsCheck,
@@ -174,7 +178,6 @@ public enum BuiltInRecipe {
             + " | sed 's/^/ВНИМАНИЕ порт наружу мимо UFW: /' || true"
         return RecipeStep(
             id: "ufw",
-            title: "UFW: только 22, 80, 443",
             commands: [
                 "apt-get install -y -qq ufw",
                 "ufw --force reset",
@@ -193,7 +196,6 @@ public enum BuiltInRecipe {
     private static func closePasswords() -> RecipeStep {
         RecipeStep(
             id: "passwords",
-            title: "закрыть вход по паролю",
             commands: [
                 "mkdir -p /etc/ssh/sshd_config.d",
                 "printf 'PasswordAuthentication no\\nKbdInteractiveAuthentication no\\n"
@@ -205,7 +207,7 @@ public enum BuiltInRecipe {
             skipReason: { profile in
                 profile.authorizedKeyCount > 0
                     ? nil
-                    : .unsupported("нет ни одного ключа — закрывать пароли нельзя")
+                    : .noKeys
             }
         )
     }

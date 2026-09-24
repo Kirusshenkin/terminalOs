@@ -1,5 +1,6 @@
 public import AuthKit
 public import DockerKit
+public import ProvisionKit
 public import PhosphorCore
 public import SSHKit
 public import SessionKit
@@ -121,6 +122,32 @@ extension Strings {
         if capability.hasWatch { parts.append("Apple Watch") }
         if capability.hasPassword { parts.append(self("auth.password")) }
         return parts.joined(separator: " · ")
+    }
+
+    // MARK: Автонастройка
+
+    /// Название шага по его `id`; отличие (домен certbot) — через точку.
+    public func stepTitle(id: String, detail: String?) -> String {
+        let title = self("recipe.\(id)")
+        return detail.map { "\(title) · \($0)" } ?? title
+    }
+
+    public func stepSkip(_ skip: RecipeStep.Skip) -> String {
+        switch skip {
+        case .alreadyInstalled(let tool): format("recipe.installed", tool)
+        case .needsApt: self("recipe.needsApt")
+        case .noKeys: self("recipe.noKeys")
+        }
+    }
+
+    public func stepFailure(_ failure: StepFailure) -> String {
+        switch failure {
+        case .keyNotProven: self("recipe.keyNotProven")
+        case .stopped: self("recipe.stopped")
+        case .exitCode(let status): format("err.exitCode", "\(status)")
+        case .output(let text): text
+        case .transport(let error): transport(error)
+        }
     }
 
     /// Строка таблицы с подстановкой на место `%@`.

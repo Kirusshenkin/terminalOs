@@ -72,7 +72,7 @@ struct ProvisionRunnerTests {
         let steps = await runner.steps
         let passwords = try? #require(steps.first { $0.id == "passwords" })
         if case .failed(let reason) = passwords?.status {
-            #expect(reason.contains("ключ"))
+            #expect(reason == .keyNotProven)
         } else {
             Issue.record("шаг паролей должен отказаться, а не выполниться")
         }

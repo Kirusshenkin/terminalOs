@@ -235,6 +235,20 @@ extension Strings {
             .english: "append only · no tool exists that can edit it",
         ],
         "act.empty": [.russian: "пока ничего не происходило", .english: "nothing has happened yet"],
+
+        // Подключение ИИ
+        "ai.title": [.russian: "подключить Claude Code", .english: "register Claude Code"],
+        "ai.command": [.russian: "команда для claude code", .english: "command for claude code"],
+        "ai.copy": [.russian: "копировать", .english: "copy"],
+        "ai.copied": [.russian: "скопировано", .english: "copied"],
+        "ai.status": [.russian: "статус подключения", .english: "registration status"],
+        "ai.registered": [.russian: "подключен", .english: "registered"],
+        "ai.notRegistered": [.russian: "не подключен", .english: "not registered"],
+        "ai.note": [
+            .russian: "скопируй команду ниже и выполни в claude code — мост будет доступен для любого клиента",
+            .english: "copy the command below and run it in claude code — the bridge will be available to any client",
+        ],
+
         "clog.title": [.russian: "журнал подключений", .english: "connection log"],
         "clog.records": [.russian: "записей", .english: "records"],
         "clog.empty": [.russian: "подключений ещё не было", .english: "no connections yet"],

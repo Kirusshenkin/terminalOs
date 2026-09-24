@@ -160,8 +160,13 @@ public actor ToolRunner {
     private func listHosts() async -> ToolResult {
         let hosts = await book().hosts
         guard !hosts.isEmpty else { return ToolResult(text: "хостов нет") }
-        let lines = hosts.map { host in
-            "\(host.id.uuidString)  \(host.name)  \(host.user)@\(host.address):\(host.port)"
+        var lines: [String] = []
+        for host in hosts {
+            let session = await sessions(host.id)
+            let status = session != nil ? "connected" : "disconnected"
+            lines.append(
+                "\(host.id.uuidString)  \(host.name)  \(host.user)@\(host.address):\(host.port)  [\(status)]"
+            )
         }
         return ToolResult(text: lines.joined(separator: "\n"))
     }

@@ -130,6 +130,25 @@ struct AccessPolicyTests {
             await policy.decide(tool: write, host: host, command: "ls", now: now + .seconds(120))
                 == .allow)
     }
+
+    @Test("режим сохраняется в профиле и восстанавливается при перезагрузке")
+    func modesPersistedInProfile() throws {
+        var host = ServerHost(name: "test", address: "example.com", user: "root")
+
+        // Исходно режим не задан.
+        #expect(host.mcpMode == nil)
+
+        // Меняем режим.
+        host.mcpMode = .confirm
+        #expect(host.mcpMode == .confirm)
+
+        // Кодируем в JSON и обратно.
+        let data = try JSONEncoder().encode(host)
+        let restored = try JSONDecoder().decode(ServerHost.self, from: data)
+
+        // Режим сохранился.
+        #expect(restored.mcpMode == .confirm)
+    }
 }
 
 @Suite("Журнал действий ИИ")

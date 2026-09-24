@@ -10,6 +10,7 @@ public import SwiftUI
 public struct ActivityView: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    @State private var commandCopied = false
     private var strings: Strings { model.strings }
 
     public init(model: AppModel) { self.model = model }
@@ -65,80 +66,123 @@ public struct ActivityView: View {
     }
 
     private var access: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label2(strings("act.perHost"))
-            Text(strings("act.newHostOff"))
-                .font(style.font(11)).foregroundStyle(style.muted)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Label2(strings("act.perHost"))
+                Text(strings("act.newHostOff"))
+                    .font(style.font(11)).foregroundStyle(style.muted)
 
-            ForEach(model.book.hosts) { host in
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 8) {
-                        Text(host.name).font(style.font(12.5)).foregroundStyle(style.bright)
-                        Spacer()
-                    }
-                    HStack(spacing: 4) {
-                        ForEach(MCPMode.allCases, id: \.self) { mode in
-                            Button {
-                                Task { await model.setMCPMode(mode, for: host) }
-                            } label: {
-                                Text(mode.title)
-                                    .font(style.font(10))
-                                    .padding(.horizontal, 7).padding(.vertical, 2)
-                                    .foregroundStyle(
-                                        model.mcpModes[host.id] == mode ? style.background : style.muted
-                                    )
-                                    .background(
-                                        model.mcpModes[host.id] == mode ? tint(mode) : .clear
-                                    )
-                                    .overlay(
-                                        Rectangle().stroke(
-                                            model.mcpModes[host.id] == mode
-                                                ? tint(mode)
-                                                : style.text.opacity(0.25),
-                                            lineWidth: 1))
+                ForEach(model.book.hosts) { host in
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 8) {
+                            Text(host.name).font(style.font(12.5)).foregroundStyle(style.bright)
+                            Spacer()
+                        }
+                        HStack(spacing: 4) {
+                            ForEach(MCPMode.allCases, id: \.self) { mode in
+                                Button {
+                                    Task { await model.setMCPMode(mode, for: host) }
+                                } label: {
+                                    Text(mode.title)
+                                        .font(style.font(10))
+                                        .padding(.horizontal, 7).padding(.vertical, 2)
+                                        .foregroundStyle(
+                                            model.mcpModes[host.id] == mode ? style.background : style.muted
+                                        )
+                                        .background(
+                                            model.mcpModes[host.id] == mode ? tint(mode) : .clear
+                                        )
+                                        .overlay(
+                                            Rectangle().stroke(
+                                                model.mcpModes[host.id] == mode
+                                                    ? tint(mode)
+                                                    : style.text.opacity(0.25),
+                                                lineWidth: 1))
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
+                    .padding(.vertical, 4)
                 }
-                .padding(.vertical, 4)
-            }
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
-            VStack(alignment: .leading, spacing: 5) {
-                Label2(strings("act.howToConnect"))
-                // Три шага, а не одна команда: без режима на хосте мост
-                // отвечает отказом, и человек считает, что он сломан.
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(["act.step1", "act.step2", "act.step3"], id: \.self) { key in
-                        Text(strings(key))
-                            .font(style.font(11.5))
-                            .foregroundStyle(style.text)
+                VStack(alignment: .leading, spacing: 5) {
+                    Label2(strings("act.howToConnect"))
+                    // Три шага, а не одна команда: без режима на хосте мост
+                    // отвечает отказом, и человек считает, что он сломан.
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(["act.step1", "act.step2", "act.step3"], id: \.self) { key in
+                            Text(strings(key))
+                                .font(style.font(11.5))
+                                .foregroundStyle(style.text)
+                        }
                     }
+                    .padding(.bottom, 4)
+                    Text(model.bridgeError ?? strings("act.bridgeUp"))
+                        .font(style.font(11))
+                        .foregroundStyle(model.bridgeError == nil ? style.muted : style.warning)
+                    Text(model.bridgeCommand)
+                        .font(style.font(10.5))
+                        .foregroundStyle(style.text.opacity(0.8))
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 8).padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(style.surface)
                 }
-                .padding(.bottom, 4)
-                Text(model.bridgeError ?? strings("act.bridgeUp"))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Label2(strings("ai.title"))
+                    Text(strings("ai.note"))
+                        .font(style.font(11)).foregroundStyle(style.muted)
+
+                    HStack(spacing: 8) {
+                        Text(model.bridgeCliCommand)
+                            .font(style.font(10))
+                            .foregroundStyle(style.text.opacity(0.8))
+                            .textSelection(.enabled)
+                            .padding(.horizontal, 8).padding(.vertical, 6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(style.surface)
+
+                        Button {
+                            model.copyBridgeCommand()
+                            commandCopied = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                commandCopied = false
+                            }
+                        } label: {
+                            Text(commandCopied ? strings("ai.copied") : strings("ai.copy"))
+                                .font(style.font(11))
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .foregroundStyle(style.background)
+                                .background(commandCopied ? style.accent : style.text)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    HStack(spacing: 8) {
+                        Text(strings("ai.status"))
+                            .font(style.font(11)).foregroundStyle(style.muted)
+                        Spacer()
+                        Text(model.isPhosphorRegistered() ? strings("ai.registered") : strings("ai.notRegistered"))
+                            .font(style.font(11))
+                            .foregroundStyle(model.isPhosphorRegistered() ? style.accent : style.muted)
+                    }
+                    .padding(.top, 4)
+                }
+
+                Text(strings("act.denyNote"))
                     .font(style.font(11))
-                    .foregroundStyle(model.bridgeError == nil ? style.muted : style.warning)
-                Text(model.bridgeCommand)
-                    .font(style.font(10.5))
-                    .foregroundStyle(style.text.opacity(0.8))
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .foregroundStyle(style.warning)
+                    .padding(.horizontal, 12).padding(.vertical, 10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(style.surface)
+                    .overlay(Rectangle().stroke(style.warning.opacity(0.4), lineWidth: 1))
             }
-
-            Text(strings("act.denyNote"))
-                .font(style.font(11))
-                .foregroundStyle(style.warning)
-                .padding(.horizontal, 12).padding(.vertical, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(style.surface)
-                .overlay(Rectangle().stroke(style.warning.opacity(0.4), lineWidth: 1))
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Чем опаснее режим, тем заметнее цвет.

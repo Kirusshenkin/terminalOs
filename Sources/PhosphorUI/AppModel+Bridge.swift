@@ -64,21 +64,45 @@ extension AppModel {
 
     /// Спрашивает человека и ждёт его ответа.
     ///
-    /// Ожидание не вечное: висящий диалог, о котором все забыли, — это молчаливо
+    /// Запросы встают в очередь: раньше второй затирал первый, и ответа на
+    /// первый не ждал уже никто — вызов у ИИ-клиента висел навсегда.
+    /// Ожидание не вечное: висящий вопрос, о котором все забыли, — это молчаливо
     /// открытый доступ. Истёкшее время означает отказ.
-    private func askConfirmation(host: String, what: String) async -> Bool {
+    func askConfirmation(host: String, what: String) async -> Bool {
         await withCheckedContinuation { continuation in
             let request = ConfirmationRequest(host: host, what: what) { answer in
                 continuation.resume(returning: answer)
             }
-            mcpConfirmation = request
+            mcpQueue.append(request)
             Task { [weak self] in
-                try? await Task.sleep(for: .seconds(60))
-                guard let self, self.mcpConfirmation?.id == request.id else { return }
-                self.mcpConfirmation = nil
-                request.answer(false)
+                // Таймер здесь — верхняя граница ожидания, а не способ дождаться.
+                try? await Task.sleep(for: Self.confirmationTimeout)
+                self?.answer(request.id, allow: false)
             }
         }
+    }
+
+    static let confirmationTimeout: Duration = .seconds(60)
+
+    /// Отвечает на запрос из очереди. Второй ответ на тот же запрос ничего не
+    /// делает: продолжение возобновляется ровно один раз.
+    public func answer(_ id: ConfirmationRequest.ID, allow: Bool) {
+        guard let index = mcpQueue.firstIndex(where: { $0.id == id }) else { return }
+        let request = mcpQueue.remove(at: index)
+        request.answer(allow)
+    }
+
+    /// Отказывает всем ждущим разом — когда агент понёсся не туда.
+    public func denyAllConfirmations() {
+        for request in mcpQueue { answer(request.id, allow: false) }
+    }
+
+    /// Первый в очереди — его показывает окно поверх интерфейса.
+    public var mcpConfirmation: ConfirmationRequest? {
+        get { mcpQueue.first }
+        // Окно закрывается само после ответа кнопкой; отдельного «закрыть без
+        // ответа» у него нет, поэтому сброс здесь ничего не значит.
+        set { _ = newValue }
     }
 }
 
@@ -87,6 +111,7 @@ public struct ConfirmationRequest: Identifiable, Sendable {
     public var id = UUID()
     public var host: String
     public var what: String
+    public var asked = Date()
     public var answer: @Sendable (Bool) -> Void
 }
 

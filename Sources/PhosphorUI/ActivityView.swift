@@ -33,6 +33,43 @@ public struct ActivityView: View {
         }
     }
 
+    /// Очередь пишущих действий ИИ: что, где и когда просили.
+    ///
+    /// Окно поверх интерфейса показывает только первый запрос; здесь видны все
+    /// сразу — когда агентов несколько, отвечать по одному окну неудобно, а
+    /// «отказать всем» нужно, когда агент понёсся не туда.
+    private var queue: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Label2("\(strings("ai.queue")) · \(model.mcpQueue.count)")
+                Spacer()
+                PhButton(strings("ai.denyAll"), kind: .danger) { model.denyAllConfirmations() }
+            }
+            ForEach(model.mcpQueue) { request in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(request.host).font(style.font(12)).foregroundStyle(style.bright)
+                        Text(request.what)
+                            .font(style.font(11.5)).foregroundStyle(style.text)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(request.asked.formatted(date: .omitted, time: .standard))
+                            .font(style.font(10.5)).foregroundStyle(style.muted)
+                    }
+                    Spacer()
+                    PhButton(strings("common.allow"), kind: .primary) {
+                        model.answer(request.id, allow: true)
+                    }
+                    PhButton(strings("common.deny")) { model.answer(request.id, allow: false) }
+                }
+                .padding(8)
+                .background(style.surface)
+                .overlay(Rectangle().stroke(style.warning.opacity(0.4), lineWidth: 1))
+            }
+        }
+        .padding(.bottom, 8)
+    }
+
     /// Что вообще может быть вызвано: список закрытый и короткий намеренно.
     private var tools: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -71,6 +108,7 @@ public struct ActivityView: View {
     private var access: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                if !model.mcpQueue.isEmpty { queue }
                 Label2(strings("act.perHost"))
                 Text(strings("act.newHostOff"))
                     .font(style.font(11)).foregroundStyle(style.muted)

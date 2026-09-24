@@ -41,7 +41,8 @@ extension Strings {
             .russian: "все тома, которые никто не подключил", .english: "every volume no container uses",
         ],
         "res.pruneNetworksSubject": [
-            .russian: "все сети, к которым никто не подключён", .english: "every network with nothing attached",
+            .russian: "все сети, к которым никто не подключён",
+            .english: "every network with nothing attached",
         ],
         "res.removeImageWarning": [
             .russian: "образ придётся качать заново; контейнеры на нём удалить не даст",
@@ -52,7 +53,8 @@ extension Strings {
             .english: "untagged layers go away — the next build will take longer",
         ],
         "res.removeVolumeWarning": [
-            .russian: "данные внутри тома пропадут навсегда", .english: "the data in the volume is gone for good",
+            .russian: "данные внутри тома пропадут навсегда",
+            .english: "the data in the volume is gone for good",
         ],
         "res.pruneVolumesWarning": [
             .russian: "данные всех неподключённых томов пропадут навсегда",
@@ -116,7 +118,9 @@ extension Strings {
             .russian: "не удалось подключиться к %@ — попробуй ssh из обычного Терминала, он покажет причину",
             .english: "could not connect to %@ — try ssh from the regular Terminal, it will show why",
         ],
-        "err.exitCode": [.russian: "команда завершилась с кодом %@", .english: "the command exited with code %@"],
+        "err.exitCode": [
+            .russian: "команда завершилась с кодом %@", .english: "the command exited with code %@",
+        ],
         "err.cancelled": [.russian: "отменено", .english: "cancelled"],
         "err.done": [.russian: "готово", .english: "done"],
         "err.dockerSocket": [
@@ -167,15 +171,20 @@ extension Strings {
 
         // Автонастройка: шаги по id, причины пропуска и остановки
         "recipe.packages": [
-            .russian: "обновить пакеты и unattended-upgrades", .english: "update packages and unattended-upgrades",
+            .russian: "обновить пакеты и unattended-upgrades",
+            .english: "update packages and unattended-upgrades",
         ],
-        "recipe.docker": [.russian: "Docker и Compose с лимитом логов", .english: "Docker and Compose with a log limit"],
+        "recipe.docker": [
+            .russian: "Docker и Compose с лимитом логов", .english: "Docker and Compose with a log limit",
+        ],
         "recipe.nginx": [.russian: "nginx", .english: "nginx"],
         "recipe.certbot": [.russian: "certbot", .english: "certbot"],
         "recipe.ufw": [.russian: "UFW: только 22, 80, 443", .english: "UFW: only 22, 80, 443"],
         "recipe.passwords": [.russian: "закрыть вход по паролю", .english: "close password login"],
         "recipe.installed": [.russian: "%@ уже установлен", .english: "%@ is already installed"],
-        "recipe.needsApt": [.russian: "нужен apt: Ubuntu или Debian", .english: "needs apt: Ubuntu or Debian"],
+        "recipe.needsApt": [
+            .russian: "нужен apt: Ubuntu или Debian", .english: "needs apt: Ubuntu or Debian",
+        ],
         "recipe.noKeys": [
             .russian: "нет ни одного ключа — закрывать пароли нельзя",
             .english: "there is no key at all — closing passwords would lock you out",
@@ -198,5 +207,10 @@ extension Strings {
             .russian: "Выгрузи хосты из Termius заново или удали файл — тогда возьмётся история адресов",
             .english: "Export the hosts from Termius again, or delete the file to use the address history",
         ],
+
+        // Очередь одобрений ИИ
+        "ai.queue": [.russian: "ждут твоего ответа", .english: "waiting for your answer"],
+        "ai.queueMore": [.russian: "ещё в очереди:", .english: "more in the queue:"],
+        "ai.denyAll": [.russian: "отказать всем", .english: "deny all"],
     ]
 }

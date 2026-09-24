@@ -205,7 +205,8 @@ public final class AppModel {
     public internal(set) var bridgeError: String?
     /// Где Claude Code видит мост; `nil` — ещё не проверяли.
     public internal(set) var claudeCodeStatus: ClientRegistration.Status?
-    public var mcpConfirmation: ConfirmationRequest?
+    /// Пишущие действия ИИ, ждущие ответа человека, в порядке прихода.
+    public internal(set) var mcpQueue: [ConfirmationRequest] = []
 
     /// Ключи на выбранном сервере.
     public internal(set) var serverKeys: [AuthorizedKey] = []
@@ -406,7 +407,6 @@ public final class AppModel {
     public var bridgeCommand: String {
         #"{"mcpServers":{"phosphor":{"command":"\#(shimPath)"}}}"#
     }
-
 
     /// Куда смотрит терминал: на этот Мак или на выбранный сервер.
     public var terminalDestination: TerminalHost.Destination {

@@ -146,14 +146,15 @@ public struct RootView: View {
                 .alert(item: $model.mcpConfirmation) { request in
                     Alert(
                         title: Text("\(model.strings("alert.mcpAsks")) «\(request.host)»"),
-                        message: Text(request.what),
+                        message: Text(
+                            model.mcpQueue.count > 1
+                                ? "\(request.what)\n\n\(model.strings("ai.queueMore")) \(model.mcpQueue.count - 1)"
+                                : request.what),
                         primaryButton: .destructive(Text(model.strings("common.allow"))) {
-                            request.answer(true)
-                            model.mcpConfirmation = nil
+                            model.answer(request.id, allow: true)
                         },
                         secondaryButton: .cancel(Text(model.strings("common.deny"))) {
-                            request.answer(false)
-                            model.mcpConfirmation = nil
+                            model.answer(request.id, allow: false)
                         }
                     )
                 }
@@ -336,7 +337,8 @@ public struct RootView: View {
         guard let id = model.selectedHost,
             let host = model.book.hosts.first(where: { $0.id == id })
         else { return "TOUCH ID" }
-        return "\(host.name.uppercased()) · \(model.strings.reach(model.book.reach(for: host)).uppercased()) · TOUCH ID"
+        return
+            "\(host.name.uppercased()) · \(model.strings.reach(model.book.reach(for: host)).uppercased()) · TOUCH ID"
     }
 
     /// Содержимое выбранного раздела.

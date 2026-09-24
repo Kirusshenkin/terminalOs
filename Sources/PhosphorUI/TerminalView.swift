@@ -81,6 +81,7 @@ public struct TerminalPane: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(strings("common.close"))
+                        .help("\(strings("cmd.closePane")) ⌘W")
                     }
                 }
             }
@@ -116,6 +117,7 @@ public struct TerminalPane: View {
                     Label2(model.strings("term.split"))
                 }
                 .buttonStyle(.plain)
+                .help("\(model.strings("cmd.splitSide")) ⌘D · \(model.strings("cmd.splitBelow")) ⇧⌘D")
             }
             if !model.extraSessions.isEmpty {
                 Button {
@@ -134,6 +136,7 @@ public struct TerminalPane: View {
                     Label2(model.strings("term.unsplit"))
                 }
                 .buttonStyle(.plain)
+                .help("\(model.strings("cmd.closePane")) ⌘W")
             }
         }
         .padding(.horizontal, 4).padding(.bottom, 6)

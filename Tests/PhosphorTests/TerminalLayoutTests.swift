@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import PhosphorUI
+@testable import SSHKit
 
 @Suite("Раскладка терминала переживает перезапуск")
 struct TerminalLayoutTests {
@@ -64,6 +65,16 @@ struct TerminalLayoutTests {
         // одна и та же лента, показанная дважды.
         let taken: Set<String> = ["side", "side2", "side3"]
         #expect(!taken.contains(AppModel.nextPaneName(taken: taken)))
+    }
+
+    @Test("⌘T заводит сессию с первым свободным именем и не садится в чужую")
+    @MainActor func freshSessionNames() {
+        #expect(AppModel.freshSessionName(taken: []) == "main")
+        #expect(AppModel.freshSessionName(taken: ["main"]) == "main2")
+        #expect(AppModel.freshSessionName(taken: ["main", "main2", "main4"]) == "main3")
+        // Имя должно пройти через санитайзер tmux без изменений, иначе ⌘T
+        // открыл бы не ту сессию, что показал рейл.
+        #expect(SSHInvocation.tmuxSessionName("main12") == "main12")
     }
 
     @Test("удалённый хост уходит из раскладки вместе со своей сессией")

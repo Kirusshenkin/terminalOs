@@ -745,5 +745,41 @@ extension Strings {
         ],
         "nav.newSession": [.russian: "новая сессия", .english: "new session"],
         "nav.createSession": [.russian: "создать сессию", .english: "create session"],
+
+        // Горячие клавиши и меню
+        "cmd.settings": [.russian: "Настройки…", .english: "Settings…"],
+        "cmd.newSession": [.russian: "Новая сессия", .english: "New Session"],
+        "cmd.newHost": [.russian: "Новый хост…", .english: "New Host…"],
+        "cmd.quickConnect": [.russian: "Быстрое подключение…", .english: "Quick Connect…"],
+        "cmd.closePane": [.russian: "Закрыть панель", .english: "Close Pane"],
+        "cmd.terminalMenu": [.russian: "Терминал", .english: "Terminal"],
+        "cmd.splitSide": [.russian: "Разделить вбок", .english: "Split Side by Side"],
+        "cmd.splitBelow": [.russian: "Разделить вниз", .english: "Split Below"],
+        "cmd.nextPane": [.russian: "Следующая панель", .english: "Next Pane"],
+        "cmd.previousPane": [.russian: "Предыдущая панель", .english: "Previous Pane"],
+        "cmd.clear": [.russian: "Очистить", .english: "Clear"],
+        "cmd.find": [.russian: "Найти…", .english: "Find…"],
+        "cmd.findNext": [.russian: "Найти далее", .english: "Find Next"],
+        "cmd.findPrevious": [.russian: "Найти ранее", .english: "Find Previous"],
+        "cmd.biggerText": [.russian: "Крупнее", .english: "Bigger"],
+        "cmd.smallerText": [.russian: "Мельче", .english: "Smaller"],
+        "cmd.actualSize": [.russian: "Обычный размер", .english: "Actual Size"],
+        "cmd.reconnect": [.russian: "Переподключиться", .english: "Reconnect"],
+        "cmd.hostMenu": [.russian: "Хост", .english: "Host"],
+        "cmd.editHost": [.russian: "Править хост…", .english: "Edit Host…"],
+        "cmd.removeHost": [.russian: "Удалить хост…", .english: "Remove Host…"],
+        "cmd.lock": [.russian: "Заблокировать", .english: "Lock"],
+        "qc.placeholder": [
+            .russian: "имя, адрес, тег или user@host", .english: "name, address, tag or user@host",
+        ],
+        "qc.nothing": [.russian: "ничего не нашлось", .english: "nothing found"],
+        "qc.adHoc": [
+            .russian: "в списке нет — ⏎ подключит по адресу",
+            .english: "not in the list — ⏎ connects to the address",
+        ],
+        "qc.hint": [
+            .russian: "↑↓ выбрать · ⏎ подключиться · esc закрыть",
+            .english: "↑↓ choose · ⏎ connect · esc close",
+        ],
     ]
 }

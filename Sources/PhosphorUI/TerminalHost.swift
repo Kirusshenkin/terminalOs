@@ -68,6 +68,12 @@ public struct TerminalHost: NSViewRepresentable {
     }
 
     private func start(_ surface: TerminalSurface) {
+        Self.start(surface, at: destination)
+    }
+
+    /// Запускает шелл адреса в поверхности. Один на все пути запуска: первый
+    /// показ, возврат в раздел и переподключение по ⇧⌘R.
+    static func start(_ surface: TerminalSurface, at destination: Destination) {
         switch destination {
         case .local:
             surface.startLocalShell()
@@ -131,6 +137,18 @@ public final class TerminalSurfaces {
         start(made)
         evictOverflow()
         return made
+    }
+
+    /// Поверхность адреса, если она уже есть. Ничего не создаёт и не запускает.
+    public func existing(_ destination: TerminalHost.Destination) -> TerminalSurface? {
+        surfaces[destination]
+    }
+
+    /// Поднимает шелл в поверхности, если он умер (например, вместе с
+    /// соединением). Живой не трогает: в нём может идти работа.
+    func reviveIfDead(_ destination: TerminalHost.Destination) {
+        guard let surface = surfaces[destination], !surface.isRunning else { return }
+        TerminalHost.start(surface, at: destination)
     }
 
     /// Гасит шелл адреса и забывает поверхность: панель закрыли насовсем, и

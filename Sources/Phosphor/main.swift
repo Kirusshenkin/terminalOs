@@ -13,5 +13,6 @@ struct PhosphorApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1_240, height: 800)
+        .commands { PhosphorCommands() }
     }
 }

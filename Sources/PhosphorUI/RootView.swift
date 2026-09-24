@@ -18,6 +18,9 @@ public struct RootView: View {
         content
             .environment(\.style, model.style)
             .frame(minWidth: 1_060, minHeight: 680)
+            // Меню живёт вне окна; модель ему отдаётся только пока окно открыто
+            // и разблокировано — за замком клавиши ничего делать не должны.
+            .focusedSceneValue(\.appModel, model.isUnlocked ? model : nil)
             .modifier(Sheets(model: model))
             .modifier(Alerts(model: model))
             .task { await model.startBridge() }
@@ -54,6 +57,7 @@ public struct RootView: View {
         func body(content: Content) -> some View {
             content
                 .sheet(isPresented: $model.isAddingHost) { HostEditor(model: model) }
+                .sheet(isPresented: $model.isQuickConnectOpen) { QuickConnect(model: model) }
                 .sheet(item: $model.editingHost) { host in
                     HostEditor(model: model, editing: host)
                 }

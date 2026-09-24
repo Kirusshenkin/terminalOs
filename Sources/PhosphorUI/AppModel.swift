@@ -87,6 +87,8 @@ public final class AppModel {
     /// Что можно перенести в список: считается один раз, когда список пуст.
     public internal(set) var importOffers: [ImportOffer] = []
     public var isAddingHost = false
+    /// Окно быстрого подключения по ⇧⌘O.
+    public var isQuickConnectOpen = false
     public var isAddingGroup = false
     public var editingGroup: HostGroup?
     public var groupNameDraft = ""

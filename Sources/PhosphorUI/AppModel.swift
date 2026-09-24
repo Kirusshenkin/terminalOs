@@ -562,8 +562,8 @@ public final class AppModel {
         defer { isUnlocking = false }
 
         do {
-            try await gate.authenticate(reason: strings("auth.reason"))
-            guard await loadProfile() else { return }
+            let proof = try await gate.authenticate(reason: strings("auth.reason"))
+            guard await loadProfile(proof: proof) else { return }
             isUnlocked = true
             // Дверь открыта — можно спрашивать о сессиях, не дожидаясь, пока
             // человек сам зайдёт в раздел: метка о ждущем агенте нужна раньше.
@@ -588,10 +588,10 @@ public final class AppModel {
     /// профиль на диске есть, но не открылся: первая же правка записала бы
     /// пустышку поверх настоящих серверов. Поэтому запись разрешается, только
     /// если профиль прочитан или его действительно ещё нет.
-    private func loadProfile() async -> Bool {
+    private func loadProfile(proof: OwnerProof) async -> Bool {
         profileWritable = false
         do {
-            book = try await profiles.load(HostBook.self, reason: strings("auth.reason"))
+            book = try await profiles.load(HostBook.self, reason: strings("auth.reason"), proof: proof)
             syncForwardsFromBook()
             await syncMCPModesFromBook()
             // Список хостов на месте — значит есть с чем сверить спейсы из

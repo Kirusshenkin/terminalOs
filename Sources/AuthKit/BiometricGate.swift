@@ -40,7 +40,10 @@ public protocol BiometricGate: Sendable {
     /// что чужой процесс проскользнёт в него без нового прикосновения.
     var reuseDuration: TimeInterval { get set }
     func capability() -> GateCapability
-    func authenticate(reason: String) async throws
+    /// Спрашивает владельца; доказательство годится для чтения ключа сразу
+    /// после, без второго прикосновения.
+    @discardableResult
+    func authenticate(reason: String) async throws -> OwnerProof
 }
 
 public struct SystemBiometricGate: BiometricGate {
@@ -63,7 +66,8 @@ public struct SystemBiometricGate: BiometricGate {
         return GateCapability(hasBiometry: biometry, hasWatch: watch, hasPassword: anyMethod)
     }
 
-    public func authenticate(reason: String) async throws {
+    @discardableResult
+    public func authenticate(reason: String) async throws -> OwnerProof {
         let context = LAContext()
         context.touchIDAuthenticationAllowableReuseDuration = reuseDuration
         // Кнопку «Отмена» система подписывает сама, на языке системы.
@@ -74,6 +78,7 @@ public struct SystemBiometricGate: BiometricGate {
         }
         do {
             try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
+            return OwnerProof(context: context)
         } catch let failure as LAError where failure.code == .biometryLockout {
             throw GateError.lockedOut
         } catch {

@@ -74,10 +74,10 @@ public actor ProfileStore {
     /// человека в этом тупике значит сломать ровно ту страховку, ради которой
     /// экспорт и делался.
     private func masterKey(
-        reason: String, replacingLostKey: Bool = false
+        reason: String, replacingLostKey: Bool = false, proof: OwnerProof? = nil
     ) async throws -> SymmetricKey {
         if let cachedKey { return cachedKey }
-        if let existing = try await existingKey(reason: reason, tolerateLoss: replacingLostKey) {
+        if let existing = try await existingKey(reason: reason, tolerateLoss: replacingLostKey, proof: proof) {
             cachedKey = existing
             return existing
         }
@@ -103,10 +103,12 @@ public actor ProfileStore {
     /// вместе с набором отпечатков. Отказ человека (`denied`) не глотается
     /// никогда: нажатая «Отмена» не должна приводить к новому ключу поверх
     /// профиля, который прекрасно открылся бы со второй попытки.
-    private func existingKey(reason: String, tolerateLoss: Bool) async throws -> SymmetricKey? {
+    private func existingKey(
+        reason: String, tolerateLoss: Bool, proof: OwnerProof?
+    ) async throws -> SymmetricKey? {
         guard await store.exists(Self.masterKeyAccount) else { return nil }
         do {
-            return SymmetricKey(data: try await store.read(Self.masterKeyAccount, reason: reason))
+            return SymmetricKey(data: try await store.read(Self.masterKeyAccount, reason: reason, proof: proof))
         } catch SecretError.enrollmentChanged where tolerateLoss {
             return nil
         } catch SecretError.notFound where tolerateLoss {
@@ -115,9 +117,13 @@ public actor ProfileStore {
     }
 
     /// Decrypts and decodes the profile.
-    public func load<T: Decodable>(_ type: T.Type, reason: String) async throws -> T {
+    /// `proof` — подтверждение с экрана входа: с ним ключ читается без
+    /// второго запроса пальца.
+    public func load<T: Decodable>(
+        _ type: T.Type, reason: String, proof: OwnerProof? = nil
+    ) async throws -> T {
         guard hasProfile() else { throw ProfileStoreError.empty }
-        let key = try await masterKey(reason: reason)
+        let key = try await masterKey(reason: reason, proof: proof)
         let sealed = try Data(contentsOf: url)
         let plain = try Vault(key: key).open(sealed)
         return try JSONDecoder().decode(T.self, from: plain)

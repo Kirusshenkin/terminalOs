@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Testing
 
 @testable import AuthKit
@@ -177,5 +178,56 @@ struct EnrollmentTests {
         #expect(text.contains("Touch ID"))
         #expect(text.contains("экспорт"))
         #expect(strings.describe(ProfileStoreError.enrollmentChanged) == text)
+    }
+}
+
+/// Хранилище, которое запоминает, пришло ли подтверждение со входа.
+private actor ProofSpyStore: SecretStore {
+    private var items: [String: Data] = [:]
+    private(set) var readsWithProof = 0
+    private(set) var readsWithoutProof = 0
+
+    func read(_ account: String, reason: String) async throws -> Data {
+        try await read(account, reason: reason, proof: nil)
+    }
+
+    func read(_ account: String, reason: String, proof: OwnerProof?) async throws -> Data {
+        if proof == nil { readsWithoutProof += 1 } else { readsWithProof += 1 }
+        guard let data = items[account] else { throw SecretError.notFound }
+        return data
+    }
+
+    func write(_ data: Data, account: String) throws { items[account] = data }
+    func delete(_ account: String) throws { items[account] = nil }
+    func exists(_ account: String) -> Bool { items[account] != nil }
+}
+
+@Suite("Один палец на вход")
+struct SingleTouchTests {
+    private struct Sample: Codable, Equatable { var hosts: [String] }
+
+    @Test("подтверждение со входа доходит до чтения ключа — второго запроса нет")
+    func proofReachesKeyRead() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("proof-\(UUID().uuidString).phosphor")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let spy = ProofSpyStore()
+        try await ProfileStore(store: spy, url: url).save(Sample(hosts: ["a"]), reason: "тест")
+
+        // Новый экземпляр — как новый запуск: ключа в памяти нет.
+        let proof = OwnerProof(context: LAContext())
+        let loaded = try await ProfileStore(store: spy, url: url)
+            .load(Sample.self, reason: "тест", proof: proof)
+        #expect(loaded == Sample(hosts: ["a"]))
+        #expect(await spy.readsWithProof == 1)
+        #expect(await spy.readsWithoutProof == 0)
+    }
+
+    @Test("подтверждение стареет: через окно оно уже ничего не открывает")
+    func proofExpires() {
+        let start = ContinuousClock.now
+        let proof = OwnerProof(context: LAContext(), confirmedAt: start)
+        #expect(proof.isFresh(within: .seconds(30), now: start + .seconds(5)))
+        #expect(!proof.isFresh(within: .seconds(30), now: start + .seconds(31)))
     }
 }

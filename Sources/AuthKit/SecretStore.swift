@@ -24,6 +24,8 @@ public enum SecretError: Error, Equatable {
 /// is a key store, not a database.
 public protocol SecretStore: Sendable {
     func read(_ account: String, reason: String) async throws -> Data
+    /// Чтение с уже полученным подтверждением владельца — без второго запроса.
+    func read(_ account: String, reason: String, proof: OwnerProof?) async throws -> Data
     func write(_ data: Data, account: String) async throws
     func delete(_ account: String) async throws
     func exists(_ account: String) async -> Bool
@@ -36,6 +38,11 @@ public protocol SecretStore: Sendable {
 public extension SecretStore {
     /// Хранилищу без биометрии нечему меняться.
     func enrollmentChanged(_ account: String) async -> Bool { false }
+
+    /// Хранилищу без замка доказательство ни к чему.
+    func read(_ account: String, reason: String, proof: OwnerProof?) async throws -> Data {
+        try await read(account, reason: reason)
+    }
 }
 
 /// Keychain-backed store where every item is gated by the system.
@@ -84,9 +91,21 @@ public struct KeychainSecretStore: SecretStore {
         return control
     }
 
+    /// Сколько после входа подтверждение считается свежим для записи под
+    /// замком приложения. Хватает на чтение ключа сразу после экрана входа.
+    static let proofWindow: Duration = .seconds(30)
+
     public func read(_ account: String, reason: String) async throws -> Data {
-        if isAppGated(account) { try await confirmOwner(reason: reason) }
-        let context = LAContext()
+        try await read(account, reason: reason, proof: nil)
+    }
+
+    public func read(_ account: String, reason: String, proof: OwnerProof?) async throws -> Data {
+        if isAppGated(account), !(proof?.isFresh(within: Self.proofWindow) ?? false) {
+            try await confirmOwner(reason: reason)
+        }
+        // Под системным замком тот же контекст, что прошёл проверку на входе:
+        // связка ключей примет его без нового диалога.
+        let context = proof?.context ?? LAContext()
         context.localizedReason = reason
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

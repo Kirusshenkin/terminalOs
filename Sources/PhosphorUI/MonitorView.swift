@@ -104,7 +104,7 @@ public struct MonitorView: View {
     /// Верхняя строка: то, что хочется знать, не читая ничего дальше.
     private var summary: some View {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
-            stat(strings("mon.uptime"), snapshot.map { ByteFormat.duration(seconds: $0.uptime) } ?? "—")
+            stat(strings("mon.uptime"), snapshot.map { strings.duration(seconds: $0.uptime) } ?? "—")
             stat(
                 "load",
                 snapshot.map {
@@ -191,7 +191,7 @@ public struct MonitorView: View {
                 HStack {
                     Text(
                         snapshot.map {
-                            "\(ByteFormat.size($0.memoryUsed)) \(strings("common.of")) \(ByteFormat.size($0.memoryTotal))"
+                            "\(strings.size($0.memoryUsed)) \(strings("common.of")) \(strings.size($0.memoryTotal))"
                         } ?? "—")
                     Spacer()
                     Text(swapLine).foregroundStyle(swapUsed > 0.01 ? style.warning : style.muted)
@@ -227,8 +227,8 @@ public struct MonitorView: View {
                     HStack {
                         Text(flow.name).foregroundStyle(style.muted)
                         Spacer()
-                        Text("↓ \(ByteFormat.size(Int64(flow.down)))\(strings("common.perSec"))")
-                        Text("↑ \(ByteFormat.size(Int64(flow.up)))\(strings("common.perSec"))")
+                        Text("↓ \(strings.size(Int64(flow.down)))\(strings("common.perSec"))")
+                        Text("↑ \(strings.size(Int64(flow.up)))\(strings("common.perSec"))")
                     }
                     .font(style.font(11.5))
                     .foregroundStyle(style.text)
@@ -246,14 +246,14 @@ public struct MonitorView: View {
     private var swapLine: String {
         guard let snapshot else { return "swap —" }
         guard snapshot.swapTotal > 0 else { return strings("mon.noSwap") }
-        return "swap \(ByteFormat.size(snapshot.swapTotal - snapshot.swapFree))"
-            + " \(strings("common.of")) \(ByteFormat.size(snapshot.swapTotal))"
+        return "swap \(strings.size(snapshot.swapTotal - snapshot.swapFree))"
+            + " \(strings("common.of")) \(strings.size(snapshot.swapTotal))"
     }
 
     private var disks: [(String, Double, String)] {
         guard let snapshot, !snapshot.filesystems.isEmpty else { return [] }
         return snapshot.filesystems.map {
-            ($0.mount, $0.usage, "\(strings("mon.free")) \(ByteFormat.size($0.available))")
+            ($0.mount, $0.usage, "\(strings("mon.free")) \(strings.size($0.available))")
         }
     }
 
@@ -270,8 +270,8 @@ public struct MonitorView: View {
                     HStack {
                         Text(flow.name).foregroundStyle(style.muted)
                         Spacer()
-                        Text("↓ \(ByteFormat.size(Int64(flow.down)))\(strings("common.perSec"))")
-                        Text("↑ \(ByteFormat.size(Int64(flow.up)))\(strings("common.perSec"))")
+                        Text("↓ \(strings.size(Int64(flow.down)))\(strings("common.perSec"))")
+                        Text("↑ \(strings.size(Int64(flow.up)))\(strings("common.perSec"))")
                     }
                     .font(style.font(11.5))
                     .foregroundStyle(style.text)
@@ -314,7 +314,7 @@ public struct MonitorView: View {
                         Spacer()
                         Text(stats.map { ByteFormat.percent($0.cpu) } ?? "—")
                             .foregroundStyle(style.muted)
-                        Text(stats.map { ByteFormat.size($0.memoryUsed) } ?? "—")
+                        Text(stats.map { strings.size($0.memoryUsed) } ?? "—")
                             .foregroundStyle(style.muted)
                     }
                     .font(style.font(11.5))

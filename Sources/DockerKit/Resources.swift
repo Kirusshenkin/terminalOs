@@ -11,7 +11,7 @@ public struct DockerImage: Identifiable, Sendable, Equatable {
 
     /// Образ без имени: остаётся после пересборки и занимает место молча.
     public var isDangling: Bool { repository == "<none>" || tag == "<none>" }
-    public var name: String { isDangling ? "<без имени>" : "\(repository):\(tag)" }
+    public var name: String { "\(repository):\(tag)" }
 }
 
 /// Том с данными.

@@ -95,7 +95,7 @@ public struct DockerView: View {
                         HStack(spacing: 6) {
                             Text(container.image).lineLimit(1)
                             if let stats = model.sessionState.stats[container.name] {
-                                Text("· \(ByteFormat.size(stats.memoryUsed))")
+                                Text("· \(strings.size(stats.memoryUsed))")
                             }
                         }
                         .font(style.font(10))
@@ -135,7 +135,7 @@ public struct DockerView: View {
                     // Предлагаем только то, что имеет смысл в этом состоянии:
                     // команда, которую демон всё равно отвергнет, — это не кнопка.
                     ForEach(ContainerAction.available(for: container.state), id: \.self) { action in
-                        PhButton(action.title, kind: action.isDestructive ? .danger : .normal) {
+                        PhButton(strings.containerAction(action), kind: action.isDestructive ? .danger : .normal) {
                             model.request(action, on: container)
                         }
                     }
@@ -292,8 +292,8 @@ public struct DockerView: View {
         let memory: String =
             stats.map {
                 $0.memoryLimit > 0
-                    ? "\(ByteFormat.size($0.memoryUsed)) \(strings("common.of")) \(ByteFormat.size($0.memoryLimit))"
-                    : ByteFormat.size($0.memoryUsed)
+                    ? "\(strings.size($0.memoryUsed)) \(strings("common.of")) \(strings.size($0.memoryLimit))"
+                    : strings.size($0.memoryUsed)
             } ?? "—"
         let share: String =
             stats.map {
@@ -303,7 +303,7 @@ public struct DockerView: View {
         return [
             ("id", String(container.id.prefix(12))),
             (strings("dock.image"), container.image),
-            (strings("dock.state"), container.state.title),
+            (strings("dock.state"), strings.containerState(container.state)),
             (strings("dock.status"), container.status.isEmpty ? "—" : container.status),
             (strings("dock.ports"), container.ports.isEmpty ? strings("dock.noPorts") : container.ports),
             (strings("dock.stack"), container.project ?? strings("dock.noStack")),

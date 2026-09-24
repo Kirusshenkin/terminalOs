@@ -215,7 +215,7 @@ public actor ToolRunner {
         return ToolResult(
             text: keys.map { key in
                 let state = key.isEnabled ? "" : "  (выключен)"
-                let weak = key.weakness.map { "  ⚠︎ \($0)" } ?? ""
+                let weak = key.weakness.map { "  ⚠︎ \(Self.describe($0))" } ?? ""
                 return "\(key.fingerprint)  \(key.algorithm)  \(key.comment ?? "—")\(state)\(weak)"
             }.joined(separator: "\n"))
     }

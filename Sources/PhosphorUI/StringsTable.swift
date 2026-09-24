@@ -781,5 +781,6 @@ extension Strings {
             .russian: "↑↓ выбрать · ⏎ подключиться · esc закрыть",
             .english: "↑↓ choose · ⏎ connect · esc close",
         ],
+
     ]
 }

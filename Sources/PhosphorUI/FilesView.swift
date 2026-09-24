@@ -177,7 +177,7 @@ public struct FilesView: View {
                     .font(style.font(11)).foregroundStyle(style.muted)
                     .frame(width: 120, alignment: .leading)
 
-                Text(file.isDirectory ? "—" : ByteFormat.size(file.size))
+                Text(file.isDirectory ? "—" : strings.size(file.size))
                     .font(style.font(11)).foregroundStyle(style.muted)
                     .frame(width: 80, alignment: .trailing)
             }

@@ -80,7 +80,7 @@ let package = Package(
         // MCP tool catalogue, access policy and audit trail.
         .target(
             name: "MCPBridge",
-            dependencies: ["PhosphorCore", "HostsKit", "DockerKit", "SessionKit"],
+            dependencies: ["PhosphorCore", "HostsKit", "DockerKit", "KeysKit", "SessionKit"],
             swiftSettings: strict
         ),
 

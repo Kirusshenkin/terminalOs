@@ -165,7 +165,7 @@ public struct TerminalPane: View {
         case .probing: strings("term.probing")
         case .ready:
             model.sessionState.profile.map {
-                "\($0.osName) \($0.osVersion) · \(strings("term.uptime")) \(ByteFormat.duration(seconds: $0.uptimeSeconds))"
+                "\($0.osName) \($0.osVersion) · \(strings("term.uptime")) \(strings.duration(seconds: $0.uptimeSeconds))"
             }
         case .failed(let reason): reason
         }

@@ -10,14 +10,6 @@ public enum Reach: Codable, Hashable, Sendable {
     case socks(host: String, port: Int)
     /// Through another saved host acting as a bastion.
     case jump(hostID: ServerHost.ID)
-
-    public var summary: String {
-        switch self {
-        case .direct: "напрямую"
-        case .socks(let host, let port): "прокси \(host):\(port)"
-        case .jump: "через бастион"
-        }
-    }
 }
 
 /// How strictly the biometric lock applies to a host.
@@ -25,14 +17,6 @@ public enum GuardLevel: String, Codable, CaseIterable, Sendable {
     case never  // не спрашивать
     case dangerous  // при опасных действиях
     case always  // при подключении
-
-    public var title: String {
-        switch self {
-        case .never: "не спрашивать"
-        case .dangerous: "при опасных действиях"
-        case .always: "при подключении"
-        }
-    }
 }
 
 /// What an MCP client may do with a host. New hosts start disabled on purpose.
@@ -41,15 +25,6 @@ public enum MCPMode: String, Codable, CaseIterable, Sendable {
     case readOnly
     case confirm
     case full
-
-    public var title: String {
-        switch self {
-        case .disabled: "выключено"
-        case .readOnly: "только чтение"
-        case .confirm: "с подтверждением"
-        case .full: "полный"
-        }
-    }
 }
 
 /// A saved server.

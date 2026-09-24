@@ -34,7 +34,7 @@ public struct ConnectionLogView: View {
                                     Text(event.address).foregroundStyle(style.muted)
                                 }
                                 Text(
-                                    "\(event.title) · \(event.reach)"
+                                    "\(strings.connectionEvent(event.kind)) · \(event.reach)"
                                         + (event.detail.map { " · \($0)" } ?? "")
                                 )
                                 .font(style.font(10.5)).foregroundStyle(style.muted)

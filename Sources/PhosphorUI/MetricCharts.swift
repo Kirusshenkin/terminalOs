@@ -137,6 +137,6 @@ struct MetricCharts: View {
     }
 
     private func rate(_ bytesPerSecond: Double) -> String {
-        "\(ByteFormat.size(Int64(bytesPerSecond)))\(strings("common.perSec"))"
+        "\(strings.size(Int64(bytesPerSecond)))\(strings("common.perSec"))"
     }
 }

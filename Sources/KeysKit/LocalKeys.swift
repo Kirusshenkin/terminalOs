@@ -32,11 +32,8 @@ public struct LocalKey: Identifiable, Hashable, Sendable {
         self.hasPrivate = hasPrivate
     }
 
-    public var weakness: String? {
-        if algorithm == "ssh-dss" { return "DSA — устарел и небезопасен" }
-        if algorithm == "ssh-rsa", let bits, bits < 3072 { return "RSA \(bits) бит — короче 3072" }
-        return nil
-    }
+    /// Keys we would rather you replaced.
+    public var weakness: KeyWeakness? { KeyWeakness(algorithm: algorithm, bits: bits) }
 }
 
 public enum LocalKeys {

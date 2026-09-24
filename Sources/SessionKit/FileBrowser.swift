@@ -31,11 +31,17 @@ public struct RemoteFile: Identifiable, Sendable, Equatable {
 
     public var id: String { name }
 
-    public var kind: String {
-        if isSymlink { return "ссылка" }
-        if isDirectory { return "папка" }
-        return (name as NSString).pathExtension.isEmpty
-            ? "файл" : (name as NSString).pathExtension
+    public enum Kind: Sendable, Equatable {
+        case symlink, directory
+        /// Обычный файл; расширение — если есть, оно и есть подпись.
+        case file(extension: String?)
+    }
+
+    public var kind: Kind {
+        if isSymlink { return .symlink }
+        if isDirectory { return .directory }
+        let ext = (name as NSString).pathExtension
+        return .file(extension: ext.isEmpty ? nil : ext)
     }
 }
 

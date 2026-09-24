@@ -39,7 +39,7 @@ extension AppModel {
         await connections.record(
             ConnectionEvent(
                 hostName: host.name, address: "\(host.user)@\(host.address):\(host.port)",
-                reach: book.reach(for: host).summary, kind: kind, detail: detail
+                reach: strings.reach(book.reach(for: host)), kind: kind, detail: detail
             ))
         connectionEvents = await connections.readAll()
     }

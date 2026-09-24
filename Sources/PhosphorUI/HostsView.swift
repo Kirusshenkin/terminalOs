@@ -303,12 +303,12 @@ public struct HostsView: View {
     /// Вторая строка живёт, только когда есть что сказать.
     private func cardDetails(_ host: ServerHost, profile: HostProfile?) -> some View {
         HStack(spacing: 10) {
-            detail(icon: "→", text: model.book.reach(for: host).summary)
+            detail(icon: "→", text: strings.reach(model.book.reach(for: host)))
             if let group = model.book.group(for: host) {
                 detail(icon: "■", text: group.name)
             }
             if let profile {
-                detail(icon: "↑", text: ByteFormat.duration(seconds: profile.uptimeSeconds))
+                detail(icon: "↑", text: strings.duration(seconds: profile.uptimeSeconds))
                 if profile.containerCount > 0 {
                     detail(icon: "▣", text: "\(profile.containerCount)")
                 }

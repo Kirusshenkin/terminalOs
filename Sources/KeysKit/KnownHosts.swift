@@ -18,10 +18,6 @@ public struct KnownHost: Identifiable, Hashable, Sendable {
         let digest = SHA256.hash(data: blob)
         return "SHA256:" + Data(digest).base64EncodedString().replacingOccurrences(of: "=", with: "")
     }
-
-    public var displayName: String {
-        host ?? "имя скрыто (запись хеширована)"
-    }
 }
 
 /// Читает и правит `~/.ssh/known_hosts`.

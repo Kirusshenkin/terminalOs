@@ -64,7 +64,7 @@ public struct KeysView: View {
                             .font(style.font(10)).foregroundStyle(style.warning)
                     }
                     if let weakness = key.weakness {
-                        Text(weakness).font(style.font(10)).foregroundStyle(style.warning)
+                        Text(strings.keyWeakness(weakness)).font(style.font(10)).foregroundStyle(style.warning)
                     }
                 }
                 .padding(.vertical, 4)
@@ -131,7 +131,7 @@ public struct KeysView: View {
                         .foregroundStyle(key.isEnabled ? style.text : style.muted)
                 }
                 if let weakness = key.weakness {
-                    Text(weakness).font(style.font(10.5)).foregroundStyle(style.warning)
+                    Text(strings.keyWeakness(weakness)).font(style.font(10.5)).foregroundStyle(style.warning)
                 } else if key.fingerprint == currentFingerprint {
                     Text(strings("keys.current")).font(style.font(10.5)).foregroundStyle(style.muted)
                 }

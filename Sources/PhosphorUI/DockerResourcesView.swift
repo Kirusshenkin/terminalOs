@@ -38,7 +38,7 @@ public struct DockerResourcesView: View {
                 Text(message).font(style.font(11.5)).foregroundStyle(style.muted).lineLimit(1)
             }
             if model.session != nil, let prune = prune {
-                PhButton(prune.title) { model.request(prune) }
+                PhButton(strings.resourceTitle(prune)) { model.request(prune) }
             }
             if model.session == nil {
                 Text(strings("files.noLink")).font(style.font(11.5)).foregroundStyle(style.muted)
@@ -75,7 +75,7 @@ public struct DockerResourcesView: View {
             ForEach(model.images) { image in
                 HStack(spacing: 10) {
                     HStack(spacing: 6) {
-                        Text(image.name)
+                        Text(strings.imageName(image))
                             .foregroundStyle(image.isDangling ? style.warning : style.text)
                             .lineLimit(1)
                         // Безымянные образы остаются после пересборки и молча
@@ -90,7 +90,7 @@ public struct DockerResourcesView: View {
                         .foregroundStyle(style.muted).frame(width: 120, alignment: .leading)
                     Text(image.created)
                         .foregroundStyle(style.muted).frame(width: 140, alignment: .leading)
-                    Text(ByteFormat.size(image.size))
+                    Text(strings.size(image.size))
                         .foregroundStyle(style.text).frame(width: 90, alignment: .trailing)
                 }
                 .font(style.font(12))
@@ -103,7 +103,7 @@ public struct DockerResourcesView: View {
                     Button(strings("res.copyID")) { copy(image.id) }
                     Divider()
                     Button(strings("res.removeImage"), role: .destructive) {
-                        model.request(.removeImage(id: image.id, name: image.name))
+                        model.request(.removeImage(id: image.id, name: strings.imageName(image)))
                     }
                 }
             }

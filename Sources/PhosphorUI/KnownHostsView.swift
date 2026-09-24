@@ -48,7 +48,7 @@ public struct KnownHostsView: View {
     private func row(_ entry: KnownHost) -> some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(entry.displayName)
+                Text(strings.knownHostName(entry))
                     .foregroundStyle(entry.isHashed ? style.muted : style.text)
                     .lineLimit(1)
                 if let marker = entry.marker {

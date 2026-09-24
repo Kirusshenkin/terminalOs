@@ -107,9 +107,11 @@ public struct RootView: View {
                 // без имени — это как раз то, о чём потом жалеют.
                 .alert(item: $model.pendingResource) { pending in
                     Alert(
-                        title: Text("\(pending.action.title) «\(pending.action.subject)»?"),
-                        message: Text(pending.action.warning),
-                        primaryButton: .destructive(Text(pending.action.title)) {
+                        title: Text(
+                            "\(model.strings.resourceTitle(pending.action)) "
+                                + "«\(model.strings.resourceSubject(pending.action))»?"),
+                        message: Text(model.strings.resourceWarning(pending.action)),
+                        primaryButton: .destructive(Text(model.strings.resourceTitle(pending.action))) {
                             model.confirm(pending)
                         },
                         secondaryButton: .cancel(Text(model.strings("common.cancel")))
@@ -117,9 +119,10 @@ public struct RootView: View {
                 }
                 .alert(item: $model.pendingAction) { pending in
                     Alert(
-                        title: Text("\(pending.action.title) «\(pending.container.name)»?"),
+                        title: Text(
+                            "\(model.strings.containerAction(pending.action)) «\(pending.container.name)»?"),
                         message: Text(pending.container.image),
-                        primaryButton: .destructive(Text(pending.action.title)) {
+                        primaryButton: .destructive(Text(model.strings.containerAction(pending.action))) {
                             model.confirm(pending)
                         },
                         secondaryButton: .cancel(Text(model.strings("common.cancel")))
@@ -330,7 +333,7 @@ public struct RootView: View {
         guard let id = model.selectedHost,
             let host = model.book.hosts.first(where: { $0.id == id })
         else { return "TOUCH ID" }
-        return "\(host.name.uppercased()) · \(model.book.reach(for: host).summary.uppercased()) · TOUCH ID"
+        return "\(host.name.uppercased()) · \(model.strings.reach(model.book.reach(for: host)).uppercased()) · TOUCH ID"
     }
 
     /// Содержимое выбранного раздела.

@@ -86,7 +86,7 @@ public struct ActivityView: View {
                                 Button {
                                     Task { await model.setMCPMode(mode, for: host) }
                                 } label: {
-                                    Text(mode.title)
+                                    Text(strings.mcpMode(mode))
                                         .font(style.font(10))
                                         .padding(.horizontal, 7).padding(.vertical, 2)
                                         .foregroundStyle(

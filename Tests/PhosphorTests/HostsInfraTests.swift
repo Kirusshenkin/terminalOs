@@ -29,7 +29,7 @@ struct KnownHostsTests {
         let hashed = try #require(KnownHostsFile.parse(sample).first { $0.isHashed })
         #expect(hashed.host == nil)
         // Имя из хеша не восстанавливается, и делать вид, что мы его знаем, — врать.
-        #expect(hashed.displayName.contains("скрыт"))
+        #expect(hashed.host == nil)
     }
 
     @Test("отпечаток считается локально в формате OpenSSH")

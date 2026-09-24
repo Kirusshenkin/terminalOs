@@ -69,11 +69,7 @@ public struct AuthorizedKey: Identifiable, Hashable, Sendable {
     }
 
     /// Keys we would rather you replaced.
-    public var weakness: String? {
-        if algorithm == "ssh-dss" { return "DSA — устарел и небезопасен" }
-        if algorithm == "ssh-rsa", let bits, bits < 3072 { return "RSA \(bits) бит — короче 3072" }
-        return nil
-    }
+    public var weakness: KeyWeakness? { KeyWeakness(algorithm: algorithm, bits: bits) }
 }
 
 /// Parses and rewrites `authorized_keys` without losing anything it does not

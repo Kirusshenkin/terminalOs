@@ -10,18 +10,6 @@ public struct Container: Identifiable, Hashable, Sendable {
         // `state == .running`, и рядом с `isUnhealthy` — настоящим здоровьем из
         // `docker inspect` — читался как второе мнение о том же самом.
         // public var isHealthyLooking: Bool { self == .running }
-
-        public var title: String {
-            switch self {
-            case .running: "работает"
-            case .exited: "остановлен"
-            case .paused: "на паузе"
-            case .restarting: "перезапускается"
-            case .created: "создан"
-            case .dead: "мёртв"
-            case .unknown: "неизвестно"
-            }
-        }
     }
 
     public var id: String

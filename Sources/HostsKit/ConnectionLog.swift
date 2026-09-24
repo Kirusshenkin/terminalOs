@@ -31,14 +31,6 @@ public struct ConnectionEvent: Codable, Identifiable, Sendable, Equatable {
         self.kind = kind
         self.detail = detail
     }
-
-    public var title: String {
-        switch kind {
-        case .connected: "подключение"
-        case .disconnected: "отключение"
-        case .failed: "не удалось"
-        }
-    }
 }
 
 /// Хранит историю подключений построчным JSON.

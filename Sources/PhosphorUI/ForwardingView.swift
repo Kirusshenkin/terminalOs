@@ -62,7 +62,7 @@ public struct ForwardingView: View {
                         Button {
                             direction = item
                         } label: {
-                            Text(item.title)
+                            Text(strings.forwardDirection(item))
                                 .font(style.font(11))
                                 .padding(.horizontal, 9).padding(.vertical, 3)
                                 .foregroundStyle(direction == item ? style.background : style.muted)
@@ -113,8 +113,8 @@ public struct ForwardingView: View {
             Text(running ? "●" : "○")
                 .foregroundStyle(running ? style.accent : style.muted)
             VStack(alignment: .leading, spacing: 2) {
-                Text(forward.summary).foregroundStyle(style.text)
-                Text(forward.direction.title).font(style.font(10.5)).foregroundStyle(style.muted)
+                Text(strings.forwardSummary(forward)).foregroundStyle(style.text)
+                Text(strings.forwardDirection(forward.direction)).font(style.font(10.5)).foregroundStyle(style.muted)
             }
             Spacer()
             Toggle(

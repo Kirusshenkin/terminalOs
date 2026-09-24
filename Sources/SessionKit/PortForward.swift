@@ -11,13 +11,6 @@ public struct PortForward: Identifiable, Codable, Hashable, Sendable {
         /// Порт на сервере ведёт ко мне: `-R`.
         case remote
 
-        public var title: String {
-            switch self {
-            case .local: "локальный"
-            case .remote: "удалённый"
-            }
-        }
-
         public var flag: String { self == .local ? "-L" : "-R" }
     }
 
@@ -52,12 +45,6 @@ public struct PortForward: Identifiable, Codable, Hashable, Sendable {
         direction == .local
             ? "127.0.0.1:\(listenPort):\(targetHost):\(targetPort)"
             : "\(listenPort):\(targetHost):\(targetPort)"
-    }
-
-    public var summary: String {
-        direction == .local
-            ? "localhost:\(listenPort) → \(targetHost):\(targetPort)"
-            : "сервер:\(listenPort) → \(targetHost):\(targetPort)"
     }
 }
 

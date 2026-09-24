@@ -36,6 +36,8 @@ public struct Appearance: Codable, Sendable, Equatable {
     /// безопаснее, но чаще прикладывать палец. Необязательное: профиль прошлой
     /// версии читается без миграции.
     public var biometricReuseSeconds: Double?
+    /// ⌃` вызывает окно из любого приложения. Необязательное — как и прочие.
+    public var summonKey: Bool?
 
     public init(
         themeID: String = BuiltInThemes.phosphor.id,
@@ -54,7 +56,8 @@ public struct Appearance: Codable, Sendable, Equatable {
         motion: String? = nil,
         connectMotion: String? = nil,
         logMotion: String? = nil,
-        biometricReuseSeconds: Double? = nil
+        biometricReuseSeconds: Double? = nil,
+        summonKey: Bool? = nil
     ) {
         self.themeID = themeID
         self.language = language
@@ -73,6 +76,7 @@ public struct Appearance: Codable, Sendable, Equatable {
         self.connectMotion = connectMotion
         self.logMotion = logMotion
         self.biometricReuseSeconds = biometricReuseSeconds
+        self.summonKey = summonKey
     }
 }
 

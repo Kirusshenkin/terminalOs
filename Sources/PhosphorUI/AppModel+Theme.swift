@@ -43,4 +43,29 @@ extension AppModel {
             themeImportNote = "\(strings("theme.unreadable")) \(error.localizedDescription)"
         }
     }
+
+    /// Сохраняет внешний вид. Вызывается из представлений при изменении.
+    public func saveAppearance() {
+        appearance.save(
+            Appearance(
+                themeID: themeID,
+                language: language.rawValue,
+                pet: pet.rawValue,
+                eggsEnabled: eggs.enabled,
+                fontSize: fontSize,
+                ligatures: ligatures,
+                lineHeight: lineHeight,
+                scanlines: scanlines,
+                glow: glow,
+                vignette: vignette,
+                petVisible: petVisible,
+                pollSeconds: pollSeconds,
+                logLines: logLines,
+                motion: motion.rawValue,
+                connectMotion: connectMotion.rawValue,
+                logMotion: logMotion.rawValue,
+                biometricReuseSeconds: biometricReuseSeconds,
+                summonKey: summonKey
+            ))
+    }
 }

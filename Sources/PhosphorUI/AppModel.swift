@@ -62,6 +62,9 @@ public final class AppModel {
     public var connectMotion = ConnectMotion.sweep
     public var logMotion = LogMotion.rise
     public var petVisible = true
+    /// ⌃` из любого приложения; см. `GlobalHotKey`.
+    public var summonKey = false
+    public var summonKeyTaken = false
     public var pollSeconds: Double = 4
     public var logLines = 5_000
     public var scanlines: Double?
@@ -491,7 +494,7 @@ public final class AppModel {
         book.search(query, groupID: selectedGroup)
     }
 
-    private let appearance = AppearanceStore()
+    let appearance = AppearanceStore()
     var gate: any BiometricGate
     let profiles: ProfileStore
     /// Отложенное сохранение: правки копятся и уходят одной записью.
@@ -520,6 +523,8 @@ public final class AppModel {
         glow = saved.glow
         vignette = saved.vignette
         petVisible = saved.petVisible ?? true
+        summonKey = saved.summonKey ?? false
+        GlobalHotKey.shared.set(enabled: summonKey)
         pollSeconds = saved.pollSeconds ?? 4
         logLines = saved.logLines ?? 5_000
         logs = RingBuffer(capacity: logLines)
@@ -529,30 +534,6 @@ public final class AppModel {
         // tmux на этом Маке ищем сразу: от ответа зависит, обещает ли рейл
         // локальные сессии или честно говорит, что их не будет.
         localTmuxPath = LocalTmux.find()
-    }
-
-    /// Сохраняет внешний вид. Вызывается из представлений при изменении.
-    public func saveAppearance() {
-        appearance.save(
-            Appearance(
-                themeID: themeID,
-                language: language.rawValue,
-                pet: pet.rawValue,
-                eggsEnabled: eggs.enabled,
-                fontSize: fontSize,
-                ligatures: ligatures,
-                lineHeight: lineHeight,
-                scanlines: scanlines,
-                glow: glow,
-                vignette: vignette,
-                petVisible: petVisible,
-                pollSeconds: pollSeconds,
-                logLines: logLines,
-                motion: motion.rawValue,
-                connectMotion: connectMotion.rawValue,
-                logMotion: logMotion.rawValue,
-                biometricReuseSeconds: biometricReuseSeconds
-            ))
     }
 
     /// Проверяет человека и открывает профиль.

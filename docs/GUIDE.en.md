@@ -162,8 +162,10 @@ Other keys are in the menu bar, next to the action (**File**, **Terminal**,
 | ⌘N, ⌘E, ⌘⌫ | new host, edit open, delete open (with confirmation) |
 | ⌘, | settings |
 | ⌃⌘L | lock |
+| ⌃` | bring Phosphor forward from any app (turn on in settings → behaviour) |
 
-Phosphor does not use ⌃-combos, ⌥ or ⌘←/→ — they go to the terminal.
+Inside the window Phosphor does not use ⌃-combos, ⌥ or ⌘←/→ — they go to the terminal.
+Drag the line between panes to resize them; double-click it to split in half again.
 
 **Provisioning changes the server:** installs packages, Docker and nginx,
 turns on firewall and closes password login. Run it only on a fresh server

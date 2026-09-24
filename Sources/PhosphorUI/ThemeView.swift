@@ -113,6 +113,15 @@ public struct ThemeView: View {
                 Text(strings("set.petNote"))
                     .font(style.font(11)).foregroundStyle(style.muted)
 
+                Label2(strings("set.summon"))
+                HStack(spacing: 8) {
+                    toggleChip(strings("set.on"), on: model.summonKey) { model.setSummonKey(true) }
+                    toggleChip(strings("set.off"), on: !model.summonKey) { model.setSummonKey(false) }
+                }
+                Text(model.summonKeyTaken ? strings("set.summonTaken") : strings("set.summonNote"))
+                    .font(style.font(11))
+                    .foregroundStyle(model.summonKeyTaken ? style.danger : style.muted)
+
                 Label2(strings("set.motion"))
                 HStack(spacing: 8) {
                     ForEach(MotionAmount.allCases, id: \.self) { amount in

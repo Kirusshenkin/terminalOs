@@ -109,4 +109,13 @@ extension AppModel {
             }
         }
     }
+
+    /// Включает ⌃`. Если сочетание занято другим приложением, настройка
+    /// не включается, а экран говорит почему.
+    func setSummonKey(_ enabled: Bool) {
+        let registered = GlobalHotKey.shared.set(enabled: enabled)
+        summonKey = enabled && registered
+        summonKeyTaken = enabled && !registered
+        saveAppearance()
+    }
 }

@@ -550,6 +550,16 @@ extension Strings {
         ],
         "set.pet": [.russian: "питомец", .english: "pet"],
         "set.off": [.russian: "выключить", .english: "turn off"],
+        "set.on": [.russian: "включить", .english: "turn on"],
+        "set.summon": [.russian: "вызов окна по ⌃`", .english: "summon with ⌃`"],
+        "set.summonNote": [
+            .russian: "⌃` из любого приложения показывает Phosphor, повторное нажатие прячет.",
+            .english: "⌃` from any app brings Phosphor forward; press again to hide it.",
+        ],
+        "set.summonTaken": [
+            .russian: "⌃` уже занято другим приложением: освободите его там и включите снова.",
+            .english: "⌃` is taken by another app: free it there and turn this on again.",
+        ],
         "set.petNote": [
             .russian: "на продовых хостах питомца нет по умолчанию — на проде не играют",
             .english: "production hosts have no pet by default — nobody plays on production",

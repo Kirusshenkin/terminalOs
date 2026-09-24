@@ -35,7 +35,7 @@ struct Shim {
             case "tools/call":
                 handleCall(message, id: id)
             default:
-                reply(id: id, error: "неизвестный метод: \(method)")
+                reply(id: id, error: "unknown method: \(method)")
             }
         }
     }
@@ -63,7 +63,7 @@ struct Shim {
     private static func handleCall(_ message: [String: Any], id: Any?) {
         let parameters = message["params"] as? [String: Any] ?? [:]
         guard let name = parameters["name"] as? String else {
-            reply(id: id, error: "не указано имя инструмента")
+            reply(id: id, error: "tool name not specified")
             return
         }
         var arguments: [String: String] = [:]
@@ -76,13 +76,13 @@ struct Shim {
                 contentsOfFile: BridgeLocation.tokenPath(), encoding: .utf8
             ).trimmingCharacters(in: .whitespacesAndNewlines)
         else {
-            reply(id: id, result: content("Phosphor не запущен — открой приложение", isError: true))
+            reply(id: id, result: content("Phosphor not running — open the app", isError: true))
             return
         }
 
         let request = BridgeRequest(token: token, method: "call", tool: name, arguments: arguments)
         guard let response = send(request) else {
-            reply(id: id, result: content("Phosphor не отвечает", isError: true))
+            reply(id: id, result: content("Phosphor not responding", isError: true))
             return
         }
         reply(id: id, result: content(response.text, isError: !response.ok))

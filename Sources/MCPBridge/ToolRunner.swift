@@ -68,7 +68,7 @@ public actor ToolRunner {
         mode: RunMode = .live
     ) async -> ToolResult {
         guard let tool = ToolCatalog.tool(named: name) else {
-            return ToolResult(text: "неизвестный инструмент: \(name)", isError: true)
+            return ToolResult(text: "unknown tool: \(name)", isError: true)
         }
 
         // Инструменты, не привязанные к хосту, отвечают сразу.
@@ -85,7 +85,7 @@ public actor ToolRunner {
         guard let hostID = arguments["host"].flatMap(UUID.init(uuidString:)),
             let host = await book().hosts.first(where: { $0.id == hostID })
         else {
-            return ToolResult(text: "не указан или не найден хост", isError: true)
+            return ToolResult(text: "host not specified or not found", isError: true)
         }
 
         let command = arguments["command"]
@@ -93,7 +93,7 @@ public actor ToolRunner {
 
         switch decision {
         case .deny(let reason):
-            let result = ToolResult(text: "отказано: \(reason)", isError: true)
+            let result = ToolResult(text: "denied: \(reason)", isError: true)
             await log(
                 tool: tool, host: host.name, arguments: arguments,
                 decision: "deny: \(reason)", result: result)
@@ -101,7 +101,7 @@ public actor ToolRunner {
 
         case .confirm(let what):
             guard await confirm(host.name, what) else {
-                let result = ToolResult(text: "человек отклонил действие", isError: true)
+                let result = ToolResult(text: "user declined action", isError: true)
                 await log(
                     tool: tool, host: host.name, arguments: arguments,
                     decision: "refused", result: result)
@@ -114,7 +114,7 @@ public actor ToolRunner {
         }
 
         if mode == .dryRun {
-            let result = ToolResult(text: "сухой прогон: \(plan(tool: tool, arguments: arguments))")
+            let result = ToolResult(text: "dry run: \(plan(tool: tool, arguments: arguments))")
             await log(
                 tool: tool, host: host.name, arguments: arguments,
                 decision: "dry-run", result: result)
@@ -132,13 +132,13 @@ public actor ToolRunner {
     /// Что инструмент сделал бы, словами.
     private func plan(tool: Tool, arguments: [String: String]) -> String {
         switch tool.name {
-        case "run_command": "выполнил бы: \(arguments["command"] ?? "—")"
+        case "run_command": "would run: \(arguments["command"] ?? "—")"
         case "container_action":
-            "\(arguments["action"] ?? "—") для контейнера \(arguments["container"] ?? "—")"
+            "\(arguments["action"] ?? "—") for container \(arguments["container"] ?? "—")"
         case "manage_authorized_key":
             arguments["action"] == "add"
-                ? "добавил бы ключ \(Self.keyLabel(arguments["key"]))"
-                : "убрал бы ключ \(arguments["fingerprint"] ?? "—")"
+                ? "would add key \(Self.keyLabel(arguments["key"]))"
+                : "would remove key \(arguments["fingerprint"] ?? "—")"
         default: tool.summary
         }
     }
@@ -159,7 +159,7 @@ public actor ToolRunner {
 
     private func listHosts() async -> ToolResult {
         let hosts = await book().hosts
-        guard !hosts.isEmpty else { return ToolResult(text: "хостов нет") }
+        guard !hosts.isEmpty else { return ToolResult(text: "no hosts") }
         var lines: [String] = []
         for host in hosts {
             let session = await sessions(host.id)
@@ -175,7 +175,7 @@ public actor ToolRunner {
         _ tool: Tool, host: ServerHost, arguments: [String: String]
     ) async -> ToolResult {
         guard let session = await sessions(host.id) else {
-            return ToolResult(text: "нет подключения к \(host.name)", isError: true)
+            return ToolResult(text: "no connection to \(host.name)", isError: true)
         }
         let state = await session.current
 
@@ -189,7 +189,7 @@ public actor ToolRunner {
             return await authorizedKeys(session: session)
         case "run_command":
             guard let command = arguments["command"] else {
-                return ToolResult(text: "не указана команда", isError: true)
+                return ToolResult(text: "command not specified", isError: true)
             }
             return await run(command, on: session)
         case "container_action":
@@ -197,7 +197,7 @@ public actor ToolRunner {
         case "manage_authorized_key":
             return await manageKey(session: session, arguments: arguments)
         default:
-            return ToolResult(text: "инструмент пока не реализован", isError: true)
+            return ToolResult(text: "tool not yet implemented", isError: true)
         }
     }
 
@@ -211,10 +211,10 @@ public actor ToolRunner {
         let read = await run(Self.readKeysCommand, on: session)
         guard !read.isError else { return read }
         let keys = AuthorizedKeysFile.parse(read.text == Self.empty ? "" : read.text)
-        guard !keys.isEmpty else { return ToolResult(text: "ключей на сервере нет") }
+        guard !keys.isEmpty else { return ToolResult(text: "no keys on server") }
         return ToolResult(
             text: keys.map { key in
-                let state = key.isEnabled ? "" : "  (выключен)"
+                let state = key.isEnabled ? "" : "  (disabled)"
                 let weak = key.weakness.map { "  ⚠︎ \(Self.describe($0))" } ?? ""
                 return "\(key.fingerprint)  \(key.algorithm)  \(key.comment ?? "—")\(state)\(weak)"
             }.joined(separator: "\n"))
@@ -223,7 +223,7 @@ public actor ToolRunner {
     /// Чтение файла ключей: отсутствующий файл — это ноль ключей, а не ошибка.
     private static let readKeysCommand = "cat ~/.ssh/authorized_keys 2>/dev/null || true"
     /// Что `run` возвращает вместо пустой строки.
-    private static let empty = "(пусто)"
+    private static let empty = "(empty)"
 
     /// Добавляет или убирает ключ в `authorized_keys` на сервере.
     ///
@@ -235,7 +235,7 @@ public actor ToolRunner {
         session: HostSession, arguments: [String: String]
     ) async -> ToolResult {
         guard let action = arguments["action"], action == "add" || action == "remove" else {
-            return ToolResult(text: "нужен action: add или remove", isError: true)
+            return ToolResult(text: "action required: add or remove", isError: true)
         }
         let read = await run(Self.readKeysCommand, on: session)
         guard !read.isError else { return read }
@@ -246,32 +246,32 @@ public actor ToolRunner {
         case "add":
             guard let line = arguments["key"], !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             else {
-                return ToolResult(text: "не указан ключ", isError: true)
+                return ToolResult(text: "key not specified", isError: true)
             }
             let added = AuthorizedKeysFile.parse(line)
             guard let key = added.first, added.count == 1 else {
-                return ToolResult(text: "строка не похожа на один ключ", isError: true)
+                return ToolResult(text: "line does not look like a single key", isError: true)
             }
             guard !keys.contains(where: { $0.fingerprint == key.fingerprint }) else {
-                return ToolResult(text: "такой ключ уже есть: \(key.fingerprint)")
+                return ToolResult(text: "key already exists: \(key.fingerprint)")
             }
             updated = keys + [key]
         default:
             guard let wanted = arguments["fingerprint"],
                 !wanted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             else {
-                return ToolResult(text: "не указан отпечаток", isError: true)
+                return ToolResult(text: "fingerprint not specified", isError: true)
             }
             let doomed = Set(keys.filter { $0.fingerprint == wanted }.map(\.id))
             guard !doomed.isEmpty else {
-                return ToolResult(text: "ключа с таким отпечатком на сервере нет", isError: true)
+                return ToolResult(text: "no key with this fingerprint on server", isError: true)
             }
             guard
                 !AuthorizedKeysFile.wouldLockOut(
                     keys: keys, removing: doomed, currentFingerprint: nil)
             else {
                 return ToolResult(
-                    text: "после удаления не осталось бы ни одного рабочего ключа",
+                    text: "no working keys would remain after removal",
                     isError: true)
             }
             updated = keys.filter { !doomed.contains($0.id) }
@@ -281,7 +281,7 @@ public actor ToolRunner {
             AuthorizedKeysFile.writeCommand(content: AuthorizedKeysFile.render(updated)),
             on: session)
         guard !write.isError else { return write }
-        return ToolResult(text: "ключей на сервере: \(updated.count)")
+        return ToolResult(text: "keys on server: \(updated.count)")
     }
 
     /// Правит список серверов: завести, изменить, убрать.
@@ -302,7 +302,7 @@ public actor ToolRunner {
         case "add_host":
             guard let address = arguments["address"]?.trimmingCharacters(in: .whitespaces),
                 !address.isEmpty
-            else { return ToolResult(text: "не указан адрес", isError: true) }
+            else { return ToolResult(text: "address not specified", isError: true) }
             let host = ServerHost(
                 name: Self.nonEmpty(arguments["name"]) ?? address,
                 address: address,
@@ -314,16 +314,16 @@ public actor ToolRunner {
                     .filter { !$0.isEmpty }
             )
             guard !hosts.contains(where: { $0.address == host.address && $0.user == host.user })
-            else { return ToolResult(text: "такой сервер уже есть в списке") }
+            else { return ToolResult(text: "server already in list") }
             intent = .add(host)
-            summary = "завести \(host.user)@\(host.address):\(host.port) как «\(host.name)»"
+            summary = "add \(host.user)@\(host.address):\(host.port) as «\(host.name)»"
         case "update_host", "remove_host":
             guard let id = arguments["host"].flatMap(UUID.init(uuidString:)),
                 var host = hosts.first(where: { $0.id == id })
-            else { return ToolResult(text: "не указан или не найден хост", isError: true) }
+            else { return ToolResult(text: "host not specified or not found", isError: true) }
             if tool.name == "remove_host" {
                 intent = .remove(host.id)
-                summary = "убрать «\(host.name)» (\(host.user)@\(host.address)) из списка"
+                summary = "remove «\(host.name)» (\(host.user)@\(host.address)) from list"
             } else {
                 if let value = arguments["name"], !value.isEmpty { host.name = value }
                 if let value = arguments["address"], !value.isEmpty { host.address = value }
@@ -337,29 +337,29 @@ public actor ToolRunner {
                         .filter { !$0.isEmpty }
                 }
                 intent = .update(host)
-                summary = "изменить «\(host.name)» на \(host.user)@\(host.address):\(host.port)"
+                summary = "update «\(host.name)» to \(host.user)@\(host.address):\(host.port)"
             }
         default:
-            return ToolResult(text: "неизвестная правка", isError: true)
+            return ToolResult(text: "unknown edit", isError: true)
         }
 
-        guard mode == .live else { return ToolResult(text: "сделал бы: \(summary)") }
-        guard await confirm("список серверов", summary) else {
-            let refusal = ToolResult(text: "человек отказал", isError: true)
+        guard mode == .live else { return ToolResult(text: "would: \(summary)") }
+        guard await confirm("server list", summary) else {
+            let refusal = ToolResult(text: "user declined", isError: true)
             await log(
                 tool: tool, host: "—", arguments: arguments, decision: "deny", result: refusal)
             return refusal
         }
 
         await edit(intent)
-        let result = ToolResult(text: "готово: \(summary)")
+        let result = ToolResult(text: "done: \(summary)")
         await log(tool: tool, host: "—", arguments: arguments, decision: "confirm", result: result)
         return result
     }
 
     private func metrics(_ state: SessionState) -> ToolResult {
         guard let snapshot = state.latest else {
-            return ToolResult(text: "метрики ещё не собраны", isError: true)
+            return ToolResult(text: "metrics not yet collected", isError: true)
         }
         let usage = state.coreUsage.map { ByteFormat.percent($0) }.joined(separator: " ")
         let disks = snapshot.filesystems
@@ -367,16 +367,16 @@ public actor ToolRunner {
             .joined(separator: ", ")
         return ToolResult(
             text: """
-                аптайм: \(ByteFormat.duration(seconds: snapshot.uptime))
-                загрузка: \(snapshot.loadOne) \(snapshot.loadFive) \(snapshot.loadFifteen)
-                ядра: \(usage.isEmpty ? "—" : usage)
-                память: \(ByteFormat.size(snapshot.memoryUsed)) из \(ByteFormat.size(snapshot.memoryTotal))
-                диски: \(disks.isEmpty ? "—" : disks)
+                uptime: \(ByteFormat.duration(seconds: snapshot.uptime, units: .english))
+                load: \(snapshot.loadOne) \(snapshot.loadFive) \(snapshot.loadFifteen)
+                cores: \(usage.isEmpty ? "—" : usage)
+                memory: \(ByteFormat.size(snapshot.memoryUsed, units: .english)) of \(ByteFormat.size(snapshot.memoryTotal, units: .english))
+                disks: \(disks.isEmpty ? "—" : disks)
                 """)
     }
 
     private func containerList(_ state: SessionState) -> ToolResult {
-        guard !state.containers.isEmpty else { return ToolResult(text: "контейнеров нет") }
+        guard !state.containers.isEmpty else { return ToolResult(text: "no containers") }
         return ToolResult(
             text: state.containers.map { container in
                 "\(container.name)  \(container.image)  \(container.state.rawValue)  \(container.status)"
@@ -393,7 +393,7 @@ public actor ToolRunner {
         _ state: SessionState, session: HostSession, arguments: [String: String]
     ) async -> ToolResult {
         guard let container = container(in: state, arguments: arguments) else {
-            return ToolResult(text: "контейнер не найден", isError: true)
+            return ToolResult(text: "container not found", isError: true)
         }
         // Верхний предел жёсткий: мегабайт логов в ответе бесполезен и дорог.
         let tail = min(Int(arguments["tail"] ?? "") ?? 100, 1_000)
@@ -407,7 +407,7 @@ public actor ToolRunner {
         _ state: SessionState, session: HostSession, arguments: [String: String]
     ) async -> ToolResult {
         guard let container = container(in: state, arguments: arguments) else {
-            return ToolResult(text: "контейнер не найден", isError: true)
+            return ToolResult(text: "container not found", isError: true)
         }
         return await run(
             DockerCLI.inspect(id: container.id, prefix: state.profile?.dockerPrefix ?? "docker"),
@@ -418,16 +418,16 @@ public actor ToolRunner {
         _ state: SessionState, session: HostSession, arguments: [String: String]
     ) async -> ToolResult {
         guard let raw = arguments["action"] else {
-            return ToolResult(text: "не указано действие", isError: true)
+            return ToolResult(text: "action not specified", isError: true)
         }
         guard let action = ContainerAction(rawValue: raw) else {
             // Различать «не сказали» и «сказали не то» стоит одной ветки: во
             // втором случае собеседнику надо показать список принимаемых слов.
             let known = ContainerAction.allCases.map(\.rawValue).joined(separator: ", ")
-            return ToolResult(text: "действие «\(raw)» не из списка: \(known)", isError: true)
+            return ToolResult(text: "action «\(raw)» not in list: \(known)", isError: true)
         }
         guard let container = container(in: state, arguments: arguments) else {
-            return ToolResult(text: "контейнер не найден", isError: true)
+            return ToolResult(text: "container not found", isError: true)
         }
         let outcome = await session.perform(action, on: container)
         return ToolResult(text: Self.describe(outcome), isError: !outcome.succeeded)

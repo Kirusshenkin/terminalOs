@@ -175,7 +175,7 @@ public enum BuiltInRecipe {
             "grep -rHnE '^[[:space:]]*-[[:space:]]*\"?[0-9]+:[0-9]+'"
             + " /srv /opt /root --include='*compose*.y*ml' 2>/dev/null"
             + " | grep -v '127\\.0\\.0\\.1'"
-            + " | sed 's/^/ВНИМАНИЕ порт наружу мимо UFW: /' || true"
+            + " | sed 's/^/WARNING port open outside firewall: /' || true"
         return RecipeStep(
             id: "ufw",
             commands: [

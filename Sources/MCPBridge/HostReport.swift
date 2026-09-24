@@ -24,50 +24,50 @@ public enum HostReport {
     /// сервера: это чистая функция над снимком, и тестируется как функция.
     public static func text(_ state: SessionState) -> String {
         guard let snapshot = state.latest else {
-            return "метрики ещё не собраны — сессия только что открылась"
+            return "metrics not yet collected — session just opened"
         }
 
         var trouble: [String] = []
 
         for filesystem in snapshot.filesystems where filesystem.usage >= diskWarning {
             trouble.append(
-                "диск \(filesystem.mount) занят на \(ByteFormat.percent(filesystem.usage))"
-                    + ", свободно \(ByteFormat.size(filesystem.available))")
+                "disk \(filesystem.mount) used \(ByteFormat.percent(filesystem.usage))"
+                    + ", free \(ByteFormat.size(filesystem.available, units: .english))")
         }
         if snapshot.memoryUsage >= memoryWarning {
-            trouble.append("память занята на \(ByteFormat.percent(snapshot.memoryUsage))")
+            trouble.append("memory used \(ByteFormat.percent(snapshot.memoryUsage))")
         }
         if snapshot.swapTotal > 0 {
             let used = snapshot.swapTotal - snapshot.swapFree
             if Double(used) / Double(snapshot.swapTotal) >= 0.5 {
-                trouble.append("swap занят на \(ByteFormat.size(used))")
+                trouble.append("swap used \(ByteFormat.size(used, units: .english))")
             }
         }
         let cores = max(snapshot.cores.count, 1)
         if snapshot.loadOne / Double(cores) >= loadWarning {
             trouble.append(
-                "нагрузка \(snapshot.loadOne) на \(cores) ядер — очередь длиннее, чем железо")
+                "load \(snapshot.loadOne) on \(cores) cores — queue longer than cpu")
         }
         let steal = state.coreSteal.enumerated().filter { $0.element >= stealWarning }
         if !steal.isEmpty {
             let cpus = steal.map { "cpu\($0.offset)" }.joined(separator: ", ")
-            trouble.append("гипервизор отнимает время у \(cpus) — это не вина хоста")
+            trouble.append("hypervisor steals time from \(cpus) — not host fault")
         }
 
         let unhealthy = state.containers.filter { $0.health == "unhealthy" }
         if !unhealthy.isEmpty {
             trouble.append(
-                "нездоровы: " + unhealthy.map(\.name).joined(separator: ", "))
+                "unhealthy: " + unhealthy.map(\.name).joined(separator: ", "))
         }
         let stopped = state.containers.filter { $0.state != .running }
         if !stopped.isEmpty {
-            trouble.append("не работают: " + stopped.map(\.name).joined(separator: ", "))
+            trouble.append("not running: " + stopped.map(\.name).joined(separator: ", "))
         }
 
         let verdict =
             trouble.isEmpty
-            ? "всё в порядке"
-            : "не в порядке:\n" + trouble.map { "  · \($0)" }.joined(separator: "\n")
+            ? "all is ok"
+            : "issues:\n" + trouble.map { "  · \($0)" }.joined(separator: "\n")
 
         let disks = snapshot.filesystems
             .map { "\($0.mount) \(ByteFormat.percent($0.usage))" }
@@ -77,14 +77,14 @@ public enum HostReport {
         return """
             \(verdict)
 
-            аптайм: \(ByteFormat.duration(seconds: snapshot.uptime))
-            загрузка: \(snapshot.loadOne) \(snapshot.loadFive) \(snapshot.loadFifteen) \
-            на \(cores) ядер
-            память: \(ByteFormat.size(snapshot.memoryUsed)) из \
-            \(ByteFormat.size(snapshot.memoryTotal))
-            диски: \(disks.isEmpty ? "—" : disks)
-            процессы: \(snapshot.runningProcesses) из \(snapshot.totalProcesses)
-            контейнеры: \(running) из \(state.containers.count) работают
+            uptime: \(ByteFormat.duration(seconds: snapshot.uptime, units: .english))
+            load: \(snapshot.loadOne) \(snapshot.loadFive) \(snapshot.loadFifteen) \
+            on \(cores) cores
+            memory: \(ByteFormat.size(snapshot.memoryUsed, units: .english)) of \
+            \(ByteFormat.size(snapshot.memoryTotal, units: .english))
+            disks: \(disks.isEmpty ? "—" : disks)
+            processes: \(snapshot.runningProcesses) of \(snapshot.totalProcesses)
+            containers: \(running) of \(state.containers.count) running
             """
     }
 }

@@ -53,7 +53,7 @@ public actor SocketServer {
         var address = sockaddr_un()
         address.sun_family = sa_family_t(AF_UNIX)
         let maximum = MemoryLayout.size(ofValue: address.sun_path)
-        guard path.utf8.count < maximum else { throw ServerError.cannotBind("путь слишком длинный") }
+        guard path.utf8.count < maximum else { throw ServerError.cannotBind("path too long") }
         _ = withUnsafeMutablePointer(to: &address.sun_path) { pointer in
             path.withCString { source in
                 strncpy(
@@ -102,7 +102,7 @@ public actor SocketServer {
 
         // Сравнение постоянного времени: токен короткий, но привычка полезная.
         guard Self.constantTimeEquals(request.token, token) else {
-            Self.write(BridgeResponse(ok: false, text: "неверный токен"), to: client)
+            Self.write(BridgeResponse(ok: false, text: "invalid token"), to: client)
             return
         }
         let response = await handle(request)

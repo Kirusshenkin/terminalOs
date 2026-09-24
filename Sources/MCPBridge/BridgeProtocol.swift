@@ -97,7 +97,7 @@ public enum BridgeLocation {
         ToolCatalog.all.map { tool in
             ToolDescription(
                 name: tool.name,
-                description: tool.summary + (tool.kind == .write ? " (изменяет сервер)" : ""),
+                description: tool.summary + (tool.kind == .write ? " (modifies server)" : ""),
                 arguments: arguments(for: tool.name)
             )
         }
@@ -113,18 +113,18 @@ public enum BridgeLocation {
     /// Хост и то, что делается на нём.
     private static func serverArguments(for tool: String) -> [ToolArgument]? {
         let container = ToolArgument(
-            name: "container", hint: "имя или идентификатор контейнера", isRequired: true)
+            name: "container", hint: "container name or id", isRequired: true)
         switch tool {
         case "run_command":
             return [
                 host,
                 ToolArgument(
-                    name: "command", hint: "команда для выполнения на сервере", isRequired: true),
+                    name: "command", hint: "command to run on server", isRequired: true),
             ]
         case "container_logs":
             return [
                 host, container,
-                ToolArgument(name: "tail", hint: "сколько последних строк вернуть, до 1000"),
+                ToolArgument(name: "tail", hint: "how many last lines to return, up to 1000"),
             ]
         case "container_inspect":
             return [host, container]
@@ -139,12 +139,12 @@ public enum BridgeLocation {
         case "manage_authorized_key":
             return [
                 host,
-                ToolArgument(name: "action", hint: "add или remove", isRequired: true),
+                ToolArgument(name: "action", hint: "add or remove", isRequired: true),
                 ToolArgument(
-                    name: "key", hint: "строка ключа в формате authorized_keys, для add"),
+                    name: "key", hint: "key line in authorized_keys format, for add"),
                 ToolArgument(
                     name: "fingerprint",
-                    hint: "отпечаток SHA256:… из list_authorized_keys, для remove"),
+                    hint: "fingerprint SHA256:… from list_authorized_keys, for remove"),
             ]
         default:
             return nil
@@ -154,11 +154,11 @@ public enum BridgeLocation {
     /// Правка собственного списка серверов — на сервер ничего не уходит.
     private static func bookArguments(for tool: String) -> [ToolArgument] {
         let fields = [
-            ToolArgument(name: "name", hint: "как назвать сервер в списке"),
-            ToolArgument(name: "address", hint: "адрес или имя сервера"),
-            ToolArgument(name: "user", hint: "логин, по умолчанию root"),
-            ToolArgument(name: "port", hint: "порт, по умолчанию 22"),
-            ToolArgument(name: "tags", hint: "метки через запятую"),
+            ToolArgument(name: "name", hint: "how to name server in list"),
+            ToolArgument(name: "address", hint: "server address or hostname"),
+            ToolArgument(name: "user", hint: "login, default root"),
+            ToolArgument(name: "port", hint: "port, default 22"),
+            ToolArgument(name: "tags", hint: "tags comma-separated"),
         ]
         switch tool {
         case "list_hosts":
@@ -177,5 +177,5 @@ public enum BridgeLocation {
     }
 
     private static let host = ToolArgument(
-        name: "host", hint: "идентификатор хоста из list_hosts", isRequired: true)
+        name: "host", hint: "host id from list_hosts", isRequired: true)
 }

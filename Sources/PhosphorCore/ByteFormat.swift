@@ -22,6 +22,9 @@ public enum ByteFormat {
         /// Русские единицы — их же видит ИИ-клиент в ответах моста.
         public static let russian = Units(
             sizes: ["Б", "КБ", "МБ", "ГБ", "ТБ", "ПБ"], day: "д", hour: "ч", minute: "м", second: "с")
+        /// English units for AI client responses.
+        public static let english = Units(
+            sizes: ["B", "KB", "MB", "GB", "TB", "PB"], day: "d", hour: "h", minute: "m", second: "s")
     }
 
     /// Human readable size using binary steps, one decimal below 10.

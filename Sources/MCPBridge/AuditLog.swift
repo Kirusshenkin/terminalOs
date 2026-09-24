@@ -70,7 +70,7 @@ public actor AuditLog {
             recent.append(
                 AuditEntry(
                     tool: "audit", hostName: "—", arguments: "",
-                    decision: "запись в журнал не удалась", succeeded: false,
+                    decision: "audit write failed", succeeded: false,
                     summary: "\(error)"
                 ))
         }

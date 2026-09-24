@@ -28,7 +28,7 @@ struct AccessPolicyTests {
         let policy = AccessPolicy()
         #expect(await policy.mode(for: host) == .disabled)
         let decision = await policy.decide(tool: read, host: host, command: nil)
-        #expect(decision == .deny("для этого хоста MCP выключен"))
+        #expect(decision == .deny("mcp disabled for this host"))
     }
 
     @Test("режим чтения пропускает чтение и отклоняет запись")
@@ -38,7 +38,7 @@ struct AccessPolicyTests {
         #expect(await policy.decide(tool: read, host: host, command: nil) == .allow)
         #expect(
             await policy.decide(tool: write, host: host, command: "ls")
-                == .deny("хост доступен только для чтения"))
+                == .deny("host is read-only"))
     }
 
     @Test("в режиме подтверждения запись спрашивает и показывает команду")
@@ -124,7 +124,7 @@ struct AccessPolicyTests {
         for _ in 0..<20 { await policy.recordWrite(now: now) }
         #expect(
             await policy.decide(tool: write, host: host, command: "ls", now: now)
-                == .deny("слишком много пишущих вызовов подряд"))
+                == .deny("too many write calls in a row"))
         // Через окно счётчик отпускает.
         #expect(
             await policy.decide(tool: write, host: host, command: "ls", now: now + .seconds(120))
@@ -307,7 +307,7 @@ struct ToolRunnerTests {
         let result = await setup.runner.call(
             "list_containers", arguments: ["host": setup.host.id.uuidString])
         #expect(result.isError)
-        #expect(result.text.contains("выключен"))
+        #expect(result.text.contains("disabled"))
         await setup.audit.close()
     }
 
@@ -322,7 +322,7 @@ struct ToolRunnerTests {
                 "host": setup.host.id.uuidString, "command": "systemctl restart api",
             ])
         #expect(result.isError)
-        #expect(result.text.contains("отклонил"))
+        #expect(result.text.contains("declined"))
         await setup.audit.close()
 
         // Отказ тоже попадает в журнал: он часть истории.
@@ -341,7 +341,7 @@ struct ToolRunnerTests {
             mode: .dryRun
         )
         #expect(!result.isError)
-        #expect(result.text.contains("выполнил бы"))
+        #expect(result.text.contains("would"))
         #expect(result.text.contains("/srv/old"))
         await setup.audit.close()
 
@@ -360,7 +360,7 @@ struct ToolRunnerTests {
                 "host": setup.host.id.uuidString, "command": "rm -rf /",
             ])
         #expect(result.isError)
-        #expect(result.text.contains("запрещена"))
+        #expect(result.text.contains("forbidden"))
         await setup.audit.close()
     }
 
@@ -487,16 +487,16 @@ struct SocketServerTests {
         }
 
         let server = SocketServer(path: paths.socket, tokenPath: paths.token) { _ in
-            BridgeResponse(ok: true, text: "не должно случиться")
+            BridgeResponse(ok: true, text: "should not happen")
         }
         try await server.start()
         defer { Task { try? await server.stop() } }
 
         let response = send(
-            BridgeRequest(token: "подобранный", method: "call", tool: "run_command"),
+            BridgeRequest(token: "guessed", method: "call", tool: "run_command"),
             to: paths.socket)
         #expect(response?.ok == false)
-        #expect(response?.text.contains("токен") == true)
+        #expect(response?.text.contains("token") == true)
     }
 
     @Test("сокет и токен доступны только владельцу")
@@ -516,7 +516,7 @@ struct SocketServerTests {
         for path in [paths.socket, paths.token] {
             let attributes = try FileManager.default.attributesOfItem(atPath: path)
             let mode = (attributes[.posixPermissions] as? NSNumber)?.int16Value ?? 0
-            #expect(mode == 0o600, "\(path) доступен не только владельцу: \(String(mode, radix: 8))")
+            #expect(mode == 0o600, "\(path) accessible to others: \(String(mode, radix: 8))")
         }
     }
 
@@ -544,9 +544,9 @@ struct SocketServerTests {
         // Пишущие инструменты обязаны быть помечены: клиент должен видеть, что
         // вызов изменит сервер.
         let write = descriptions.first { $0.name == "run_command" }
-        #expect(write?.description.contains("изменяет сервер") == true)
+        #expect(write?.description.contains("modifies") == true)
         let read = descriptions.first { $0.name == "list_containers" }
-        #expect(read?.description.contains("изменяет") == false)
+        #expect(read?.description.contains("modifies") == false)
         #expect(
             descriptions.first { $0.name == "run_command" }?.argumentNames.contains("command")
                 == true)
@@ -577,8 +577,8 @@ struct HostReportTests {
         var state = SessionState()
         state.latest = healthy()
         let text = HostReport.text(state)
-        #expect(text.hasPrefix("всё в порядке"))
-        #expect(!text.contains("не в порядке"))
+        #expect(text.hasPrefix("all is ok"))
+        #expect(!text.contains("issues"))
     }
 
     @Test("забитый диск и мёртвый контейнер попадают в вердикт")
@@ -598,15 +598,15 @@ struct HostReportTests {
             Container(id: "b", name: "worker", image: "wrk:1", state: .exited, status: "Exited"),
         ]
         let text = HostReport.text(state)
-        #expect(text.hasPrefix("не в порядке"))
-        #expect(text.contains("диск /"))
-        #expect(text.contains("нездоровы: api"))
-        #expect(text.contains("не работают: worker"))
+        #expect(text.hasPrefix("issues"))
+        #expect(text.contains("disk /"))
+        #expect(text.contains("unhealthy: api"))
+        #expect(text.contains("not running: worker"))
     }
 
     @Test("без снимка отчёт говорит об этом, а не молчит")
     func saysWhenEmpty() {
-        #expect(HostReport.text(SessionState()).contains("метрики ещё не собраны"))
+        #expect(HostReport.text(SessionState()).contains("metrics not yet collected"))
     }
 }
 
@@ -670,7 +670,7 @@ struct HostEditToolTests {
         let result = await runner.call(
             "add_host", arguments: ["address": "192.0.2.12"], mode: .dryRun)
         #expect(!result.isError)
-        #expect(result.text.contains("сделал бы"))
+        #expect(result.text.contains("would:"))
         #expect(await box.isEmpty)
     }
 
@@ -741,10 +741,10 @@ struct ToolCatalogCoverageTests {
         case "address": "10.0.0.9"
         case "port": "22"
         case "user": "root"
-        case "name": "новый"
+        case "name": "new"
         case "tags": "one,two"
         case "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH0000000000000000000000000000000000000 test"
-        case "fingerprint": "SHA256:неизвестный"
+        case "fingerprint": "SHA256:unknown"
         default: ""
         }
     }
@@ -774,12 +774,12 @@ struct ToolCatalogCoverageTests {
             }
             let result = await runner.call(tool.name, arguments: arguments)
             #expect(
-                !result.text.contains("пока не реализован"),
-                "инструмент \(tool.name) не исполняется")
+                !result.text.contains("not yet implemented"),
+                "tool \(tool.name) not executed")
             // Ни один инструмент не должен жаловаться на аргумент, который
             // каталог сам же и объявил: это и есть разъезд имён.
-            #expect(!result.text.contains("не указан"), "инструмент \(tool.name): \(result.text)")
-            #expect(!result.text.contains("нужен action"), "инструмент \(tool.name): \(result.text)")
+            #expect(!result.text.contains("not specified"), "tool \(tool.name): \(result.text)")
+            #expect(!result.text.contains("action required"), "tool \(tool.name): \(result.text)")
         }
         await audit.close()
     }

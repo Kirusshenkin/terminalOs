@@ -70,15 +70,15 @@ public actor AccessPolicy {
         // 1. Запрещённые команды — раньше всего остального. Ни один режим,
         //    включая полный, их не открывает.
         if let command, let matched = DenyList.match(command) {
-            return .deny("команда запрещена: \(matched)")
+            return .deny("command forbidden: \(matched)")
         }
 
         let mode = mode(for: host)
         switch mode {
         case .disabled:
-            return .deny("для этого хоста MCP выключен")
+            return .deny("mcp disabled for this host")
         case .readOnly where tool.kind == .write:
-            return .deny("хост доступен только для чтения")
+            return .deny("host is read-only")
         case .readOnly, .confirm, .full:
             break
         }
@@ -89,7 +89,7 @@ public actor AccessPolicy {
         //    превращаться в шквал диалогов.
         writeTimes.removeAll { now - $0 > writeWindow }
         guard writeTimes.count < writeLimit else {
-            return .deny("слишком много пишущих вызовов подряд")
+            return .deny("too many write calls in a row")
         }
 
         if mode == .full { return .allow }
@@ -113,18 +113,18 @@ public enum DenyList {
     private static let patterns: [(name: String, test: @Sendable (String) -> Bool)] = [
         ("rm -rf /", { $0.contains("rm ") && $0.contains(" -rf") && rootTarget($0) }),
         ("mkfs", { $0.contains("mkfs") }),
-        ("dd на устройство", { $0.contains("dd ") && $0.contains("of=/dev/") }),
+        ("dd to device", { $0.contains("dd ") && $0.contains("of=/dev/") }),
         (
-            "перезагрузка",
+            "reboot",
             {
                 $0.hasPrefix("reboot") || $0.contains("shutdown ") || $0.contains("halt ")
                     || $0.contains("init 0")
             }
         ),
-        ("форк-бомба", { $0.replacingOccurrences(of: " ", with: "").contains(":(){:|:&};:") }),
-        ("затирание диска", { $0.contains("> /dev/sd") || $0.contains("of=/dev/disk") }),
-        ("chmod на корень", { $0.contains("chmod") && rootTarget($0) }),
-        ("chown на корень", { $0.contains("chown") && rootTarget($0) }),
+        ("fork bomb", { $0.replacingOccurrences(of: " ", with: "").contains(":(){:|:&};:") }),
+        ("disk wipe", { $0.contains("> /dev/sd") || $0.contains("of=/dev/disk") }),
+        ("chmod root", { $0.contains("chmod") && rootTarget($0) }),
+        ("chown root", { $0.contains("chown") && rootTarget($0) }),
     ]
 
     /// Цель команды — корень файловой системы, а не что-то под ним.

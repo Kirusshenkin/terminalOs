@@ -24,6 +24,11 @@ extension AppModel {
         }
     }
 
+    /// Путь к мосту внутри установленного приложения.
+    var shimPath: String {
+        Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/phosphor-mcp").path
+    }
+
     /// Команда, которой мост подключается к Claude Code.
     public var claudeCodeCommand: String {
         ClientRegistration.claudeCodeCommand(shimPath: shimPath)

@@ -405,10 +405,6 @@ public final class AppModel {
         #"{"mcpServers":{"phosphor":{"command":"\#(shimPath)"}}}"#
     }
 
-    /// Путь к мосту внутри установленного приложения.
-    var shimPath: String {
-        Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/phosphor-mcp").path
-    }
 
     /// Куда смотрит терминал: на этот Мак или на выбранный сервер.
     public var terminalDestination: TerminalHost.Destination {

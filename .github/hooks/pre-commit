@@ -1,0 +1,4 @@
+#!/bin/bash
+# Не даёт закоммитить реальные адреса, имена и приватные ключи (#12).
+# Включается один раз: git config core.hooksPath .github/hooks
+exec python3 "$(git rev-parse --show-toplevel)/.github/scripts/no-real-data.py"

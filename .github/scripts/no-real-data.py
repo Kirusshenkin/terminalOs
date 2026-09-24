@@ -58,12 +58,16 @@ def problems_in(name: str, text: str) -> list[str]:
 
 
 def main() -> int:
+    # Отслеживаемые и новые, ещё не добавленные файлы. Раньше брались только
+    # отслеживаемые — и новый отчёт с настоящим именем хоста прошёл проверку
+    # «✓» прямо перед своим первым коммитом (#12). `-z`: имена с пробелами.
     listing = subprocess.run(
-        ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        cwd=ROOT, capture_output=True, text=True, check=True,
     )
 
     problems: list[str] = []
-    for name in listing.stdout.split():
+    for name in sorted(set(filter(None, listing.stdout.split("\0")))):
         if name == SELF:
             continue
         try:

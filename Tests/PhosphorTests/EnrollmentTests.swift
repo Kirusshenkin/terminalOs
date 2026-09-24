@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import AuthKit
+@testable import PhosphorUI
 
 /// Хранилище, которое умеет изображать смену набора отпечатков.
 ///
@@ -171,9 +172,10 @@ struct EnrollmentTests {
 
     @Test("объяснение говорит, что случилось и что делать")
     func explanationIsUseful() {
-        let text = SecretError.enrollmentChanged.errorDescription ?? ""
+        let strings = Strings(language: .russian)
+        let text = strings.describe(SecretError.enrollmentChanged)
         #expect(text.contains("Touch ID"))
         #expect(text.contains("экспорт"))
-        #expect(ProfileStoreError.enrollmentChanged.errorDescription == text)
+        #expect(strings.describe(ProfileStoreError.enrollmentChanged) == text)
     }
 }

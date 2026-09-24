@@ -4,6 +4,7 @@ import Testing
 @testable import HostsKit
 @testable import KeysKit
 @testable import SessionKit
+@testable import PhosphorUI
 
 @Suite("known_hosts")
 struct KnownHostsTests {
@@ -77,15 +78,13 @@ struct PortForwardTests {
     @Test("ошибки ssh переводятся в подсказку")
     func explainsFailures() {
         let forward = PortForward(listenPort: 80, targetPort: 80, hostID: hostID)
-        #expect(
-            ForwardManager.explain("bind: Address already in use", forward: forward)
-                .contains("уже занят"))
-        #expect(
-            ForwardManager.explain("Control socket connect: No such file", forward: forward)
-                .contains("подключись"))
-        #expect(
-            ForwardManager.explain("Permission denied", forward: forward)
-                .contains("1024"))
+        #expect(ForwardManager.explain("bind: Address already in use", forward: forward) == .portTaken(80))
+        #expect(ForwardManager.explain("Control socket connect: No such file", forward: forward) == .noConnection)
+        #expect(ForwardManager.explain("Permission denied", forward: forward) == .needsPrivilege(80))
+        let strings = Strings(language: .russian)
+        #expect(strings.forwardProblem(.portTaken(80)).contains("уже занят"))
+        #expect(strings.forwardProblem(.noConnection).contains("подключись"))
+        #expect(strings.forwardProblem(.needsPrivilege(80)).contains("1024"))
     }
 }
 

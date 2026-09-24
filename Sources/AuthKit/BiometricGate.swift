@@ -4,7 +4,8 @@ import LocalAuthentication
 /// Why an unlock attempt did not succeed.
 public enum GateError: Error, Equatable {
     /// The Mac cannot check anyone: no Touch ID, no watch, no password set.
-    case unavailable(String)
+    /// Carries the system's own explanation when it gave one.
+    case unavailable(String?)
     /// The person cancelled, or failed too many times.
     case refused
     /// Biometry is present but locked out until a password is entered.
@@ -25,14 +26,6 @@ public struct GateCapability: Sendable, Equatable {
         self.hasPassword = hasPassword
     }
 
-    /// A short line for the lock screen listing the ways in that exist here.
-    public var summary: String {
-        var parts: [String] = []
-        if hasBiometry { parts.append("Touch ID") }
-        if hasWatch { parts.append("Apple Watch") }
-        if hasPassword { parts.append("пароль") }
-        return parts.joined(separator: " · ")
-    }
 }
 
 /// Asks the system to confirm the person at the keyboard.
@@ -73,11 +66,11 @@ public struct SystemBiometricGate: BiometricGate {
     public func authenticate(reason: String) async throws {
         let context = LAContext()
         context.touchIDAuthenticationAllowableReuseDuration = reuseDuration
-        context.localizedCancelTitle = "Отмена"
+        // Кнопку «Отмена» система подписывает сама, на языке системы.
 
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            throw GateError.unavailable(error?.localizedDescription ?? "проверка недоступна")
+            throw GateError.unavailable(error?.localizedDescription)
         }
         do {
             try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)

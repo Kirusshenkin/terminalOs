@@ -568,10 +568,8 @@ public final class AppModel {
             // Дверь открыта — можно спрашивать о сессиях, не дожидаясь, пока
             // человек сам зайдёт в раздел: метка о ждущем агенте нужна раньше.
             startSessionWatch()
-        } catch GateError.unavailable(let reason) {
-            unlockError = "\(strings("auth.unavailable")) \(reason)"
-        } catch GateError.lockedOut {
-            unlockError = strings("auth.lockedOut")
+        } catch let failure as GateError where failure != .refused {
+            unlockError = strings.gateError(failure)
         } catch {
             unlockError = strings("auth.cancelled")
         }
@@ -619,7 +617,7 @@ public final class AppModel {
             holdWrites(strings("vault.enrollmentChanged"))
             return true
         } catch {
-            holdWrites("\(strings("vault.unreadable")) \(error.localizedDescription)")
+            holdWrites("\(strings("vault.unreadable")) \(strings.describe(error))")
             return true
         }
         profileWritable = true
@@ -683,7 +681,7 @@ public final class AppModel {
             // Именно предлагаем: список засоряется, только если человек согласен.
             if !isSaved(host) { rememberOffer = host }
         case .failed(let reason):
-            await record(.failed, host: host, detail: reason)
+            await record(.failed, host: host, detail: strings.connectionFailure(reason))
         default:
             break
         }

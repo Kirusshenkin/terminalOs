@@ -25,10 +25,7 @@ extension AppModel {
 
     private func perform(_ action: ContainerAction, on container: Container) async {
         guard let session else {
-            lastOutcome = ActionOutcome(
-                action: action, containerName: container.name,
-                succeeded: false, message: strings("err.noSession")
-            )
+            lastOutcome = ActionOutcome(action: action, containerName: container.name, failure: .noSession)
             return
         }
         lastOutcome = await session.perform(action, on: container)
@@ -71,7 +68,7 @@ extension AppModel {
             containerEnvironment = Redaction.apply(to: parsed)
             if parsed.isEmpty { containerEnvironmentNote = strings("dock.noEnv") }
         } catch {
-            containerEnvironmentNote = "\(error)"
+            containerEnvironmentNote = strings.describe(error)
         }
     }
 
@@ -92,9 +89,10 @@ extension AppModel {
         }
         do {
             let result = try await session.run(action.command())
-            resourcesMessage = "\(action.title): \(ResourceAction.explain(result))"
+            let verdict = ResourceAction.problem(result).map(strings.dockerProblem) ?? strings("err.done")
+            resourcesMessage = "\(strings.resourceTitle(action)): \(verdict)"
         } catch {
-            resourcesMessage = "\(action.title): \(error)"
+            resourcesMessage = "\(strings.resourceTitle(action)): \(strings.describe(error))"
         }
         await loadResources()
     }

@@ -86,5 +86,83 @@ extension Strings {
         "unit.hour": [.russian: "ч", .english: "h"],
         "unit.minute": [.russian: "м", .english: "m"],
         "unit.second": [.russian: "с", .english: "s"],
+
+        // Ошибки пакетов (Strings+Errors.swift). %@ — подстановка.
+        "err.proxyDown": [
+            .russian: "прокси %@ не отвечает — запущен ли V2Box?",
+            .english: "proxy %@ is not answering — is V2Box running?",
+        ],
+        "err.denied": [
+            .russian: "%@ отказал в доступе — ключа нет в authorized_keys?",
+            .english: "%@ refused access — is your key missing from authorized_keys?",
+        ],
+        "err.deniedPlain": [
+            .russian: "сервер отказал в доступе — ключа нет в authorized_keys?",
+            .english: "the server refused access — is your key missing from authorized_keys?",
+        ],
+        "err.hostKeyChanged": [
+            .russian: "ключ хоста %@ изменился — подключение остановлено",
+            .english: "the host key of %@ changed — connection stopped",
+        ],
+        "err.hostKeyChangedPlain": [
+            .russian: "ключ хоста изменился — подключение остановлено",
+            .english: "the host key changed — connection stopped",
+        ],
+        "err.unreachable": [
+            .russian: "%@ не отвечает — сервер выключен, адрес неверный или порт закрыт",
+            .english: "%@ is not answering — the server is off, the address is wrong or the port is closed",
+        ],
+        "err.connectFailed": [
+            .russian: "не удалось подключиться к %@ — попробуй ssh из обычного Терминала, он покажет причину",
+            .english: "could not connect to %@ — try ssh from the regular Terminal, it will show why",
+        ],
+        "err.exitCode": [.russian: "команда завершилась с кодом %@", .english: "the command exited with code %@"],
+        "err.cancelled": [.russian: "отменено", .english: "cancelled"],
+        "err.done": [.russian: "готово", .english: "done"],
+        "err.dockerSocket": [
+            .russian: "нет доступа к сокету docker — нужен sudo или группа docker",
+            .english: "no access to the docker socket — needs sudo or the docker group",
+        ],
+        "err.dockerGone": [.russian: "этого уже нет", .english: "it is already gone"],
+        "err.dockerNotRunning": [.russian: "контейнер не запущен", .english: "the container is not running"],
+        "err.dockerStopFirst": [
+            .russian: "сначала остановить: удалять работающий контейнер docker не даёт",
+            .english: "stop it first: docker will not remove a running container",
+        ],
+        "err.dockerInUse": [
+            .russian: "занято: сначала убрать контейнеры, которые это используют",
+            .english: "in use: remove the containers using it first",
+        ],
+        "err.portTaken": [
+            .russian: "порт %@ уже занят на этой машине — возьми другой",
+            .english: "port %@ is already taken on this Mac — pick another",
+        ],
+        "err.forwardNoConnection": [
+            .russian: "нет живого соединения с хостом — подключись сначала",
+            .english: "no live connection to the host — connect first",
+        ],
+        "err.portPrivileged": [
+            .russian: "порт %@ требует прав — возьми номер выше 1024",
+            .english: "port %@ needs privileges — pick a number above 1024",
+        ],
+        "err.keyLockOut": [
+            .russian: "так не останется ни одного рабочего ключа — доступ к серверу пропадёт",
+            .english: "that would leave no working key — you would lose access to the server",
+        ],
+        "err.notAKey": [
+            .russian: "строка не похожа на открытый ключ — вставь строку из файла .pub",
+            .english: "that line is not a public key — paste the line from a .pub file",
+        ],
+        "err.secretMissing": [.russian: "записи нет", .english: "no such entry"],
+        "err.secretDenied": [.russian: "подтверждение не получено", .english: "confirmation was not given"],
+        "err.keychain": [
+            .russian: "связка ключей отказала, код %@", .english: "the keychain refused, code %@",
+        ],
+        "err.profileEmpty": [.russian: "профиля ещё нет", .english: "there is no profile yet"],
+        "auth.noMethod": [
+            .russian: "на этом Маке нет ни Touch ID, ни пароля учётной записи",
+            .english: "this Mac has neither Touch ID nor an account password",
+        ],
+        "auth.password": [.russian: "пароль", .english: "password"],
     ]
 }

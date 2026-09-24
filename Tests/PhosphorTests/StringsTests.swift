@@ -6,6 +6,9 @@ import Testing
 @testable import KeysKit
 @testable import PhosphorUI
 @testable import SessionKit
+@testable import AuthKit
+@testable import SSHKit
+@testable import PhosphorCore
 
 /// Всё, что приходит из пакетов, подписывается по таблице на обоих языках.
 ///
@@ -64,6 +67,35 @@ struct PackageStringsTests {
         #expect(Set(Strings.table.keys).isDisjoint(with: Strings.packageTable.keys))
         for (key, values) in Strings.packageTable {
             #expect(Set(values.keys) == Set(Language.allCases), "\(key)")
+        }
+    }
+
+    @Test("у каждой причины ошибки есть слова на обоих языках", arguments: languages)
+    func everyErrorTranslated(language: Language) {
+        let strings = Strings(language: language)
+        let errors: [any Error] = [
+            ConnectionFailure.proxyDown(host: "127.0.0.1", port: 1080), ConnectionFailure.denied(host: "h"),
+            ConnectionFailure.hostKeyChanged(host: "h"), ConnectionFailure.unreachable(address: "h"),
+            ConnectionFailure.other(host: "h"),
+            TransportError.authenticationFailed, TransportError.hostKeyChanged, TransportError.cancelled,
+            TransportError.commandFailed(status: 3, stderr: ""),
+            DockerProblem.noSocketAccess, DockerProblem.gone, DockerProblem.notRunning,
+            DockerProblem.stopFirst, DockerProblem.inUse,
+            ForwardProblem.portTaken(8080), ForwardProblem.noConnection, ForwardProblem.needsPrivilege(80),
+            KeyManager.KeyError.wouldLockOut, KeyManager.KeyError.notAKey,
+            SecretError.notFound, SecretError.denied, SecretError.enrollmentChanged, SecretError.keychain(-25_300),
+            ProfileStoreError.empty, ProfileStoreError.keyLost, ProfileStoreError.enrollmentChanged,
+            GateError.unavailable(nil), GateError.lockedOut,
+        ]
+        for error in errors {
+            let text = strings.describe(error)
+            #expect(text.range(of: #"\b[a-z]+\.[a-zA-Z]+\b"#, options: .regularExpression) == nil, "\(text)")
+            #expect(!text.contains("%@"), "\(text)")
+            // Отладочный вид вроде `portTaken(8080)` на экран не попадает.
+            #expect(!text.contains("("), "\(text)")
+            if language == .english {
+                #expect(text.range(of: "\\p{Cyrillic}", options: .regularExpression) == nil, "\(text)")
+            }
         }
     }
 

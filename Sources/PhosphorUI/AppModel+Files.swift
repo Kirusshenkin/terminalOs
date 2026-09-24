@@ -69,7 +69,7 @@ extension AppModel {
             remoteFiles = try await browser.list(remotePath)
             filesError = nil
         } catch {
-            filesError = "\(strings("files.cannotRead")) \(remotePath): \(error)"
+            filesError = "\(strings("files.cannotRead")) \(remotePath): \(strings.describe(error))"
             remoteFiles = []
         }
     }

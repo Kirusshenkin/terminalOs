@@ -14,7 +14,7 @@ public struct SessionState: Sendable {
         case probing
         case ready
         /// Failed, with a message that says what to do next.
-        case failed(String)
+        case failed(ConnectionFailure)
     }
 
     public var phase: Phase = .idle
@@ -178,24 +178,15 @@ public actor HostSession {
         }
     }
 
-    /// Turns a failure into something that says what to do about it.
-    ///
-    /// "Could not connect" is useless: the fix differs completely between a
-    /// proxy that is down, a server that is asleep and a key that was removed.
-    static func explain(_ error: any Error, host: ServerHost) -> String {
+    /// Sorts a failure into the cases that each have their own fix.
+    static func explain(_ error: any Error, host: ServerHost) -> ConnectionFailure {
         switch error {
-        case TransportError.proxyUnreachable(let proxy, let port):
-            "прокси \(proxy):\(port) не отвечает — запущен ли V2Box?"
-        case TransportError.authenticationFailed:
-            "\(host.name) отказал в доступе — ключа нет в authorized_keys?"
-        case TransportError.hostKeyChanged:
-            "ключ хоста \(host.name) изменился — подключение остановлено"
-        case TransportError.hostUnreachable(let address):
-            "\(address) не отвечает"
-        case TransportError.commandFailed(_, let stderr) where !stderr.isEmpty:
-            String(stderr.prefix(200))
-        default:
-            "не удалось подключиться к \(host.name)"
+        case TransportError.proxyUnreachable(let proxy, let port): .proxyDown(host: proxy, port: port)
+        case TransportError.authenticationFailed: .denied(host: host.name)
+        case TransportError.hostKeyChanged: .hostKeyChanged(host: host.name)
+        case TransportError.hostUnreachable(let address): .unreachable(address: address)
+        case TransportError.commandFailed(_, let stderr) where !stderr.isEmpty: .remote(String(stderr.prefix(200)))
+        default: .other(host: host.name)
         }
     }
 
@@ -307,7 +298,7 @@ public actor HostSession {
         } catch {
             return ActionOutcome(
                 action: action, containerName: container.name,
-                succeeded: false, message: Self.explain(error, host: host)
+                failure: .connection(Self.explain(error, host: host))
             )
         }
     }

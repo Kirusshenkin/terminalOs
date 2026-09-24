@@ -27,7 +27,7 @@ public struct DockerView: View {
         case .idle: strings("dock.noHost")
         case .connecting, .probing: strings("dock.connecting")
         case .ready: nil
-        case .failed(let reason): reason
+        case .failed(let failure): strings.connectionFailure(failure)
         }
     }
 
@@ -158,7 +158,7 @@ public struct DockerView: View {
                 }
                 content(for: container)
                 if let outcome = model.lastOutcome {
-                    Text(outcome.message)
+                    Text(strings.outcome(outcome))
                         .font(style.font(11.5))
                         .foregroundStyle(outcome.succeeded ? style.muted : style.warning)
                 }

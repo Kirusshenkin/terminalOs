@@ -16,22 +16,6 @@ public enum SecretError: Error, Equatable {
     case keychain(OSStatus)
 }
 
-extension SecretError: LocalizedError {
-    /// Что произошло и что с этим делать — без имён системных кодов.
-    public var errorDescription: String? {
-        switch self {
-        case .notFound:
-            "записи нет"
-        case .denied:
-            "подтверждение не получено"
-        case .enrollmentChanged:
-            "набор отпечатков Touch ID изменился — записи, сделанные под прежним "
-                + "набором, больше не открываются; восстанови профиль из экспорта"
-        case .keychain(let status):
-            "связка ключей отказала, код \(status)"
-        }
-    }
-}
 
 /// Somewhere small secrets live.
 ///

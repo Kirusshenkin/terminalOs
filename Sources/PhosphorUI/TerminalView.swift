@@ -167,7 +167,7 @@ public struct TerminalPane: View {
             model.sessionState.profile.map {
                 "\($0.osName) \($0.osVersion) · \(strings("term.uptime")) \(strings.duration(seconds: $0.uptimeSeconds))"
             }
-        case .failed(let reason): reason
+        case .failed(let failure): strings.connectionFailure(failure)
         }
     }
 

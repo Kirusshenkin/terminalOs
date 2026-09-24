@@ -101,7 +101,7 @@ extension AppModel {
         } catch ProfileStoreError.keyLost {
             saveError = strings("vault.keyLost")
         } catch {
-            saveError = "\(strings("vault.saveFailed")) \(error.localizedDescription)"
+            saveError = "\(strings("vault.saveFailed")) \(strings.describe(error))"
         }
         return false
     }

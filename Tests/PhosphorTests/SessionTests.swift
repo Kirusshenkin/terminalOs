@@ -8,6 +8,7 @@ import Testing
 @testable import ProvisionKit
 @testable import SSHKit
 @testable import SessionKit
+@testable import PhosphorUI
 
 /// Транспорт, который отвечает заранее заданными результатами.
 ///
@@ -159,15 +160,22 @@ struct HostSessionTests {
     @Test("ошибки объясняют, что делать, а не просто «не удалось»")
     func errorsAreActionable() {
         let host = ServerHost(name: "prod-01", address: "10.0.0.1")
-        let proxy = HostSession.explain(
-            TransportError.proxyUnreachable(host: "127.0.0.1", port: 10_808), host: host)
+        let strings = Strings(language: .russian)
+        func words(_ error: TransportError) -> String {
+            strings.connectionFailure(HostSession.explain(error, host: host))
+        }
+        #expect(
+            HostSession.explain(TransportError.proxyUnreachable(host: "127.0.0.1", port: 10_808), host: host)
+                == .proxyDown(host: "127.0.0.1", port: 10_808))
+        let proxy = words(.proxyUnreachable(host: "127.0.0.1", port: 10_808))
         #expect(proxy.contains("10808"))
         #expect(proxy.lowercased().contains("v2box"))
 
-        let auth = HostSession.explain(TransportError.authenticationFailed, host: host)
+        let auth = words(.authenticationFailed)
         #expect(auth.contains("authorized_keys"))
+        #expect(auth.contains("prod-01"))
 
-        let changed = HostSession.explain(TransportError.hostKeyChanged, host: host)
+        let changed = words(.hostKeyChanged)
         #expect(changed.contains("изменился"))
 
         // Разные причины дают разные подсказки — в этом весь смысл.
@@ -214,16 +222,18 @@ struct ContainerActionTests {
     @Test("ошибки докера превращаются в подсказку, а не в дамп stderr")
     func explainsFailures() {
         func outcome(_ stderr: String, _ action: ContainerAction = .remove) -> String {
-            ActionOutcome.from(
-                result: CommandResult(status: 1, stdout: "", stderr: stderr),
-                action: action, container: "api"
-            ).message
+            Strings(language: .russian).outcome(
+                ActionOutcome.from(
+                    result: CommandResult(status: 1, stdout: "", stderr: stderr),
+                    action: action, container: "api"))
         }
         #expect(
             outcome("Got permission denied while trying to connect to the Docker daemon socket")
                 .contains("sudo"))
         #expect(outcome("Error: No such container: api").contains("уже нет"))
         #expect(outcome("cannot remove container: container is running").contains("остановить"))
+        // Незнакомая жалоба передаётся словами докера, а не пропадает.
+        #expect(outcome("something odd") == "something odd")
     }
 
     @Test("успех сообщает о себе тем же типом, что и ошибка")

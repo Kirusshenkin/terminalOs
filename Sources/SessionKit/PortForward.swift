@@ -85,25 +85,27 @@ public actor ForwardManager {
         let result = try await Subprocess.run(
             executable: SSHInvocation.executable, arguments: arguments, timeout: .seconds(15))
         guard result.succeeded else {
-            throw TransportError.commandFailed(
-                status: result.status,
-                stderr: Self.explain(result.stderr, forward: forward)
-            )
+            throw Self.explain(result.stderr, forward: forward)
         }
     }
 
-    /// Переводит жалобу ssh в подсказку.
-    static func explain(_ stderr: String, forward: PortForward) -> String {
+    /// Раскладывает жалобу ssh по причинам, у каждой из которых своё лекарство.
+    static func explain(_ stderr: String, forward: PortForward) -> ForwardProblem {
         let lower = stderr.lowercased()
-        if lower.contains("address already in use") {
-            return "порт \(forward.listenPort) уже занят на этой машине"
-        }
-        if lower.contains("not a control") || lower.contains("control socket") {
-            return "нет живого соединения с хостом — подключись сначала"
-        }
-        if lower.contains("permission denied") {
-            return "порт \(forward.listenPort) требует прав — возьми номер выше 1024"
-        }
-        return String(stderr.prefix(160)).trimmingCharacters(in: .whitespacesAndNewlines)
+        if lower.contains("address already in use") { return .portTaken(forward.listenPort) }
+        if lower.contains("not a control") || lower.contains("control socket") { return .noConnection }
+        if lower.contains("permission denied") { return .needsPrivilege(forward.listenPort) }
+        return .other(String(stderr.prefix(160)).trimmingCharacters(in: .whitespacesAndNewlines))
     }
+}
+
+/// Почему проброс не поднялся.
+public enum ForwardProblem: Error, Sendable, Equatable {
+    /// Порт на этой машине уже занят.
+    case portTaken(Int)
+    /// Нет живого соединения с хостом.
+    case noConnection
+    /// Порт ниже 1024 требует прав.
+    case needsPrivilege(Int)
+    case other(String)
 }

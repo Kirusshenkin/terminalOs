@@ -49,7 +49,7 @@ extension AppModel {
             bridge = server
             bridgeError = nil
         } catch {
-            bridgeError = "\(strings("bridge.failed")) \(error)"
+            bridgeError = "\(strings("bridge.failed")) \(strings.describe(error))"
         }
     }
 

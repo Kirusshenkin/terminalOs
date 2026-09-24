@@ -27,7 +27,7 @@ extension AppModel {
             knownHosts = remaining
             knownHostsError = nil
         } catch {
-            knownHostsError = "\(strings("known.writeFailed")) \(error.localizedDescription)"
+            knownHostsError = "\(strings("known.writeFailed")) \(strings.describe(error))"
         }
     }
 

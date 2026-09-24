@@ -52,44 +52,30 @@ public enum ContainerAction: String, CaseIterable, Sendable {
 
 /// What happened when an action ran.
 public struct ActionOutcome: Sendable, Equatable {
+    public enum Failure: Sendable, Equatable {
+        case docker(DockerProblem)
+        case connection(ConnectionFailure)
+        case noSession
+    }
+
     public var action: ContainerAction
     public var containerName: String
-    public var succeeded: Bool
-    /// Message for the person, not the raw stderr dump.
-    public var message: String
+    /// `nil` — получилось.
+    public var failure: Failure?
+    public var succeeded: Bool { failure == nil }
 
-    public init(action: ContainerAction, containerName: String, succeeded: Bool, message: String) {
+    public init(action: ContainerAction, containerName: String, failure: Failure?) {
         self.action = action
         self.containerName = containerName
-        self.succeeded = succeeded
-        self.message = message
+        self.failure = failure
     }
 
     /// Turns docker's complaint into something actionable.
     public static func from(
         result: CommandResult, action: ContainerAction, container: String
     ) -> ActionOutcome {
-        guard !result.succeeded else {
-            return ActionOutcome(
-                action: action, containerName: container,
-                succeeded: true, message: "\(action.title): готово"
-            )
-        }
-        let stderr = result.stderr.lowercased()
-        let message: String =
-            if stderr.contains("permission denied") {
-                "нет доступа к сокету docker — нужен sudo или группа docker"
-            } else if stderr.contains("no such container") {
-                "контейнера уже нет"
-            } else if stderr.contains("is not running") {
-                "контейнер не запущен"
-            } else if stderr.contains("cannot remove") && stderr.contains("running") {
-                "сначала остановить: удалять работающий контейнер docker не даёт"
-            } else {
-                String(result.stderr.prefix(200)).trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-        return ActionOutcome(
-            action: action, containerName: container, succeeded: false, message: message
-        )
+        ActionOutcome(
+            action: action, containerName: container,
+            failure: result.succeeded ? nil : .docker(DockerProblem.classify(result.stderr)))
     }
 }

@@ -36,18 +36,6 @@ public enum ProfileStoreError: Error, Equatable {
     case enrollmentChanged
 }
 
-extension ProfileStoreError: LocalizedError {
-    public var errorDescription: String? {
-        switch self {
-        case .empty:
-            "профиля ещё нет"
-        case .keyLost:
-            "профиль на месте, но ключ утерян — восстанови из экспорта"
-        case .enrollmentChanged:
-            SecretError.enrollmentChanged.errorDescription
-        }
-    }
-}
 
 /// Reads and writes the encrypted profile.
 ///

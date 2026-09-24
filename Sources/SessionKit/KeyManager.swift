@@ -13,8 +13,10 @@ public actor KeyManager {
         /// После правки не осталось ни одного рабочего ключа, либо исчез тот,
         /// которым открыта текущая сессия.
         case wouldLockOut
-        case readFailed(String)
+        /// Сервер ответил ошибкой; его слова — как есть.
         case writeFailed(String)
+        /// Вставленная строка — не открытый ключ.
+        case notAKey
     }
 
     private let transport: any SSHTransport
@@ -28,12 +30,10 @@ public actor KeyManager {
     /// Ключи с сервера. Пустой файл — это не ошибка, а нормальное состояние.
     public func load() async throws -> [AuthorizedKey] {
         let command = "cat \(Shell.quote(path)) 2>/dev/null || true"
-        do {
-            let result = try await transport.run(command, timeout: .seconds(20))
-            return AuthorizedKeysFile.parse(result.stdout)
-        } catch {
-            throw KeyError.readFailed("\(error)")
-        }
+        // Ошибка транспорта уходит наверх как есть: у неё своя причина, и
+        // интерфейс называет её сам.
+        let result = try await transport.run(command, timeout: .seconds(20))
+        return AuthorizedKeysFile.parse(result.stdout)
     }
 
     /// Отпечаток ключа, которым открыта текущая сессия.
@@ -61,15 +61,9 @@ public actor KeyManager {
         }
         let content = AuthorizedKeysFile.render(keys)
         let command = AuthorizedKeysFile.writeCommand(content: content, path: path)
-        do {
-            let result = try await transport.run(command, timeout: .seconds(30))
-            guard result.succeeded else {
-                throw KeyError.writeFailed(String(result.stderr.prefix(160)))
-            }
-        } catch let error as KeyError {
-            throw error
-        } catch {
-            throw KeyError.writeFailed("\(error)")
+        let result = try await transport.run(command, timeout: .seconds(30))
+        guard result.succeeded else {
+            throw KeyError.writeFailed(String(result.stderr.prefix(160)))
         }
     }
 
@@ -116,7 +110,7 @@ public actor KeyManager {
         line: String, to keys: [AuthorizedKey], currentFingerprint: String?
     ) async throws -> [AuthorizedKey] {
         guard let parsed = AuthorizedKeysFile.parse(line).first else {
-            throw KeyError.writeFailed("строка не похожа на ключ")
+            throw KeyError.notAKey
         }
         guard !keys.contains(where: { $0.fingerprint == parsed.fingerprint }) else { return keys }
         var updated = keys

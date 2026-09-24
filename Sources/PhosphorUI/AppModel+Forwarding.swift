@@ -76,7 +76,7 @@ extension AppModel {
         } catch TransportError.commandFailed(_, let reason) {
             forwardError = reason
         } catch {
-            forwardError = "\(error)"
+            forwardError = strings.describe(error)
         }
     }
 

@@ -101,47 +101,9 @@ public enum ResourceAction: Sendable, Equatable {
     case removeNetwork(id: String, name: String)
     case pruneNetworks
 
-    /// Всё здесь необратимо, но сносить один объект и подчищать все
-    /// неиспользуемые — риск разного масштаба, и предупреждать надо по-разному.
-    public var title: String {
-        switch self {
-        case .removeImage: "удалить образ"
-        case .pruneImages: "удалить безымянные образы"
-        case .removeVolume: "удалить том"
-        case .pruneVolumes: "удалить неиспользуемые тома"
-        case .removeNetwork: "удалить сеть"
-        case .pruneNetworks: "удалить неиспользуемые сети"
-        }
-    }
-
-    public var subject: String {
-        switch self {
-        case .removeImage(_, let name): name
-        case .removeVolume(let name): name
-        case .removeNetwork(_, let name): name
-        case .pruneImages: "все образы без имени"
-        case .pruneVolumes: "все тома, которые никто не подключил"
-        case .pruneNetworks: "все сети, к которым никто не подключён"
-        }
-    }
-
-    /// Чем это грозит. Текст пишем до того, как человек нажмёт «да».
-    public var warning: String {
-        switch self {
-        case .removeImage:
-            "образ придётся качать заново; контейнеры на нём удалить не даст"
-        case .pruneImages:
-            "слои без имени уйдут — следующая сборка будет дольше"
-        case .removeVolume:
-            "данные внутри тома пропадут навсегда"
-        case .pruneVolumes:
-            "данные всех неподключённых томов пропадут навсегда"
-        case .removeNetwork:
-            "контейнеры в этой сети потеряют связь друг с другом"
-        case .pruneNetworks:
-            "пользовательские сети без контейнеров будут удалены"
-        }
-    }
+    // Названия, предмет и предупреждение — в интерфейсе (Strings+Packages):
+    // всё здесь необратимо, но сносить один объект и подчищать все
+    // неиспользуемые — риск разного масштаба, и слова для них разные.
 
     public func command(prefix: String = "docker") -> String {
         switch self {
@@ -154,20 +116,8 @@ public enum ResourceAction: Sendable, Equatable {
         }
     }
 
-    /// Превращает жалобу docker в понятную фразу.
-    public static func explain(_ result: CommandResult) -> String {
-        guard !result.succeeded else { return "готово" }
-        let stderr = result.stderr.lowercased()
-        if stderr.contains("permission denied") {
-            return "нет доступа к сокету docker — нужен sudo или группа docker"
-        }
-        if stderr.contains("in use") || stderr.contains("being used") {
-            return "занято: сначала убрать контейнеры, которые это используют"
-        }
-        if stderr.contains("no such") {
-            return "этого уже нет"
-        }
-        return String(result.stderr.prefix(200))
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+    /// Что пошло не так; `nil` — получилось.
+    public static func problem(_ result: CommandResult) -> DockerProblem? {
+        result.succeeded ? nil : DockerProblem.classify(result.stderr)
     }
 }

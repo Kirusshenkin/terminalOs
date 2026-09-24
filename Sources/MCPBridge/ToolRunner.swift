@@ -430,7 +430,7 @@ public actor ToolRunner {
             return ToolResult(text: "контейнер не найден", isError: true)
         }
         let outcome = await session.perform(action, on: container)
-        return ToolResult(text: outcome.message, isError: !outcome.succeeded)
+        return ToolResult(text: Self.describe(outcome), isError: !outcome.succeeded)
     }
 
     /// Выполняет команду и обрезает вывод.

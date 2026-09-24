@@ -19,7 +19,7 @@ extension AppModel {
             serverKeys = try await manager.load()
             myFingerprint = await manager.currentFingerprint()
         } catch {
-            keysError = "\(strings("keys.readFailed")) \(error)"
+            keysError = "\(strings("keys.readFailed")) \(strings.describe(error))"
         }
     }
 
@@ -43,7 +43,7 @@ extension AppModel {
             isAddingKey = false
             keysError = nil
         } catch {
-            keysError = "\(strings("keys.addFailed")) \(error)"
+            keysError = "\(strings("keys.addFailed")) \(strings.describe(error))"
         }
     }
 
@@ -76,7 +76,7 @@ extension AppModel {
         } catch KeyManager.KeyError.wouldLockOut {
             keysError = strings("keys.lastKey")
         } catch {
-            keysError = "\(error)"
+            keysError = strings.describe(error)
         }
     }
 

@@ -41,7 +41,7 @@ public struct RootView: View {
             LockView(
                 strings: model.strings,
                 welcome: model.welcome,
-                capability: model.gateCapability.summary,
+                capability: model.strings.gateCapability(model.gateCapability),
                 error: model.unlockError
             ) {
                 await model.unlock()

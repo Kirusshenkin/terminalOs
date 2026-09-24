@@ -16,6 +16,22 @@ public final class TerminalSurface: LocalProcessTerminalView {
 
     private var guardian = AnsiGuard()
 
+    /// Когда шелл последний раз что-то печатал. По нему рейл отличает агента,
+    /// который работает, от агента, который молча ждёт ответа. Одно
+    /// присваивание на пачку байт — в горячем пути ничего дороже.
+    public private(set) var lastOutput: ContinuousClock.Instant?
+
+    public override func dataReceived(slice: ArraySlice<UInt8>) {
+        lastOutput = .now
+        super.dataReceived(slice: slice)
+    }
+
+    /// Процесс шелла, если он запущен.
+    public var shellPid: pid_t? {
+        guard let pid = process?.shellPid, pid > 0, isRunning else { return nil }
+        return pid
+    }
+
     /// Paints the emulator with a theme.
     public func apply(theme: Theme) {
         let colours = theme.ansi.map { rgba in

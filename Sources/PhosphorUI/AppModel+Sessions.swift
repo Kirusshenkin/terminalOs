@@ -197,6 +197,47 @@ extension AppModel {
             await LocalTmux.run(Self.pollCommand(tmux: Shell.quote(tmux))))
     }
 
+    /// Смотрит, кто стоит на переднем плане обычного шелла этого Мака.
+    ///
+    /// В tmux это знает сам tmux; обычный шелл — наш собственный процесс, и его
+    /// терминал спрашивается у `ps` напрямую. Так агент, запущенный без tmux,
+    /// тоже виден в рейле со статусом.
+    func loadPlainShell() async {
+        guard let surface = surfaces.existing(.local), let pid = surface.shellPid else {
+            plainShell = nil
+            return
+        }
+        let output = await LocalTmux.run(Self.plainShellCommand(pid: pid))
+        let silent = surface.lastOutput.map { Int((ContinuousClock.now - $0).components.seconds) }
+        plainShell = Self.plainShellSession(output, silentSeconds: silent)
+    }
+
+    /// Терминал шелла и передние процессы на нём: `tty stat args`.
+    static func plainShellCommand(pid: pid_t) -> String {
+        "t=$(ps -o tty= -p \(pid) 2>/dev/null | tr -d ' '); [ -n \"$t\" ] && "
+            + "ps -t \"$t\" -o tty=,stat=,args= 2>/dev/null | awk '$2 ~ /\\+/' | head -\(foregroundLimit)"
+    }
+
+    /// Статус и агент обычного шелла по выводу `ps`. Чистая функция.
+    ///
+    /// На переднем плане только шелл — покой. Кто-то другой, и вывод был
+    /// недавно, — работа; давно молчит — вероятно, ждёт ответа.
+    static func plainShellSession(_ output: String, silentSeconds: Int?) -> TmuxSession {
+        let lines = foreground(output.split(separator: "\n").map(String.init)).values.first ?? []
+        let agent = lines.lazy.compactMap { CodingAgent.detect(commandLine: $0) }.first
+        let command = lines.last.flatMap { $0.split(separator: " ").first.map(String.init) } ?? ""
+        let name = (command as NSString).lastPathComponent
+        var session = TmuxSession(name: "", windows: 1, attached: true, status: .idle)
+        session.agent = agent
+        if agent != nil || !(lines.isEmpty || shellCommands.contains(name)) {
+            // Чтобы статус считался тем же правилом, что у tmux, «сейчас» —
+            // ноль отсчёта, а активность — сколько секунд назад был вывод.
+            let now = workingWindowSeconds + 1_000
+            session.status = status(command: name, activity: now - (silentSeconds ?? 0), now: now)
+        }
+        return session
+    }
+
     /// Переводит терминал на этот Мак — в названную сессию или, если tmux
     /// здесь нет, в обычный одноразовый шелл.
     public func focusLocal(_ name: String?) {
@@ -251,6 +292,7 @@ extension AppModel {
                 // подключение значило бы держать две правды о том, идёт ли опрос.
                 if self.session != nil { await self.loadSessions() }
                 if self.localTmuxPath != nil { await self.loadLocalSessions() }
+                await self.loadPlainShell()
                 await AppModel.pause(seconds: self.watchInterval)
             }
         }

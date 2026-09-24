@@ -263,7 +263,7 @@ public final class AppModel {
     /// Сколько сессий ждут ответа человека. Ради этого числа в шапке горит
     /// метка у «Терминала», даже когда открыт другой раздел.
     public var blockedSessions: Int {
-        (liveSessions + localSessions).reduce(into: 0) { total, session in
+        (liveSessions + localSessions + [plainShell].compactMap(\.self)).reduce(into: 0) { total, session in
             if session.status == .blocked { total += 1 }
         }
     }
@@ -282,6 +282,8 @@ public final class AppModel {
     /// Живые локальные сессии — те же, что у сервера, только здесь. У herdr
     /// локальные рабочие пространства стоят в одном списке с серверными.
     public internal(set) var localSessions: [TmuxSession] = []
+    /// Обычный шелл этого Мака как сессия: кто в нём на переднем плане и ждёт ли.
+    public internal(set) var plainShell: TmuxSession?
     /// Локальная сессия, на которую смотрит терминал. nil — обычный
     /// одноразовый шелл.
     public var localSession: String?

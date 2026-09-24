@@ -134,3 +134,41 @@ struct SessionRailTests {
         #expect(!plain.joined(separator: " ").contains("tmux"))
     }
 }
+
+@Suite("Агент в обычном шелле этого Мака")
+struct PlainShellAgentTests {
+    private let claude = "ttys003 S+ node /opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+
+    @Test("на переднем плане только шелл — покой, агента нет")
+    @MainActor func promptIsIdle() {
+        let session = AppModel.plainShellSession("ttys003 Ss+ -zsh", silentSeconds: 400)
+        #expect(session.status == .idle)
+        #expect(session.agent == nil)
+    }
+
+    @Test("Claude Code печатает — работает; молчит дольше окна — ждёт ответа")
+    @MainActor func claudeWorkingThenBlocked() {
+        let working = AppModel.plainShellSession(claude, silentSeconds: 2)
+        #expect(working.agent?.id == "claude")
+        #expect(working.status == .working)
+        let waiting = AppModel.plainShellSession(claude, silentSeconds: 60)
+        #expect(waiting.status == .blocked)
+    }
+
+    @Test("MCP-серверы, запущенные агентом, не сбивают: узнаётся сам агент")
+    @MainActor func mcpNoiseDoesNotConfuse() {
+        let output = """
+            ttys015 S+ npm exec chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222
+            ttys015 S+ node /Users/me/.claude/plugins/cache/claude-mem/scripts/mcp-server.cjs
+            ttys015 S+ chrome-devtools-mcp
+            ttys015 S+ claude --dangerously-skip-permissions
+            """
+        #expect(AppModel.plainShellSession(output, silentSeconds: 1).agent?.id == "claude")
+    }
+
+    @Test("пустой ответ ps — не повод выдумывать агента")
+    @MainActor func emptyIsIdle() {
+        let session = AppModel.plainShellSession("", silentSeconds: nil)
+        #expect(session.status == .idle && session.agent == nil)
+    }
+}

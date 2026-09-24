@@ -160,7 +160,9 @@ struct SessionRail: View {
         VStack(alignment: .leading, spacing: 2) {
             // Обычный шелл есть всегда: он не переживает перезапуск, но он и
             // не обещает этого.
-            localRow(name: nil, title: model.strings("term.plainShell"), status: nil, agent: nil)
+            localRow(
+                name: nil, title: model.strings("term.plainShell"), status: model.plainShell?.status,
+                agent: model.plainShell?.agent)
             ForEach(model.localSessions) { session in
                 localRow(
                     name: session.name, title: session.name, status: session.status,

@@ -242,11 +242,18 @@ extension Strings {
         "ai.copy": [.russian: "копировать", .english: "copy"],
         "ai.copied": [.russian: "скопировано", .english: "copied"],
         "ai.status": [.russian: "статус подключения", .english: "registration status"],
-        "ai.registered": [.russian: "подключен", .english: "registered"],
-        "ai.notRegistered": [.russian: "не подключен", .english: "not registered"],
+        "ai.registered": [.russian: "подключён", .english: "registered"],
+        "ai.notRegistered": [.russian: "не подключён", .english: "not registered"],
+        "ai.someFolders": [
+            .russian: "подключён только в одной папке — выполни команду выше, чтобы видеть везде",
+            .english: "registered for one folder only — run the command above to see it everywhere",
+        ],
+        "ai.recheck": [.russian: "проверить", .english: "check again"],
         "ai.note": [
-            .russian: "скопируй команду ниже и выполни в claude code — мост будет доступен для любого клиента",
-            .english: "copy the command below and run it in claude code — the bridge will be available to any client",
+            .russian: "скопируй команду и выполни её в обычном терминале — Claude Code увидит мост "
+                + "в любой папке. Потом выбери выше, что ИИ можно делать на каждом хосте.",
+            .english: "copy the command and run it in a regular terminal — Claude Code will see the bridge "
+                + "in any folder. Then choose above what the AI may do on each host.",
         ],
 
         "clog.title": [.russian: "журнал подключений", .english: "connection log"],

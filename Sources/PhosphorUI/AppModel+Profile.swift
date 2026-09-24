@@ -47,6 +47,7 @@ extension AppModel {
             profileWritable = true
             saveError = nil
             syncForwardsFromBook()
+            await syncMCPModesFromBook()
             profileNote = strings("profile.imported")
         } catch {
             profileNote = strings("profile.importFailed")

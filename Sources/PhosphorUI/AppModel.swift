@@ -201,6 +201,8 @@ public final class AppModel {
     /// Локальный сокет для MCP-клиентов; живёт, пока открыто приложение.
     var bridge: SocketServer?
     public internal(set) var bridgeError: String?
+    /// Где Claude Code видит мост; `nil` — ещё не проверяли.
+    public internal(set) var claudeCodeStatus: ClientRegistration.Status?
     public var mcpConfirmation: ConfirmationRequest?
 
     /// Ключи на выбранном сервере.
@@ -398,9 +400,12 @@ public final class AppModel {
 
     /// Строка для конфигурации MCP-клиента.
     public var bridgeCommand: String {
-        let shim = Bundle.main.bundleURL
-            .appendingPathComponent("Contents/MacOS/phosphor-mcp").path
-        return #"{"mcpServers":{"phosphor":{"command":"\#(shim)"}}}"#
+        #"{"mcpServers":{"phosphor":{"command":"\#(shimPath)"}}}"#
+    }
+
+    /// Путь к мосту внутри установленного приложения.
+    var shimPath: String {
+        Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/phosphor-mcp").path
     }
 
     /// Куда смотрит терминал: на этот Мак или на выбранный сервер.
@@ -592,6 +597,7 @@ public final class AppModel {
         do {
             book = try await profiles.load(HostBook.self, reason: strings("auth.reason"))
             syncForwardsFromBook()
+            await syncMCPModesFromBook()
             // Список хостов на месте — значит есть с чем сверить спейсы из
             // прошлого запуска.
             restoreLayout()

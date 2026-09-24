@@ -27,7 +27,10 @@ public struct ActivityView: View {
             case .tools: tools
             }
         }
-        .task { await model.loadAudit() }
+        .task {
+            await model.loadAudit()
+            await model.refreshClaudeCodeRegistration()
+        }
     }
 
     /// Что вообще может быть вызвано: список закрытый и короткий намеренно.
@@ -138,7 +141,7 @@ public struct ActivityView: View {
                         .font(style.font(11)).foregroundStyle(style.muted)
 
                     HStack(spacing: 8) {
-                        Text(model.bridgeCliCommand)
+                        Text(model.claudeCodeCommand)
                             .font(style.font(10))
                             .foregroundStyle(style.text.opacity(0.8))
                             .textSelection(.enabled)
@@ -147,7 +150,7 @@ public struct ActivityView: View {
                             .background(style.surface)
 
                         Button {
-                            model.copyBridgeCommand()
+                            model.copyClaudeCodeCommand()
                             commandCopied = true
                             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                                 commandCopied = false
@@ -166,9 +169,16 @@ public struct ActivityView: View {
                         Text(strings("ai.status"))
                             .font(style.font(11)).foregroundStyle(style.muted)
                         Spacer()
-                        Text(model.isPhosphorRegistered() ? strings("ai.registered") : strings("ai.notRegistered"))
+                        Text(claudeCodeStatusText)
                             .font(style.font(11))
-                            .foregroundStyle(model.isPhosphorRegistered() ? style.accent : style.muted)
+                            .foregroundStyle(
+                                model.claudeCodeStatus == .everywhere ? style.accent : style.warning)
+                        Button(strings("ai.recheck")) {
+                            Task { await model.refreshClaudeCodeRegistration() }
+                        }
+                        .buttonStyle(.plain)
+                        .font(style.font(11))
+                        .foregroundStyle(style.text)
                     }
                     .padding(.top, 4)
                 }
@@ -182,6 +192,14 @@ public struct ActivityView: View {
                     .overlay(Rectangle().stroke(style.warning.opacity(0.4), lineWidth: 1))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var claudeCodeStatusText: String {
+        switch model.claudeCodeStatus {
+        case .everywhere: strings("ai.registered")
+        case .someFolders: strings("ai.someFolders")
+        case .missing, nil: strings("ai.notRegistered")
         }
     }
 

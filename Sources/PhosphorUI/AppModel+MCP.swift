@@ -1,5 +1,5 @@
-public import AppKit
-public import Foundation
+import AppKit
+import Foundation
 public import HostsKit
 public import MCPBridge
 
@@ -9,53 +9,41 @@ extension AppModel {
     /// Читает журнал с диска: он переживает перезапуск, в отличие от памяти.
     func loadAudit() async {
         auditEntries = await audit.readAll()
-        for host in book.hosts {
-            mcpModes[host.id] = await policy.mode(for: host.id)
-        }
     }
 
-    /// Проверяет, зарегистрирован ли Phosphor в ~/.claude.json.
+    /// Отдаёт политике режимы из профиля: свой у хоста, иначе от группы.
     ///
-    /// Читает только наличие записи, никогда не пишет конфиг.
-    func isPhosphorRegistered() -> Bool {
-        let claudeJsonURL = FileManager.default
-            .homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude.json")
-
-        guard FileManager.default.fileExists(atPath: claudeJsonURL.path) else {
-            return false
+    /// Вызывается сразу после чтения профиля, а не при открытии страницы
+    /// доступа: мост принимает запросы с запуска, и до этого момента все
+    /// хосты выглядели бы выключенными.
+    func syncMCPModesFromBook() async {
+        for host in book.hosts {
+            let mode = book.mcpMode(for: host)
+            await policy.setMode(mode, for: host.id)
+            mcpModes[host.id] = mode
         }
-
-        do {
-            let data = try Data(contentsOf: claudeJsonURL)
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let servers = json["mcpServers"] as? [String: Any],
-               servers["phosphor"] != nil {
-                return true
-            }
-        } catch {
-            // Если файл не читается, считаем что нет подключения
-            return false
-        }
-
-        return false
     }
 
-    /// Копирует команду регистрации в буфер обмена.
-    func copyBridgeCommand() {
-        let shimPath = Bundle.main.bundleURL
-            .appendingPathComponent("Contents/MacOS/phosphor-mcp").path
-        let command = "claude mcp add phosphor \(shimPath)"
+    /// Команда, которой мост подключается к Claude Code.
+    public var claudeCodeCommand: String {
+        ClientRegistration.claudeCodeCommand(shimPath: shimPath)
+    }
 
+    func copyClaudeCodeCommand() {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(command, forType: .string)
+        NSPasteboard.general.setString(claudeCodeCommand, forType: .string)
     }
 
-    /// Команда для регистрации в Claude Code (вместо JSON конфига).
-    public var bridgeCliCommand: String {
-        let shimPath = Bundle.main.bundleURL
-            .appendingPathComponent("Contents/MacOS/phosphor-mcp").path
-        return "claude mcp add phosphor \(shimPath)"
+    /// Смотрит, подключён ли мост в Claude Code. Файл читается вне главного
+    /// потока: он бывает в мегабайты, а страница перерисовывается часто.
+    func refreshClaudeCodeRegistration() async {
+        let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude.json")
+        claudeCodeStatus = await Task.detached(priority: .utility) {
+            // Нет файла или нет доступа — значит, Claude Code мост не видит;
+            // именно это и показывает строка статуса.
+            guard let data = try? Data(contentsOf: url) else { return .missing }
+            return ClientRegistration.status(inClaudeConfig: data)
+        }.value
     }
 
     /// Меняет режим доступа и сразу это записывает.
@@ -66,7 +54,8 @@ extension AppModel {
         await policy.setMode(mode, for: host.id)
         mcpModes[host.id] = mode
 
-        // Сохраняем режим в профиле, чтобы он пережил перезапуск.
+        // Режим живёт в профиле, иначе перезапуск молча выключает доступ (#3).
+        // Неудачная запись видна на плашке saveError — результат тут не нужен.
         if let index = book.hosts.firstIndex(where: { $0.id == host.id }) {
             book.hosts[index].mcpMode = mode
             _ = await saveNow()

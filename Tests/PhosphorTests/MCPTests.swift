@@ -131,23 +131,52 @@ struct AccessPolicyTests {
                 == .allow)
     }
 
-    @Test("режим сохраняется в профиле и восстанавливается при перезагрузке")
-    func modesPersistedInProfile() throws {
-        var host = ServerHost(name: "test", address: "example.com", user: "root")
+    @Test("режим хоста переживает запись профиля, а без своего берётся от группы")
+    func modesSurviveProfileRoundTrip() throws {
+        let group = HostGroup(name: "prod", mcpMode: .readOnly)
+        let own = ServerHost(name: "a", address: "a.example", user: "u", mcpMode: .confirm)
+        let inherited = ServerHost(name: "b", address: "b.example", user: "u", groupID: group.id)
+        let bare = ServerHost(name: "c", address: "c.example", user: "u")
+        let book = HostBook(groups: [group], hosts: [own, inherited, bare])
 
-        // Исходно режим не задан.
-        #expect(host.mcpMode == nil)
+        let restored = try JSONDecoder().decode(HostBook.self, from: JSONEncoder().encode(book))
 
-        // Меняем режим.
-        host.mcpMode = .confirm
-        #expect(host.mcpMode == .confirm)
+        #expect(restored.mcpMode(for: restored.hosts[0]) == .confirm)
+        #expect(restored.mcpMode(for: restored.hosts[1]) == .readOnly)
+        #expect(restored.mcpMode(for: restored.hosts[2]) == .disabled)
+    }
+}
 
-        // Кодируем в JSON и обратно.
-        let data = try JSONEncoder().encode(host)
-        let restored = try JSONDecoder().decode(ServerHost.self, from: data)
+@Suite("Подключение моста в Claude Code")
+struct ClientRegistrationTests {
+    private func status(_ json: String) -> ClientRegistration.Status {
+        ClientRegistration.status(inClaudeConfig: Data(json.utf8))
+    }
 
-        // Режим сохранился.
-        #expect(restored.mcpMode == .confirm)
+    @Test("сервер на верхнем уровне виден во всех папках")
+    func userScope() {
+        #expect(status(#"{"mcpServers":{"phosphor":{"command":"/x"}}}"#) == .everywhere)
+    }
+
+    @Test("сервер только в проекте — это одна папка, а не везде")
+    func localScope() {
+        let json = #"{"mcpServers":{"other":{}},"projects":{"/p":{"mcpServers":{"phosphor":{}}}}}"#
+        #expect(status(json) == .someFolders)
+    }
+
+    @Test("нет записи, пустой объект или не JSON — мост не подключён")
+    func missing() {
+        #expect(status(#"{"mcpServers":{"phosphorus":{}}}"#) == .missing)
+        #expect(status("{}") == .missing)
+        #expect(status("not json") == .missing)
+        #expect(status(#"{"projects":{"/p":"broken"}}"#) == .missing)
+    }
+
+    @Test("команда подключает для всех папок и не ломается на пробелах и кавычках в пути")
+    func command() {
+        let cmd = ClientRegistration.claudeCodeCommand(shimPath: "/Apps/My Phos'phor.app/phosphor-mcp")
+        #expect(cmd.hasPrefix("claude mcp add --scope user phosphor -- "))
+        #expect(cmd.hasSuffix(#"'/Apps/My Phos'\''phor.app/phosphor-mcp'"#))
     }
 }
 

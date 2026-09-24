@@ -66,7 +66,7 @@ bundle:
 Claude Code, in one line:
 
 ```sh
-claude mcp add phosphor /Applications/Phosphor.app/Contents/MacOS/phosphor-mcp
+claude mcp add --scope user phosphor -- /Applications/Phosphor.app/Contents/MacOS/phosphor-mcp
 ```
 
 The shim is a few kilobytes of JSON-RPC proxy. It carries no credentials, opens
@@ -97,7 +97,7 @@ stay there.
 **3. Register the bridge.** In Claude Code:
 
 ```sh
-claude mcp add phosphor /Applications/Phosphor.app/Contents/MacOS/phosphor-mcp
+claude mcp add --scope user phosphor -- /Applications/Phosphor.app/Contents/MacOS/phosphor-mcp
 ```
 
 In Claude Desktop, Cursor or anything else that reads a JSON config, use the

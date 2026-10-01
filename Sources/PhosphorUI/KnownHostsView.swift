@@ -12,7 +12,7 @@ public struct KnownHostsView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(strings("hosts.known")).font(style.font(15)).foregroundStyle(style.bright)
+                Text(strings("nav.trusted")).font(style.font(15)).foregroundStyle(style.bright)
                 Text("~/.ssh/known_hosts · \(model.knownHosts.count)")
                     .font(style.font(12)).foregroundStyle(style.muted)
                 Spacer()

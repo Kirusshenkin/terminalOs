@@ -10,17 +10,41 @@ public protocol SectionPage: Hashable, CaseIterable, Sendable {
     var key: String { get }
 }
 
+/// Список серверов и то, что работает поверх списка, а не одного сервера.
 public enum HostsPage: String, SectionPage {
-    case hosts, keys, forwarding, snippets, known, log
+    case hosts, snippets, log
 
     public var key: String {
         switch self {
         case .hosts: "nav.hosts"
-        case .keys: "nav.keys"
-        case .forwarding: "nav.forwarding"
         case .snippets: "nav.snippets"
-        case .known: "nav.known"
         case .log: "nav.log"
+        }
+    }
+}
+
+/// То, что меняется на выбранном сервере. Без сервера каждая страница
+/// предлагает его выбрать.
+public enum ServerPage: String, SectionPage {
+    case setup, access, forwarding
+
+    public var key: String {
+        switch self {
+        case .setup: "nav.setup"
+        case .access: "nav.serverKeys"
+        case .forwarding: "nav.forwarding"
+        }
+    }
+}
+
+/// Ключи и отпечатки этого Мака — общие для всех серверов.
+public enum KeysPage: String, SectionPage {
+    case mine, trusted
+
+    public var key: String {
+        switch self {
+        case .mine: "nav.myKeys"
+        case .trusted: "nav.trusted"
         }
     }
 }

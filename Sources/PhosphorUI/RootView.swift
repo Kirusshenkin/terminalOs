@@ -24,14 +24,9 @@ public struct RootView: View {
             .modifier(Sheets(model: model))
             .modifier(Alerts(model: model))
             .task { await model.startBridge() }
-            .onChange(of: model.page) { _, page in
-                if page == .keys { Task { await model.loadKeys() } }
-            }
             // Опрос замирает, когда на окно никто не смотрит: терминал открыт
             // весь день, и фоновому окну незачем будить процессор.
-            .onChange(of: scenePhase) { _, phase in
-                Task { await model.setWindowActive(phase == .active) }
-            }
+            .task(id: scenePhase) { await model.setWindowActive(scenePhase == .active) }
     }
 
     @ViewBuilder private var content: some View {
@@ -211,96 +206,161 @@ public struct RootView: View {
         }
     }
 
+    /// Шапка делится по тому, к чему относится раздел, а не по алфавиту:
+    /// слева — список серверов, в рамке — выбранный сервер и всё, что с ним
+    /// делается, справа — то, что общее для всех серверов. Рамка отвечает на
+    /// вопрос «почему Docker пустой»: потому что сервер в ней не выбран.
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 22) {
+        HStack(alignment: .center, spacing: 0) {
             Text("PHOSPHOR")
                 .font(model.style.font(11)).tracking(3)
                 .foregroundStyle(model.style.muted)
-            ForEach(Array(tabs.enumerated()), id: \.element.0) { index, tab in
-                Button {
-                    select(tab.1)
-                } label: {
-                    HStack(spacing: 5) {
-                        // Место под маркер занято всегда, поэтому строка не
-                        // дёргается, когда он приезжает.
-                        Text(" ")
-                            .overlay(alignment: .leading) {
-                                if model.screen == tab.1 {
-                                    Text("▸")
-                                        .matchedGeometryEffect(id: "screenMarker", in: marker)
-                                }
-                            }
-                        Text(model.strings(tab.0).uppercased())
-                        // Метка у «Терминала»: где-то в сессии агент упёрся в
-                        // вопрос. Видно из любого раздела — иначе про него
-                        // узнаёшь, только когда сам заглянешь.
-                        if tab.1 == .terminal, model.blockedSessions > 0 {
-                            Text("●")
-                                .font(model.style.font(7))
-                                .foregroundStyle(model.style.warning)
-                                .help(model.strings("term.blockedHint"))
-                        }
-                    }
-                    .font(model.style.font(11)).tracking(1.2)
-                    .foregroundStyle(colour(for: tab.1))
-                }
-                .buttonStyle(PressFeedback())
-                // Маркер «▸» и точка — украшение; имя вкладки — её название (#6).
-                .accessibilityLabel(model.strings(tab.0))
-                .accessibilityAddTraits(model.screen == tab.1 ? .isSelected : [])
-                .onHover { inside in
-                    // Подсветка под курсором мгновенная: это отклик, а не
-                    // анимация, и ждать его нельзя.
-                    hovered = inside ? tab.1 : (hovered == tab.1 ? nil : hovered)
-                }
-                // ⌘1…⌘8 по порядку разделов: рука на клавиатуре и остаётся
-                // на клавиатуре. Больше девяти разделов не будет — в этом и
-                // смысл закрытого списка.
-                .keyboardShortcut(
-                    KeyEquivalent(Character("\(index + 1)")),
-                    modifiers: .command
-                )
+                .padding(.trailing, 22)
+            tab(.hosts)
+                .padding(.trailing, 18)
+            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                hostChip
+                ForEach(serverTabs, id: \.self) { tab($0) }
             }
-            Spacer()
-            Menu {
-                if model.book.hosts.isEmpty {
-                    Text(model.strings("common.noHosts"))
-                    Divider()
-                    Button(model.strings("common.addHost")) {
-                        model.screen = .hosts
-                        model.isAddingHost = true
+            .padding(.horizontal, 12).padding(.vertical, 5)
+            .overlay(Rectangle().stroke(model.style.rule, lineWidth: 1))
+            Spacer(minLength: 18)
+            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                ForEach(globalTabs, id: \.self) { tab($0) }
+            }
+        }
+    }
+
+    private var serverTabs: [Section] { [.terminal, .files, .docker, .monitor, .server] }
+    private var globalTabs: [Section] { [.keys, .activity, .theme] }
+
+    private func tab(_ section: Section) -> some View {
+        Button {
+            select(section)
+        } label: {
+            HStack(spacing: 5) {
+                // Место под маркер занято всегда, поэтому строка не
+                // дёргается, когда он приезжает.
+                Text(" ")
+                    .overlay(alignment: .leading) {
+                        if model.screen == section {
+                            Text("▸")
+                                .matchedGeometryEffect(id: "screenMarker", in: marker)
+                        }
                     }
-                } else {
-                    ForEach(model.book.hosts) { host in
-                        Button(action: { Task { await model.connect(to: host) } }) {
-                            HStack {
-                                if model.selectedHost == host.id {
-                                    Image(systemName: "checkmark")
-                                }
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(host.name)
-                                    Text("\(host.user)@\(host.address)")
-                                        .font(.system(.caption))
-                                        .foregroundStyle(.secondary)
-                                }
+                Text(model.strings(title(section)).uppercased())
+                // Метка у «Терминала»: где-то в сессии агент упёрся в
+                // вопрос. Видно из любого раздела — иначе про него
+                // узнаёшь, только когда сам заглянешь.
+                if section == .terminal, model.blockedSessions > 0 {
+                    Text("●")
+                        .font(model.style.font(7))
+                        .foregroundStyle(model.style.warning)
+                        .help(model.strings("term.blockedHint"))
+                }
+            }
+            .font(model.style.font(11)).tracking(1.2)
+            .foregroundStyle(colour(for: section))
+        }
+        .buttonStyle(PressFeedback())
+        // Маркер «▸» и точка — украшение; имя вкладки — её название (#6).
+        .accessibilityLabel(model.strings(title(section)))
+        .accessibilityAddTraits(model.screen == section ? .isSelected : [])
+        .onHover { inside in
+            // Подсветка под курсором мгновенная: это отклик, а не
+            // анимация, и ждать его нельзя.
+            hovered = inside ? section : (hovered == section ? nil : hovered)
+        }
+        // ⌘1…⌘9 по порядку в шапке: рука на клавиатуре и остаётся
+        // на клавиатуре. Разделов ровно девять — в этом и смысл закрытого
+        // списка.
+        .keyboardShortcut(
+            KeyEquivalent(Character("\((Section.allCases.firstIndex(of: section) ?? 0) + 1)")),
+            modifiers: .command
+        )
+    }
+
+    private func title(_ section: Section) -> String {
+        switch section {
+        case .hosts: "nav.hosts"
+        case .terminal: "tab.terminal"
+        case .files: "tab.files"
+        case .docker: "tab.docker"
+        case .monitor: "tab.monitor"
+        case .server: "tab.server"
+        case .keys: "tab.keys"
+        case .activity: "nav.aiAccess"
+        case .theme: "tab.theme"
+        }
+    }
+
+    /// Сервер, к которому относятся вкладки в рамке. Без сервера он зовёт
+    /// себя выбрать — ярко, потому что это и есть следующий шаг.
+    private var hostChip: some View {
+        Menu {
+            if !model.book.hosts.isEmpty {
+                ForEach(model.book.hosts) { host in
+                    Button(action: { Task { await model.connect(to: host) } }) {
+                        HStack {
+                            if model.selectedHost == host.id {
+                                Image(systemName: "checkmark")
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(host.name)
+                                Text("\(host.user)@\(host.address)")
+                                    .font(.system(.caption))
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
-                    Divider()
-                    Button(model.strings("common.addHost")) {
-                        model.screen = .hosts
-                        model.isAddingHost = true
-                    }
                 }
-            } label: {
-                Text(headerRight)
-                    .font(model.style.font(11)).tracking(1.2)
-                    .foregroundStyle(model.style.muted)
+                Divider()
+            } else {
+                Text(model.strings("common.noHosts"))
+                Divider()
+            }
+            Button(model.strings("common.addHost")) {
+                model.screen = .hosts
+                model.isAddingHost = true
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(model.currentHost == nil ? "○" : "●")
+                    .foregroundStyle(chipColour)
+                Text(chipTitle)
+                    .foregroundStyle(model.currentHost == nil ? model.style.bright : model.style.text)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                Text("▾").foregroundStyle(model.style.muted)
             }
-            .menuStyle(.borderlessButton)
+            .font(model.style.font(11)).tracking(1.2)
+            .frame(maxWidth: 190, alignment: .leading)
+            .fixedSize()
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .help(chipHelp)
+        .accessibilityLabel(chipHelp)
+    }
+
+    private var chipTitle: String {
+        guard let host = model.currentHost else { return model.strings("head.pickServer").uppercased() }
+        return host.name.uppercased()
+    }
+
+    /// Точка говорит, живо ли соединение, — тем же цветом, что и везде.
+    private var chipColour: Color {
+        guard model.currentHost != nil else { return model.style.muted }
+        switch model.sessionState.phase {
+        case .ready: return model.style.accent
+        case .failed: return model.style.warning
+        case .idle, .connecting, .probing: return model.style.muted
+        }
+    }
+
+    private var chipHelp: String {
+        guard let host = model.currentHost else { return model.strings("head.pickServerHint") }
+        return "\(host.user)@\(host.address) · \(model.strings.reach(model.book.reach(for: host)))"
     }
 
     /// Выбранный ярче всех, под курсором — на полпути, остальные приглушены.
@@ -324,23 +384,6 @@ public struct RootView: View {
         }
     }
 
-    private var tabs: [(String, Section)] {
-        [
-            ("nav.hosts", .hosts), ("tab.terminal", .terminal), ("tab.files", .files),
-            ("tab.docker", .docker), ("tab.monitor", .monitor),
-            ("tab.provision", .provision), ("nav.aiAccess", .activity),
-            ("tab.theme", .theme),
-        ]
-    }
-
-    private var headerRight: String {
-        guard let id = model.selectedHost,
-            let host = model.book.hosts.first(where: { $0.id == id })
-        else { return "TOUCH ID" }
-        return
-            "\(host.name.uppercased()) · \(model.strings.reach(model.book.reach(for: host)).uppercased()) · TOUCH ID"
-    }
-
     /// Содержимое выбранного раздела.
     @ViewBuilder private var screenBody: some View {
         switch model.screen {
@@ -349,7 +392,8 @@ public struct RootView: View {
         case .files: FilesView(model: model)
         case .docker: DockerView(model: model)
         case .monitor: MonitorView(model: model)
-        case .provision: ProvisionView(model: model)
+        case .server: ServerView(model: model)
+        case .keys: KeyringView(model: model)
         case .activity: ActivityView(model: model)
         case .theme: ThemeView(model: model)
         }

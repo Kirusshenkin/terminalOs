@@ -19,7 +19,7 @@ public struct ProvisionView: View {
                 // это пустой список шагов, и честнее сказать это прямо.
                 HostPicker(
                     model: model,
-                    title: strings("tab.provision"),
+                    title: strings("nav.setup"),
                     note: strings("prov.pickNote")
                 )
                 .frame(maxWidth: 320, alignment: .leading)

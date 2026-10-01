@@ -634,10 +634,8 @@ extension Strings {
 
         // Sections
         "nav.hosts": [.russian: "хосты", .english: "hosts"],
-        "nav.keys": [.russian: "ключи", .english: "keys"],
         "nav.forwarding": [.russian: "проброс портов", .english: "port forwarding"],
         "nav.snippets": [.russian: "сниппеты", .english: "snippets"],
-        "nav.known": [.russian: "известные хосты", .english: "known hosts"],
         "nav.log": [.russian: "журнал", .english: "log"],
         "nav.containers": [.russian: "контейнеры", .english: "containers"],
         "nav.images": [.russian: "образы", .english: "images"],
@@ -659,9 +657,19 @@ extension Strings {
         "tab.terminal": [.russian: "терминал", .english: "terminal"],
         "tab.docker": [.russian: "docker", .english: "docker"],
         "tab.files": [.russian: "файлы", .english: "files"],
-        "tab.monitor": [.russian: "мониторинг", .english: "monitor"],
+        "tab.monitor": [.russian: "метрики", .english: "metrics"],
         "tab.theme": [.russian: "настройки", .english: "settings"],
-        "tab.provision": [.russian: "автонастройка", .english: "provisioning"],
+        "tab.server": [.russian: "сервер", .english: "server"],
+        "tab.keys": [.russian: "ключи", .english: "keys"],
+        "nav.setup": [.russian: "автонастройка", .english: "provisioning"],
+        "nav.serverKeys": [.russian: "кто может войти", .english: "who can log in"],
+        "nav.myKeys": [.russian: "ключи этого Mac", .english: "this Mac's keys"],
+        "nav.trusted": [.russian: "доверенные серверы", .english: "trusted servers"],
+        "head.pickServer": [.russian: "выбрать сервер", .english: "pick a server"],
+        "head.pickServerHint": [
+            .russian: "вкладки в рамке работают с этим сервером: выберите его здесь или в хостах",
+            .english: "the tabs in this frame act on this server: pick it here or in hosts",
+        ],
         "tab.activity": [.russian: "активность ии", .english: "ai activity"],
 
         // Hosts

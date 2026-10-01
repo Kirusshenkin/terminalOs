@@ -14,7 +14,7 @@ public import ThemeKit
 
 /// Which screen the window is showing.
 public enum Section: String, CaseIterable, Sendable {
-    case hosts, terminal, files, docker, monitor, provision, activity, theme
+    case hosts, terminal, files, docker, monitor, server, keys, activity, theme
 }
 
 /// Кто живёт в углу.
@@ -144,6 +144,8 @@ public final class AppModel {
 
     /// Страница внутри каждого раздела.
     public var page: HostsPage = .hosts
+    public var serverPage: ServerPage = .setup
+    public var keysPage: KeysPage = .mine
     public var dockerPage: DockerPage = .containers
     public var monitorPage: MonitorPage = .overview
     public var activityPage: ActivityPage = .journal

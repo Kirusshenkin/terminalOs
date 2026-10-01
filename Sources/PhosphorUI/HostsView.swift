@@ -37,10 +37,7 @@ public struct HostsView: View {
                 .padding(.trailing, 12)
             }
             .task { await model.loadConnectionLog() }
-        case .keys: KeysView(model: model)
-        case .forwarding: ForwardingView(model: model)
         case .snippets: SnippetsView(model: model)
-        case .known: KnownHostsView(model: model).task { model.loadKnownHosts() }
         case .log: ConnectionLogView(model: model).task { await model.loadConnectionLog() }
         }
     }

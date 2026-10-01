@@ -96,7 +96,7 @@ Tap the server card. The **terminal** tab opens, above it — a status line:
 
 Faster from the keyboard: **⇧⌘O**, start typing the name, address or tag, ↑↓
 and Enter. A server not in the list — type `user@host` or `user@host:port`.
-Switch to another server from the header: tap the host name on the right.
+Switch to another server from the header: click the server name inside the frame.
 
 If connection fails, the status line tells you what happened:
 
@@ -104,7 +104,7 @@ If connection fails, the status line tells you what happened:
 |---|---|
 | proxy 127.0.0.1:10808 is not answering — is V2Box running? | Start the proxy or check the port in the server card |
 | … refused access — is your key missing from authorized_keys? | Add your public key to the server or check the user |
-| the host key of … changed — connection stopped | The server was reinstalled — or someone is intercepting. Find out before "forgetting" the key in known hosts |
+| the host key of … changed — connection stopped | The server was reinstalled — or someone is intercepting. Find out before "forgetting" the key in keys → trusted servers |
 | … is not answering | Server is off, the address is wrong or the port is blocked by firewall |
 
 ## 6. Terminal and sessions
@@ -132,18 +132,19 @@ the plain shell of this Mac alike.
 
 ## 7. The other tabs
 
-Tabs in the header switch with the mouse or keyboard:
+The header has three parts. On the left is the server list. Inside the frame are the selected server and everything done to it: until a server is picked, these tabs ask you to pick one. On the right is what all servers share. Tabs switch with the mouse or keyboard:
 
 | Keys | Tab | What is there |
 |---|---|---|
-| ⌘1 | hosts | server list, keys, port forwarding, snippets, known hosts, log |
-| ⌘2 | terminal | sessions and panes |
+| ⌘1 | hosts | server list, snippets, connection log |
+| ⌘2 | terminal | sessions and panes on the selected server |
 | ⌘3 | files | left is this Mac, right is the server. **←** download, **→** upload, files can be dragged from Finder |
 | ⌘4 | docker | containers, their state and actions. **kill** and **remove** ask for confirmation |
-| ⌘5 | monitor | cores, memory, disks, network, heavy processes, graphs |
-| ⌘6 | provisioning | basic setup of a fresh Ubuntu server |
-| ⌘7 | ai access | Claude and other AI clients' access to servers, log of their actions |
-| ⌘8 | settings | theme, glass, language, behaviour, profile |
+| ⌘5 | metrics | cores, memory, disks, network, heavy processes, graphs |
+| ⌘6 | server | provisioning a fresh Ubuntu, "who can log in" (authorized_keys), port forwarding |
+| ⌘7 | keys | this Mac's keys from `~/.ssh` and trusted servers (known_hosts) |
+| ⌘8 | ai access | Claude and other AI clients' access to servers, log of their actions |
+| ⌘9 | settings | theme, glass, language, behaviour, profile |
 
 Other keys are in the menu bar, next to the action (**File**, **Terminal**,
 **Host**). The most useful:
@@ -177,7 +178,7 @@ The key that encrypts the profile lives only on this Mac. If it is gone — Touc
 fingerprints changed, system reinstalled, new Mac — the profile cannot be opened
 without a backup.
 
-**⌘8 → profile → export profile…**. Think up a passphrase and save the file
+**⌘9 → profile → export profile…**. Think up a passphrase and save the file
 somewhere safe. The passphrase cannot be recovered: forget it and the file is
 useless.
 
@@ -190,7 +191,7 @@ in the file.
 Phosphor can let Claude Code, Claude Desktop and other MCP clients work with
 your servers — without handing over your keys.
 
-1. **Claude Code:** open **⌘7 → access**, block "register Claude Code", click
+1. **Claude Code:** open **⌘8 → access**, block "register Claude Code", click
    "copy" and run the command in a regular terminal. It looks like this:
 
    ```sh
@@ -214,14 +215,14 @@ your servers — without handing over your keys.
    ```
 
 2. Phosphor must be open and unlocked.
-3. **⌘7 → access.** Every server is **off** by default. Turn on the mode you
+3. **⌘8 → access.** Every server is **off** by default. Turn on the mode you
    want for the ones you need: "read only", "with confirmation" or "full".
    Write actions in "with confirmation" mode show up as a dialog for you, and
    without "allow" nothing runs. When several arrive at once they queue up: the
-   dialog shows the first, and **⌘7 → access** lists them all under "waiting for
+   dialog shows the first, and **⌘8 → access** lists them all under "waiting for
    your answer", with "deny all" for when an agent heads the wrong way. A
    request nobody answers within a minute is denied.
-4. Everything the AI did is logged at **⌘7 → journal**. The AI has no tool to
+4. Everything the AI did is logged at **⌘8 → journal**. The AI has no tool to
    erase this log.
 
 ## 10. If something goes wrong

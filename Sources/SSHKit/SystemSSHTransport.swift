@@ -64,6 +64,30 @@ public actor SystemSSHTransport: SSHTransport {
         return result
     }
 
+    /// Выполняет команду, только если канал к хосту уже открыт. nil — канала нет.
+    ///
+    /// Для фонового опроса: он не должен логиниться сам. Вход из фона — это
+    /// Touch ID или пароль, всплывающий без видимой причины. `ControlMaster=no`
+    /// и `BatchMode=yes` стоят впереди: у ssh побеждает первое значение опции.
+    public func runIfConnected(_ command: String, timeout: Duration = .seconds(10)) async -> CommandResult? {
+        let target = SSHInvocation.target(host)
+        // Проверка сокета локальная и мгновенная. Ошибка запуска значит то же,
+        // что и мёртвый канал: опросить хост сейчас нельзя.
+        guard
+            let check = try? await Subprocess.run(
+                executable: SSHInvocation.executable,
+                arguments: ["-o", "ControlPath=\(controlPath)", "-O", "check", target],
+                timeout: .seconds(3)),
+            check.status == 0
+        else { return nil }
+        // Обрыв посреди опроса — та же картина «нет связи», что и nil выше;
+        // различать их рейлу незачем.
+        return try? await Subprocess.run(
+            executable: SSHInvocation.executable,
+            arguments: ["-o", "ControlMaster=no", "-o", "BatchMode=yes"] + baseArguments + [target, command],
+            timeout: timeout)
+    }
+
     /// Runs a long-lived command, delivering output line by line.
     public func stream(_ command: String, onLine: @escaping @Sendable (String) -> Void) async throws {
         let target = SSHInvocation.target(host)

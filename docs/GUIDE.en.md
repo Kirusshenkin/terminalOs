@@ -109,26 +109,37 @@ If connection fails, the status line tells you what happened:
 
 ## 6. Terminal and sessions
 
+An opened terminal shows this Mac: the app never connects to a server by
+itself, only on a click.
+
 To the left of the terminal — a column:
 
 - **"this Mac"** — "local shell" and local tmux sessions. The **+** button
   appears if tmux is on the Mac (`brew install tmux`).
-- **"sessions"** — tmux sessions on the server. **+**, name, Enter — new
-  session. Close the window or the app — the session keeps running on the
-  server, and when you log back in, everything is there. Needs tmux on the
-  server (`apt install tmux`). Right-click → **kill session on server**
-  finishes it and everything inside.
-- **"spaces"** — servers open right now. Switch with one tap.
+- **"spaces"** — servers you have connected to, each with its tmux sessions,
+  agent and status underneath. All servers are visible at once, not only the
+  one you are looking at. Click a session to open it, even on another server.
+  **+** next to the current server, name, Enter — new session. Close the window
+  or the app — the session keeps running on the server. Needs tmux on the
+  server (`apt install tmux`). Right-click a session → **kill session on
+  server** finishes it and everything inside; a server → **close space**.
+- **"no link · click to connect"** under a server — its channel closed
+  (network, Mac asleep). The app never logs in from the background, so a click
+  connects.
+
+Hover over a session and hold — the last lines of its screen pop up. You see
+what the agent is asking without switching to it.
 
 Above the terminal — **split** button — up to four panes, each with its own
 session. The icon next to it changes the orientation. Splits work on server
 sessions; "this Mac" is one stream.
 
-If a program in some session is waiting for input (say, an AI agent is asking a
-question), a yellow dot lights up next to "terminal" in the header — visible
-from any tab. The column on the left names the agent (Claude Code, Codex,
-Aider…) and shows whether it is working or waiting — in tmux sessions and in
-the plain shell of this Mac alike.
+If an agent (Claude Code, Codex, Aider…) in some session is waiting for an
+answer while you look elsewhere, a macOS notification arrives — clicking it
+opens that session. The number of waiting agents sits on the Dock icon, and a
+yellow dot lights up next to "terminal" in the header. While the window is in
+the background, the app checks sessions every 10 seconds, and only while some
+agent is working.
 
 ## 7. The other tabs
 

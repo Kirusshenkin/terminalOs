@@ -46,52 +46,14 @@ struct SessionRail: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 12)
             } else {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(spaces) { host in
-                        spaceRow(host)
-                    }
-                }
-                .padding(.horizontal, 8)
-            }
-
-            // Сессии есть только у подключённого хоста: у локального шелла
-            // серверных tmux-сессий нет.
-            if model.session != nil {
-                Rectangle().fill(style.rule.opacity(0.5)).frame(height: 1)
-                    .padding(.horizontal, 12)
-
-                HStack {
-                    Label2(model.strings("term.sessions"))
-                    Spacer()
-                    Button {
-                        adding.toggle()
-                    } label: {
-                        Image(systemName: "plus").font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(style.muted)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(model.strings("nav.newSession"))
-                }
-                .padding(.horizontal, 12)
-
-                if !model.hasTmux {
-                    // Без tmux постоянных сессий не бывает: шелл каждый раз
-                    // начинается с нуля. Говорим это словами и сразу даём, что
-                    // сделать, — иначе пустой список выглядит поломкой.
-                    Text(model.strings("term.noTmux"))
-                        .font(style.font(11)).foregroundStyle(style.warning)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 12)
-                }
-
-                if adding { editor(create: create) }
-
+                // Сессии живут под своим хостом, и видны у всех спейсов сразу:
+                // herdr-пульт — это все агенты на одном экране, а не только те,
+                // в чей хост сейчас смотришь.
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
-                        // «main» есть всегда: это сессия по умолчанию, даже если
-                        // список с сервера ещё не пришёл.
-                        ForEach(rows) { session in
-                            row(session)
+                        ForEach(spaces) { host in
+                            spaceRow(host)
+                            spaceSessions(host)
                         }
                     }
                     .padding(.horizontal, 8)
@@ -175,30 +137,16 @@ struct SessionRail: View {
     private func localRow(
         name: String?, title: String, status: AppModel.SessionStatus?, agent: CodingAgent?
     ) -> some View {
-        let active = model.localFocused && model.localSession == name
-        return Button {
+        SessionLine(
+            model: model, place: .local(name), title: title,
+            subtitle: status.map { status in
+                agent.map { "\($0.title) · \(statusLabel(status))" } ?? statusLabel(status)
+            },
+            dot: status.map(statusColour) ?? style.muted.opacity(0.5),
+            active: model.localFocused && model.localSession == name
+        ) {
             model.focusLocal(name)
-        } label: {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(status.map(statusColour) ?? style.muted.opacity(0.5))
-                    .frame(width: 7, height: 7)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title)
-                        .font(style.font(12.5))
-                        .foregroundStyle(active ? style.bright : style.text)
-                        .lineLimit(1)
-                    if let status {
-                        Text(agent.map { "\($0.title) · \(statusLabel(status))" } ?? statusLabel(status))
-                            .font(style.font(10)).foregroundStyle(style.muted).lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 8).padding(.vertical, 6)
-            .background(active ? style.text.opacity(0.08) : .clear)
         }
-        .buttonStyle(.plain)
         .contextMenu {
             if let name {
                 Button(model.strings("term.killSession"), role: .destructive) {
@@ -214,38 +162,88 @@ struct SessionRail: View {
         addingLocal = false
     }
 
+    // MARK: - Спейсы
+
     /// Открытые спейсы как хосты; неизвестные id (хост удалили) отсеиваем.
     private var spaces: [ServerHost] {
         model.spaces.compactMap { id in model.book.hosts.first { $0.id == id } }
     }
 
+    /// Спейс, в который смотрит терминал и с которым есть живое соединение.
+    private func isLive(_ host: ServerHost) -> Bool {
+        host.id == model.selectedHost && model.session != nil
+    }
+
     private func spaceRow(_ host: ServerHost) -> some View {
         let active = host.id == model.selectedHost && !model.localFocused
-        return Button {
-            model.switchSpace(host.id)
-        } label: {
-            HStack(spacing: 8) {
-                // Активный спейс — яркая точка; остальные откреплены, но их
-                // tmux жив, поэтому не гаснут в ноль.
-                Circle()
-                    .fill(active ? style.bright : style.muted.opacity(0.6))
-                    .frame(width: 7, height: 7)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(host.name)
-                        .font(style.font(12.5))
-                        .foregroundStyle(active ? style.bright : style.text)
-                        .lineLimit(1)
-                    Text("\(host.user)@\(host.address)")
-                        .font(style.font(10)).foregroundStyle(style.muted).lineLimit(1)
+        let offline = !isLive(host) && model.spaceSnapshots[host.id] == .offline
+        return HStack(spacing: 0) {
+            Button {
+                model.switchSpace(host.id)
+            } label: {
+                HStack(spacing: 8) {
+                    // Активный спейс — яркая точка; остальные откреплены, но их
+                    // tmux жив, поэтому не гаснут в ноль.
+                    Circle()
+                        .fill(active ? style.bright : style.muted.opacity(offline ? 0.25 : 0.6))
+                        .frame(width: 7, height: 7)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(host.name)
+                            .font(style.font(12.5))
+                            .foregroundStyle(active ? style.bright : style.text)
+                            .lineLimit(1)
+                        // Без связи говорим, что делать, а не показываем адрес:
+                        // из фона мы не логинимся, подключает клик.
+                        Text(offline ? model.strings("term.offline") : "\(host.user)@\(host.address)")
+                            .font(style.font(10)).foregroundStyle(style.muted).lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+                .padding(.horizontal, 8).padding(.vertical, 6)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 8).padding(.vertical, 6)
-            .background(active ? style.text.opacity(0.08) : .clear)
+            .buttonStyle(.plain)
+            // Новая сессия заводится в живом спейсе: в чужой хост без
+            // соединения её не завести.
+            if isLive(host) {
+                Button {
+                    adding.toggle()
+                } label: {
+                    Image(systemName: "plus").font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(style.muted)
+                        .padding(.horizontal, 6)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(model.strings("nav.newSession"))
+            }
         }
-        .buttonStyle(.plain)
+        .background(active ? style.text.opacity(0.08) : .clear)
         .contextMenu {
             Button(model.strings("term.closeSpace")) { model.closeSpace(host.id) }
+        }
+    }
+
+    /// Сессии спейса под его строкой: у живого — свежий список и поле новой
+    /// сессии, у остальных — снимок фонового опроса.
+    @ViewBuilder private func spaceSessions(_ host: ServerHost) -> some View {
+        if isLive(host) {
+            if !model.hasTmux {
+                // Без tmux постоянных сессий не бывает: шелл каждый раз
+                // начинается с нуля. Говорим это словами и сразу даём, что
+                // сделать, — иначе пустой список выглядит поломкой.
+                Text(model.strings("term.noTmux"))
+                    .font(style.font(11)).foregroundStyle(style.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 22).padding(.trailing, 4)
+            }
+            if adding { editor(create: create) }
+            ForEach(rows) { session in
+                row(session, host: host.id, active: session.name == current && !model.localFocused)
+            }
+        } else if case .sessions(let list) = model.spaceSnapshots[host.id] {
+            ForEach(list) { session in
+                row(session, host: host.id, active: false)
+            }
         }
     }
 
@@ -261,33 +259,20 @@ struct SessionRail: View {
         return result
     }
 
-    private func row(_ session: AppModel.TmuxSession) -> some View {
-        let active = session.name == current && !model.localFocused
-        return Button {
-            model.attachSession(session.name)
-        } label: {
-            HStack(spacing: 8) {
-                // Цвет точки — статус сессии: работа/покой/ждёт ввода.
-                Circle()
-                    .fill(statusColour(session.status))
-                    .frame(width: 7, height: 7)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(session.name)
-                        .font(style.font(12.5))
-                        .foregroundStyle(active ? style.bright : style.text)
-                        .lineLimit(1)
-                    Text(subtitle(session))
-                        .font(style.font(10)).foregroundStyle(style.muted)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 8).padding(.vertical, 6)
-            .background(active ? style.text.opacity(0.08) : .clear)
+    private func row(_ session: AppModel.TmuxSession, host: ServerHost.ID, active: Bool) -> some View {
+        SessionLine(
+            model: model, place: .remote(host, session.name), title: session.name,
+            subtitle: subtitle(session), dot: statusColour(session.status), active: active
+        ) {
+            model.jump(to: .remote(host, session.name))
         }
-        .buttonStyle(.plain)
+        .padding(.leading, 14)
         .contextMenu {
-            Button(model.strings("term.killSession"), role: .destructive) {
-                Task { await model.killSession(session.name) }
+            // Снять сессию можно только там, куда есть живое соединение.
+            if host == model.selectedHost, model.session != nil {
+                Button(model.strings("term.killSession"), role: .destructive) {
+                    Task { await model.killSession(session.name) }
+                }
             }
         }
     }
@@ -342,5 +327,78 @@ struct SessionRail: View {
 
     private func statusLabel(_ status: AppModel.SessionStatus) -> String {
         model.strings("term.status.\(status.rawValue)")
+    }
+}
+
+/// Строка сессии в рейле: точка статуса, имя, агент — и превью экрана при
+/// наведении, чтобы понять, о чём агент спрашивает, не подключаясь к нему.
+private struct SessionLine: View {
+    @Environment(\.style) private var style
+    let model: AppModel
+    let place: AppModel.AgentPlace
+    let title: String
+    let subtitle: String?
+    let dot: Color
+    let active: Bool
+    let action: () -> Void
+
+    @State private var preview: [String]?
+    @State private var showing = false
+    @State private var hover: Task<Void, Never>?
+
+    /// Сколько держать курсор, прежде чем показать превью. Это порог
+    /// намерения, а не ожидание готовности: проведённая мимо мышь не должна
+    /// дёргать сервер и открывать всплывашку.
+    private static let hoverDelay = Duration.milliseconds(450)
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Circle().fill(dot).frame(width: 7, height: 7)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(style.font(12.5))
+                        .foregroundStyle(active ? style.bright : style.text)
+                        .lineLimit(1)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(style.font(10)).foregroundStyle(style.muted).lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8).padding(.vertical, 6)
+            .background(active ? style.text.opacity(0.08) : .clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { inside in
+            hover?.cancel()
+            guard inside, !active else {
+                showing = false
+                return
+            }
+            hover = Task {
+                // Отмена — это ушедший курсор: показывать уже нечего.
+                guard (try? await Task.sleep(for: Self.hoverDelay)) != nil else { return }
+                let lines = await model.preview(place)
+                guard !Task.isCancelled, let lines, !lines.isEmpty else { return }
+                preview = lines
+                showing = true
+            }
+        }
+        .popover(isPresented: $showing, arrowEdge: .trailing) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array((preview ?? []).enumerated()), id: \.offset) { _, line in
+                    Text(line.isEmpty ? " " : line)
+                        .font(style.font(11))
+                        .foregroundStyle(style.text)
+                        .lineLimit(1)
+                }
+            }
+            .padding(12)
+            .frame(width: 460, alignment: .leading)
+            .background(style.surface)
+        }
     }
 }

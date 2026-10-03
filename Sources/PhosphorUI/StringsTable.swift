@@ -338,7 +338,7 @@ extension Strings {
             .russian: "нет открытых спейсов — нажми + и подключись к серверу",
             .english: "no open spaces — press + and connect to a server",
         ],
-        "term.sessions": [.russian: "сессии", .english: "sessions"],
+        "term.offline": [.russian: "нет связи · клик — подключить", .english: "no link · click to connect"],
         "term.noTmux": [
             .russian: "на сервере нет tmux — шелл начнётся с нуля при каждом заходе. "
                 + "поставьте его: apt install tmux",

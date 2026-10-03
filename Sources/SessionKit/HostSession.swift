@@ -347,7 +347,10 @@ public actor HostSession {
         try await transport.run(command)
     }
 
-    public func stop() async {
+    /// Останавливает опрос. `keepingConnection` оставляет ssh-канал открытым:
+    /// хост остаётся спейсом, и рейл продолжает смотреть на его сессии через
+    /// тот же канал, не логинясь заново.
+    public func stop(keepingConnection: Bool = false) async {
         // Пишем до того, как гасим задачи: иначе последние минуты графика
         // теряются ровно в тот момент, ради которого архив и заводили.
         await saveHistory()
@@ -355,7 +358,7 @@ public actor HostSession {
         metricsTask?.cancel()
         pollTask = nil
         metricsTask = nil
-        await transport.close()
+        if !keepingConnection { await transport.close() }
         state.phase = .idle
         publish()
     }

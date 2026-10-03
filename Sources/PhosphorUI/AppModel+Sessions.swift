@@ -284,16 +284,27 @@ extension AppModel {
     /// заводит.
     public func startSessionWatch() {
         guard sessionWatch == nil, windowActive, isUnlocked else { return }
+        agentNotifier.attach(self)
         sessionWatch = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
+                // Окно в фоне: опрос живёт, только пока какой-то агент работает.
+                // Ради этого случая он и нужен — человек ушёл в другое
+                // приложение и ждёт, когда агенту понадобится ответ. Никто не
+                // работает — ждать нечего, и опрос замирает, как и положено.
+                if !self.windowActive, !self.anyAgentWorking {
+                    self.sessionWatch = nil
+                    return
+                }
                 // Спрашивать бывает некого: ни хоста, ни tmux на этом Маке.
                 // Тогда цикл просто ждёт — заводить и гасить его на каждое
                 // подключение значило бы держать две правды о том, идёт ли опрос.
                 if self.session != nil { await self.loadSessions() }
                 if self.localTmuxPath != nil { await self.loadLocalSessions() }
                 await self.loadPlainShell()
-                await AppModel.pause(seconds: self.watchInterval)
+                await self.loadSpaces()
+                self.noticeWaitingAgents()
+                await AppModel.pause(seconds: self.windowActive ? self.watchInterval : Self.backgroundWatchSeconds)
             }
         }
     }
@@ -454,6 +465,14 @@ extension AppModel {
     public func closeSpace(_ id: ServerHost.ID) {
         spaces.removeAll { $0 == id }
         spaceSessions[id] = nil
+        spaceSnapshots[id] = nil
+        waitingAgents = waitingAgents.filter { $0.host != id }
+        // Канал фонового опроса гасим: смотреть в этот хост больше незачем.
+        // У текущего спейса его закроет отключение ниже.
+        let transport = spaceTransports.removeValue(forKey: id)
+        if id != selectedHost, let channel = transport ?? spaceTransport(for: id, keep: false) {
+            Task { await channel.close() }
+        }
         saveLayout()
         guard id == selectedHost else { return }
         if let next = spaces.first, let host = book.hosts.first(where: { $0.id == next }) {

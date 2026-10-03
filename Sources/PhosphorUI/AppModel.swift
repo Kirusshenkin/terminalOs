@@ -269,7 +269,8 @@ public final class AppModel {
     /// Сколько сессий ждут ответа человека. Ради этого числа в шапке горит
     /// метка у «Терминала», даже когда открыт другой раздел.
     public var blockedSessions: Int {
-        (liveSessions + localSessions + [plainShell].compactMap(\.self)).reduce(into: 0) { total, session in
+        let all = liveSessions + localSessions + [plainShell].compactMap(\.self) + backgroundSessions
+        return all.reduce(into: 0) { total, session in
             if session.status == .blocked { total += 1 }
         }
     }
@@ -281,6 +282,17 @@ public final class AppModel {
     /// Какая сессия была открыта в каждом спейсе — чтобы вернуться в неё, а не
     /// в «main», когда переключаешься обратно.
     var spaceSessions: [ServerHost.ID: String] = [:]
+    /// Что видно в спейсах, на которые сейчас не смотрят: их сессии или «нет
+    /// связи». Текущий спейс сюда не попадает — у него `liveSessions`.
+    public internal(set) var spaceSnapshots: [ServerHost.ID: SpaceSnapshot] = [:]
+    /// Каналы фонового опроса по спейсам. Сами они не логинятся: едут по
+    /// ssh-сокету, который оставило подключение.
+    var spaceTransports: [ServerHost.ID: SystemSSHTransport] = [:]
+    /// Агенты, которые ждали ввода на прошлом опросе. Уведомление — только о
+    /// новых в этом списке, иначе оно повторялось бы каждые несколько секунд.
+    var waitingAgents: Set<AgentPlace> = []
+    /// Мост от уведомлений macOS к модели: клик по уведомлению ведёт в сессию.
+    let agentNotifier = AgentNotifier()
 
     /// Путь к tmux на этом Маке. nil — его тут нет, и локальные сессии
     /// перезапуск не переживут. Ищется фактом при запуске.
@@ -625,14 +637,21 @@ public final class AppModel {
 
     /// Подключается к хосту и начинает получать от него данные.
     ///
-    /// Прошлая сессия закрывается: держать открытыми соединения к хостам, на
-    /// которые никто не смотрит, — это чужой ресурс и чужие деньги.
+    /// Опрос прошлого хоста останавливается. Его ssh-канал живёт, только если
+    /// хост остаётся спейсом: рейл смотрит на его сессии через этот канал, а
+    /// без спейса держать соединение не для кого.
     public func connect(to host: ServerHost) async {
         if let session, let observerToken {
             await session.stopObserving(observerToken)
-            await session.stop()
+            let keep = selectedHost.map { spaces.contains($0) && $0 != host.id } ?? false
+            await session.stop(keepingConnection: keep)
+            // До первого фонового опроса рейл показывает то, что видел только
+            // что, — иначе сессии ушедшего спейса мигнули бы пустотой.
+            if keep, let old = selectedHost { spaceSnapshots[old] = .sessions(liveSessions) }
         }
         selectedHost = host.id
+        // Текущий спейс показывает живой список, а не фоновый снимок.
+        spaceSnapshots[host.id] = nil
         // Подключились — значит, хотим видеть сервер, а не этот Мак.
         localFocused = false
         // Хост становится спейсом при первом подключении; порядок сохраняем.
@@ -709,13 +728,10 @@ public final class AppModel {
     public func setWindowActive(_ active: Bool) async {
         windowActive = active
         await session?.setActive(active)
-        // Слежение за сессиями — такой же опрос: фоновому окну незачем будить
-        // ни процессор, ни сервер.
-        if active {
-            startSessionWatch()
-        } else {
-            stopSessionWatch()
-        }
+        // Слежение за сессиями — такой же опрос, и в фоне оно гаснет само,
+        // если ни один агент не работает. Работающего досматривает реже: иначе
+        // некому сказать, что он ждёт ответа.
+        if active { startSessionWatch() }
     }
 
     /// Планирует запись профиля, схлопывая частые правки в одну.

@@ -22,6 +22,8 @@ cp "$BIN_DIR/Phosphor" "$APP/Contents/MacOS/Phosphor"
 # Шим лежит рядом: MCP-клиент запускает его по пути внутри бандла.
 cp "$BIN_DIR/phosphor-mcp" "$APP/Contents/MacOS/phosphor-mcp"
 cp -R Resources/Fonts "$APP/Contents/Resources/Fonts"
+# Иконка рисуется кодом: .github/scripts/icon.swift Resources/AppIcon.icns
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 sed -e "s|__SHORT_VERSION__|$SHORT|" -e "s|__BUILD_VERSION__|$BUILD|" \
     Resources/Info.plist > "$APP/Contents/Info.plist"
 

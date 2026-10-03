@@ -337,7 +337,6 @@ extension AppModel {
         // и читается как список из неё одной.
         extraSessions = saved.panes ?? saved.secondSession.map { [$0] } ?? []
         terminalSession = saved.session
-        pendingFocus = saved.focused
         localSession = saved.localSession
         localFocused = saved.localFocused ?? false
     }
@@ -352,7 +351,7 @@ extension AppModel {
             TerminalLayout(
                 spaces: spaces,
                 spaceSessions: sessions,
-                focused: selectedHost ?? pendingFocus,
+                focused: selectedHost,
                 session: terminalSession,
                 secondSession: extraSessions.first,
                 splitVertical: splitVertical,
@@ -370,16 +369,13 @@ extension AppModel {
         return min(max(ratio, 0.2), 0.8)
     }
 
-    /// Возвращается в спейс, на который смотрели перед закрытием приложения.
+    /// Открытый «Терминал» без соединения смотрит на этот Мак.
     ///
-    /// Вызывается, когда человек открыл «Терминал»: соединение поднимается
-    /// тогда, когда на него будут смотреть, а не на разблокировке окна.
-    public func resumeLayout() async {
-        guard session == nil, !localFocused, let id = pendingFocus,
-            let host = book.hosts.first(where: { $0.id == id })
-        else { return }
-        pendingFocus = nil
-        await connect(to: host)
+    /// Сам по себе он в сеть не ходит: спейсы прошлого запуска остаются в
+    /// рейле, а подключение к серверу — только по клику человека.
+    public func focusLocalIfIdle() {
+        guard session == nil, !localFocused else { return }
+        localFocused = true
     }
 
     /// Переводит терминал в выбранную сессию. Прежняя панель не гаснет: её

@@ -84,8 +84,11 @@ public struct LockView: View {
                     .stroke(style.accent, style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
                     .frame(width: 124, height: 124)
                     .rotationEffect(.degrees(-90))
-                Fingerprint()
-                    .stroke(style.accent, style: StrokeStyle(lineWidth: 2.1, lineCap: .round))
+                // Системный глиф Touch ID: тот же отпечаток, что в окне macOS,
+                // которое сейчас спросит палец, — один знак на оба экрана.
+                Image(systemName: "touchid")
+                    .font(.system(size: 66, weight: .ultraLight))
+                    .foregroundStyle(style.accent)
                     .frame(width: 84, height: 84)
                     .opacity(phase == .waiting ? 0.55 : 1)
                     .rotationEffect(.degrees(somersault ? 360 : 0))
@@ -218,87 +221,5 @@ public struct LockView: View {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.5)) { somersault.toggle() }
         }
         konami = watcher
-    }
-}
-
-/// Отпечаток пальца: подушечка с петлевым узором внутри.
-///
-/// Контур здесь несёт смысл, а не украшает. Без него концентрические дуги
-/// читаются как мишень; с ним — сразу как палец. Узор намеренно асимметричен:
-/// ядро смещено влево, часть гребней разорвана, слева внизу стоит дельта —
-/// у настоящих отпечатков нет симметрии, и глаз это замечает даже мельком.
-///
-/// Геометрия описана в клетке 100×100 и масштабируется под кадр, поэтому глиф
-/// одинаково чист и в 84 пунктах на экране входа, и в мелкой иконке.
-struct Fingerprint: Shape {
-    /// Полуширина подушечки на уровне ядра: по ней обрезаются хвосты гребней,
-    /// чтобы ни один не вылез за контур.
-    private static let padHalfWidth = 34.0
-    private static let core = (x: 47.0, y: 54.0)
-    private static let radii = [5.0, 11.0, 17.0, 23.0, 29.0]
-
-    func path(in rect: CGRect) -> Path {
-        let unit = min(rect.width, rect.height) / 100
-        let origin = CGPoint(
-            x: rect.midX - 50 * unit,
-            y: rect.midY - 50 * unit
-        )
-        func place(_ x: Double, _ y: Double) -> CGPoint {
-            CGPoint(x: origin.x + x * unit, y: origin.y + y * unit)
-        }
-
-        var path = Path()
-        addOutline(to: &path, place: place)
-        for (index, radius) in Self.radii.enumerated() {
-            addRidge(radius: radius, index: index, to: &path, place: place)
-        }
-        addDelta(to: &path, place: place)
-        return path
-    }
-
-    /// Силуэт подушечки: шире вверху, сужается книзу.
-    private func addOutline(to path: inout Path, place: (Double, Double) -> CGPoint) {
-        path.move(to: place(50, 5))
-        path.addCurve(to: place(86, 48), control1: place(71, 5), control2: place(86, 23))
-        path.addCurve(to: place(50, 96), control1: place(86, 76), control2: place(70, 96))
-        path.addCurve(to: place(14, 48), control1: place(30, 96), control2: place(14, 76))
-        path.addCurve(to: place(50, 5), control1: place(14, 23), control2: place(29, 5))
-    }
-
-    /// Один гребень: арка над ядром и два хвоста вниз, обрезанных контуром.
-    private func addRidge(
-        radius: Double, index: Int,
-        to path: inout Path, place: (Double, Double) -> CGPoint
-    ) {
-        let core = Self.core
-        // Гребни слегка вытянуты по вертикали — так узор перестаёт быть циркульным.
-        let height = radius * 1.14
-        let left = core.x - radius
-        let right = core.x + radius
-        // Хвост тем короче, чем шире гребень: иначе он пробьёт контур.
-        let reach = 1 - min(1, radius / Self.padHalfWidth) * min(1, radius / Self.padHalfWidth)
-        let tail = core.y + 8 + reach.squareRoot() * 30
-
-        path.move(to: place(left, tail))
-        path.addLine(to: place(left, core.y))
-        path.addCurve(
-            to: place(right, core.y),
-            control1: place(left, core.y - height * 1.34),
-            control2: place(right, core.y - height * 1.34)
-        )
-        // Каждый второй гребень с разрывом — как на настоящем пальце.
-        if index % 2 == 1 {
-            path.addLine(to: place(right, core.y + 10))
-            path.move(to: place(right, core.y + 20))
-        }
-        path.addLine(to: place(right, tail))
-    }
-
-    /// Дельта — точка схождения узора слева внизу.
-    private func addDelta(to path: inout Path, place: (Double, Double) -> CGPoint) {
-        path.move(to: place(22, 72))
-        path.addLine(to: place(29, 66))
-        path.move(to: place(22, 79))
-        path.addLine(to: place(30, 73))
     }
 }

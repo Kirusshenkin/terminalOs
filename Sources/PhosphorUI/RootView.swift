@@ -193,6 +193,46 @@ public struct RootView: View {
                         )
                         .padding(.bottom, 12)
                 }
+                // Сервер не подключился — причина над разделом сервера, а не
+                // «not connected» в углу метрик: со сменённым ключом хоста или
+                // упавшим прокси из этого не понять, что делать.
+                if case .failed(let failure) = model.sessionState.phase, serverTabs.contains(model.screen) {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(model.strings.connectionFailure(failure))
+                                .font(model.style.font(11.5))
+                                .foregroundStyle(model.style.warning)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if case .hostKeyUnknown = failure { fingerprintLine }
+                        }
+                        Spacer(minLength: 8)
+                        if case .hostKeyUnknown = failure, model.pendingHostKey != nil {
+                            Button {
+                                Task { await model.trustPendingHost() }
+                            } label: {
+                                Text(model.strings("host.trust"))
+                                    .font(model.style.font(11))
+                                    .foregroundStyle(model.style.background)
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(model.style.accent)
+                            }
+                            .buttonStyle(PressFeedback())
+                        } else {
+                            Button {
+                                model.reconnect()
+                            } label: {
+                                Text("\(model.strings("cmd.reconnect")) ⇧⌘R")
+                                    .font(model.style.font(11))
+                                    .foregroundStyle(model.style.bright)
+                            }
+                            .buttonStyle(PressFeedback())
+                        }
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(model.style.surface)
+                    .overlay(Rectangle().stroke(model.style.warning.opacity(0.4), lineWidth: 1))
+                    .padding(.bottom, 12)
+                }
                 screenBody
                     .id(model.screen)
                     .transition(
@@ -325,6 +365,25 @@ public struct RootView: View {
         .onHover { chipHovered = $0 }
         .help(chipHelp)
         .accessibilityLabel(chipHelp)
+    }
+
+    /// Отпечаток незнакомого сервера — то, с чем человек сверяется, прежде
+    /// чем нажать «доверять». Пока его нет, честно говорим, что ждём.
+    @ViewBuilder private var fingerprintLine: some View {
+        if let key = model.pendingHostKey {
+            ForEach(key.fingerprints, id: \.self) { fingerprint in
+                Text(fingerprint)
+                    .font(model.style.font(11.5))
+                    .foregroundStyle(model.style.bright)
+                    .textSelection(.enabled)
+            }
+        } else if model.hostKeyScanFailed {
+            Text(model.strings("err.scanFailed"))
+                .font(model.style.font(11)).foregroundStyle(model.style.muted)
+        } else {
+            Text(model.strings("host.scanning"))
+                .font(model.style.font(11)).foregroundStyle(model.style.muted)
+        }
     }
 
     private var chipTitle: String {

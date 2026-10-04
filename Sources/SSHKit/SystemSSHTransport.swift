@@ -54,6 +54,8 @@ public actor SystemSSHTransport: SSHTransport {
         if result.status != 0 {
             let stderr = result.stderr.lowercased()
             if stderr.contains("permission denied") { throw TransportError.authenticationFailed }
+            // «No ED25519 host key is known for …» — первый визит, а не подмена.
+            if stderr.contains("host key is known") { throw TransportError.hostKeyUnknown }
             if stderr.contains("host key") && stderr.contains("changed") {
                 throw TransportError.hostKeyChanged
             }
@@ -114,6 +116,59 @@ public actor SystemSSHTransport: SSHTransport {
         proxyCheckedAt = .now
     }
 
+
+    // MARK: - Первый визит
+
+    /// Достаёт ключ сервера, которого ещё нет в known_hosts, — не входя на него.
+    ///
+    /// ssh пишет ключ во временный файл на этапе обмена ключами, а вход
+    /// заведомо не случится: все способы аутентификации выключены. Так ключ
+    /// приходит тем же путём, что и при настоящем подключении, — через прокси
+    /// или бастион, если они заданы, — а `ssh-keyscan` про них не знает.
+    public func scanHostKey() async throws -> ScannedHostKey {
+        let scratch = NSTemporaryDirectory() + "phosphor-scan-\(UUID().uuidString)"
+        defer {
+            // Временный файл с публичным ключом: не секрет, и если не удалился,
+            // его подберёт система вместе с остальным временным.
+            try? FileManager.default.removeItem(atPath: scratch)
+        }
+        let probe = [
+            "-o", "UserKnownHostsFile=\(scratch)", "-o", "GlobalKnownHostsFile=/dev/null",
+            "-o", "StrictHostKeyChecking=accept-new", "-o", "HashKnownHosts=no",
+            "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "BatchMode=yes",
+            "-o", "PubkeyAuthentication=no", "-o", "PasswordAuthentication=no",
+            "-o", "KbdInteractiveAuthentication=no",
+        ]
+        _ = try await Subprocess.run(
+            executable: SSHInvocation.executable,
+            arguments: probe + baseArguments + [SSHInvocation.target(host), "true"],
+            timeout: .seconds(15))
+        guard let lines = try? String(contentsOfFile: scratch, encoding: .utf8),
+            !lines.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { throw TransportError.hostUnreachable(host.address) }
+        let listing = try await Subprocess.run(
+            executable: "/usr/bin/ssh-keygen", arguments: ["-l", "-f", scratch], timeout: .seconds(5))
+        return ScannedHostKey(lines: lines, fingerprints: ScannedHostKey.fingerprints(listing.stdout))
+    }
+
+    /// Записывает принятый ключ в `~/.ssh/known_hosts`. Только по явному
+    /// согласию человека, увидевшего отпечаток.
+    public func trust(_ key: ScannedHostKey, knownHosts path: String = NSHomeDirectory() + "/.ssh/known_hosts") throws {
+        let manager = FileManager.default
+        if !manager.fileExists(atPath: path) {
+            guard manager.createFile(atPath: path, contents: nil, attributes: [.posixPermissions: 0o600]) else {
+                throw TransportError.commandFailed(status: 1, stderr: "cannot create \(path)")
+            }
+        }
+        let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: path))
+        defer { try? handle.close() }  // закрытие после записи не теряет данных
+        try handle.seekToEnd()
+        // Файл может не кончаться переводом строки — тогда ключ прилип бы к
+        // чужой записи и испортил обе.
+        var text = key.lines.hasSuffix("\n") ? key.lines : key.lines + "\n"
+        if try handle.offset() > 0 { text = "\n" + text }
+        try handle.write(contentsOf: Data(text.utf8))
+    }
     public func close() async {
         let target = SSHInvocation.target(host)
         _ = try? await Subprocess.run(
@@ -122,5 +177,27 @@ public actor SystemSSHTransport: SSHTransport {
             timeout: .seconds(5)
         )
         proxyCheckedAt = nil
+    }
+}
+
+/// Ключ сервера, пришедший при первом визите: строки для known_hosts и
+/// отпечатки, которые человек сверяет с консолью провайдера.
+public struct ScannedHostKey: Sendable, Equatable {
+    public var lines: String
+    public var fingerprints: [String]
+
+    public init(lines: String, fingerprints: [String]) {
+        self.lines = lines
+        self.fingerprints = fingerprints
+    }
+
+    /// `256 SHA256:abc… host (ED25519)` → `ED25519 SHA256:abc…`. Чистая функция.
+    public static func fingerprints(_ listing: String) -> [String] {
+        listing.split(separator: "\n").compactMap { line in
+            let parts = line.split(separator: " ")
+            guard parts.count >= 2, let hash = parts.first(where: { $0.hasPrefix("SHA256:") }) else { return nil }
+            let kind = parts.last.map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "()")) } ?? ""
+            return kind.isEmpty ? String(hash) : "\(kind) \(hash)"
+        }
     }
 }

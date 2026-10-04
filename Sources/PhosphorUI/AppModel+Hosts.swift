@@ -2,6 +2,7 @@ public import Foundation
 public import HostsKit
 public import KeysKit
 import MetricsKit
+import SSHKit
 
 /// Правка списка хостов. Любое изменение сразу планирует запись профиля.
 @MainActor
@@ -322,5 +323,37 @@ extension AppModel {
         var report = appendNew(SSHConfigImport.hosts(from: parsed), source: "~/.ssh/config")
         report.skipped = parsed.skipped
         return report
+    }
+}
+
+// MARK: - Первый визит на сервер
+
+@MainActor
+extension AppModel {
+    /// Достаёт ключ незнакомого сервера для показа. Не вышло — остаётся
+    /// исходная ошибка: доверять без отпечатка нечему.
+    func scanHostKey(_ host: ServerHost) async {
+        pendingHostKey = nil
+        hostKeyScanFailed = false
+        let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
+        do {
+            pendingHostKey = try await transport.scanHostKey()
+        } catch {
+            hostKeyScanFailed = true
+        }
+    }
+
+    /// Записывает показанный ключ в known_hosts и подключается заново.
+    public func trustPendingHost() async {
+        guard let key = pendingHostKey, let host = currentHost else { return }
+        let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
+        do {
+            try await transport.trust(key)
+            pendingHostKey = nil
+            loadKnownHosts()
+            await connect(to: host)
+        } catch {
+            saveError = "\(strings("err.trustFailed")) \(error.localizedDescription)"
+        }
     }
 }

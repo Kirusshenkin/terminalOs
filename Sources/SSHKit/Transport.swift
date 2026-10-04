@@ -12,6 +12,9 @@ public enum TransportError: Error, Equatable {
     case hostUnreachable(String)
     case authenticationFailed
     case hostKeyChanged
+    /// The server is not in known_hosts yet. Not a refusal: the person decides
+    /// whether to trust it, after seeing its fingerprint.
+    case hostKeyUnknown
     case commandFailed(status: Int32, stderr: String)
     case cancelled
 }

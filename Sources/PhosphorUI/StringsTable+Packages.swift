@@ -103,12 +103,34 @@ extension Strings {
             .english: "the server refused access — is your key missing from authorized_keys?",
         ],
         "err.hostKeyChanged": [
-            .russian: "ключ хоста %@ изменился — подключение остановлено",
-            .english: "the host key of %@ changed — connection stopped",
+            .russian: "ключ хоста %@ изменился — подключение остановлено. Если сервер переустанавливали, "
+                + "убери старый ключ во вкладке «ключи» → «доверенные серверы» и подключись снова; "
+                + "если нет — это может быть подмена, не подключайся",
+            .english: "the host key of %@ changed — connection stopped. If the server was reinstalled, "
+                + "remove the old key in Keys → trusted servers and connect again; "
+                + "if not, this may be an impersonation, do not connect",
         ],
         "err.hostKeyChangedPlain": [
             .russian: "ключ хоста изменился — подключение остановлено",
             .english: "the host key changed — connection stopped",
+        ],
+        "err.hostKeyUnknown": [
+            .russian: "%@ ещё не знаком этому Маку: сверь отпечаток ниже с консолью провайдера и нажми «доверять»",
+            .english: "%@ is new to this Mac: check the fingerprint below against your provider's console and press trust",
+        ],
+        "err.trustFailed": [
+            .russian: "не удалось записать ключ в ~/.ssh/known_hosts:",
+            .english: "could not write the key to ~/.ssh/known_hosts:",
+        ],
+        "err.scanFailed": [
+            .russian: "отпечаток сервера получить не удалось — проверь адрес и порт, затем «переподключиться»",
+            .english: "could not get the server's fingerprint — check the address and port, then reconnect",
+        ],
+        "host.trust": [.russian: "доверять и подключиться", .english: "trust and connect"],
+        "host.scanning": [.russian: "получаю отпечаток…", .english: "getting the fingerprint…"],
+        "err.hostKeyUnknownPlain": [
+            .russian: "сервер ещё не знаком этому Маку — откройте его в Phosphor и примите отпечаток",
+            .english: "the server is new to this Mac — open it in Phosphor and accept its fingerprint",
         ],
         "err.unreachable": [
             .russian: "%@ не отвечает — сервер выключен, адрес неверный или порт закрыт",

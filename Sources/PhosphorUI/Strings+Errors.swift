@@ -31,6 +31,7 @@ extension Strings {
         case .proxyDown(let host, let port): format("err.proxyDown", "\(host):\(port)")
         case .denied(let host): format("err.denied", host)
         case .hostKeyChanged(let host): format("err.hostKeyChanged", host)
+        case .hostKeyUnknown(let host): format("err.hostKeyUnknown", host)
         case .unreachable(let address): format("err.unreachable", address)
         case .remote(let text): text
         case .other(let host): format("err.connectFailed", host)
@@ -45,6 +46,7 @@ extension Strings {
         case .hostUnreachable(let address): format("err.unreachable", address)
         case .authenticationFailed: self("err.deniedPlain")
         case .hostKeyChanged: self("err.hostKeyChangedPlain")
+        case .hostKeyUnknown: self("err.hostKeyUnknownPlain")
         case .commandFailed(let status, let stderr):
             stderr.isEmpty ? format("err.exitCode", "\(status)") : String(stderr.prefix(200))
         case .cancelled: self("err.cancelled")

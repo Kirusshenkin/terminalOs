@@ -184,6 +184,7 @@ public actor HostSession {
         case TransportError.proxyUnreachable(let proxy, let port): .proxyDown(host: proxy, port: port)
         case TransportError.authenticationFailed: .denied(host: host.name)
         case TransportError.hostKeyChanged: .hostKeyChanged(host: host.name)
+        case TransportError.hostKeyUnknown: .hostKeyUnknown(host: host.name)
         case TransportError.hostUnreachable(let address): .unreachable(address: address)
         case TransportError.commandFailed(_, let stderr) where !stderr.isEmpty: .remote(String(stderr.prefix(200)))
         default: .other(host: host.name)

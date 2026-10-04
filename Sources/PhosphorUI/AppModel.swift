@@ -293,6 +293,12 @@ public final class AppModel {
     var waitingAgents: Set<AgentPlace> = []
     /// Мост от уведомлений macOS к модели: клик по уведомлению ведёт в сессию.
     let agentNotifier = AgentNotifier()
+    /// Ключ незнакомого сервера, ждущий решения человека: отпечаток уже
+    /// показан, в known_hosts ещё ничего не записано.
+    public internal(set) var pendingHostKey: ScannedHostKey?
+    /// Отпечаток получить не удалось: сервер ответил на подключение, но ключ
+    /// не отдал. Тогда «доверять» не предлагаем — доверять нечему.
+    public internal(set) var hostKeyScanFailed = false
 
     /// Путь к tmux на этом Маке. nil — его тут нет, и локальные сессии
     /// перезапуск не переживут. Ищется фактом при запуске.
@@ -686,6 +692,9 @@ public final class AppModel {
             if !isSaved(host) { rememberOffer = host }
         case .failed(let reason):
             await record(.failed, host: host, detail: strings.connectionFailure(reason))
+            // Первый визит — не ошибка, а вопрос: показываем отпечаток сразу,
+            // чтобы решение «доверять» было принято, глядя на него.
+            if case .hostKeyUnknown = reason { await scanHostKey(host) }
         default:
             break
         }

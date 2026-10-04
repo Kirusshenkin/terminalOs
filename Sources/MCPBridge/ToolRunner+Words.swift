@@ -33,6 +33,7 @@ extension ToolRunner {
         case .proxyDown(let host, let port): "proxy \(host):\(port) not responding — is V2Box running?"
         case .denied(let host): "\(host) access denied — key not in authorized_keys?"
         case .hostKeyChanged(let host): "\(host) host key changed — connection blocked"
+        case .hostKeyUnknown(let host): "\(host) is not trusted yet — open it in Phosphor once and accept its fingerprint"
         case .unreachable(let address): "\(address) not responding"
         case .remote(let text): text
         case .other(let host): "failed to connect to \(host)"

@@ -7,6 +7,8 @@ public enum ConnectionFailure: Error, Sendable, Equatable {
     case proxyDown(host: String, port: Int)
     case denied(host: String)
     case hostKeyChanged(host: String)
+    /// First visit: the key is not known yet and has to be accepted on purpose.
+    case hostKeyUnknown(host: String)
     case unreachable(address: String)
     /// The server said something itself; its words are passed on as they are.
     case remote(String)

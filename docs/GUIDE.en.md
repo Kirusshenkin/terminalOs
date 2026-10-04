@@ -28,6 +28,10 @@ This is not damage:
 
 The `xattr` command above does the same thing in one step.
 
+**Updates.** When a new version is out, **"↑ update to 0.x.y"** appears next to
+PHOSPHOR in the header. Click it — the app downloads the update, checks its
+signature and restarts. tmux sessions on servers keep running.
+
 ## 2. Unlock
 
 The app opens with a lock screen. **Tap the circle** with the label "touch the
@@ -79,15 +83,14 @@ Phosphor will ask to remember it.
 ## 4. Before connecting to a new server
 
 Phosphor connects through the system `ssh` and checks the server key strictly.
-The app cannot ask you to trust a new server yet, so **connect to a server you
-have never used before through the regular Terminal first**:
+It will not quietly connect to a server this Mac does not know yet: a banner
+**"new to this Mac"** appears above the tab with the server's fingerprint
+(`ED25519 SHA256:…`). Check it against what your host provider shows and press
+**trust and connect** — the key goes into `~/.ssh/known_hosts`.
 
-```sh
-ssh user@host
-```
-
-Check the fingerprint against what your host provider shows, and answer `yes`.
-After that, Phosphor connects on its own.
+If the key of a known server has **changed**, there is no "trust" button: it is
+either a reinstalled server or an impersonation. If it was reinstalled, remove
+the old key in Keys → trusted servers and connect again.
 
 Login is **by key**. Phosphor uses the same keys that `ssh` does: from `~/.ssh`
 and from `ssh-agent`. Password login is not yet supported.

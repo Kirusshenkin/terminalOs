@@ -46,6 +46,22 @@ jobs:
           BUILD_NUMBER: ${{ steps.ver.outputs.build }}
         run: ./.github/scripts/package.sh
 
+      # Подпись манифеста: по ней приложение решает, ставить ли обновление.
+      # Ключ живёт только в секретах; на диске раннера — до конца шага.
+      - name: Подпись манифеста
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          umask 077
+          printf %s "$UPDATE_SIGNING_KEY" > "$RUNNER_TEMP/update.pem"
+          openssl dgst -sha256 -sign "$RUNNER_TEMP/update.pem" -out dist/latest.json.sig dist/latest.json
+          rm -f "$RUNNER_TEMP/update.pem"
+          # Проверка встроенным в приложение ключом: релиз, который приложение
+          # отвергнет, не должен уйти.
+          KEY=$(grep -o '"MFk[^"]*"' Sources/PhosphorCore/UpdateManifest.swift | tr -d '"')
+          printf %s "$KEY" | base64 -d | openssl ec -pubin -inform DER -out "$RUNNER_TEMP/update.pub" 2>/dev/null
+          openssl dgst -sha256 -verify "$RUNNER_TEMP/update.pub" -signature dist/latest.json.sig dist/latest.json
+
       - name: Проверка бандла
         run: |
           rm -rf /tmp/verify && mkdir -p /tmp/verify
@@ -72,6 +88,7 @@ jobs:
             dist/Phosphor.zip \
             dist/SHA256SUMS.txt \
             dist/latest.json \
+            dist/latest.json.sig \
             dist/phosphor-mcp-${{ steps.ver.outputs.short }}.mcpb \
             dist/server.json
 

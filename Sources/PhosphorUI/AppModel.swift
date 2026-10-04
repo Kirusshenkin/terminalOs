@@ -296,6 +296,10 @@ public final class AppModel {
     /// Ключ незнакомого сервера, ждущий решения человека: отпечаток уже
     /// показан, в known_hosts ещё ничего не записано.
     public internal(set) var pendingHostKey: ScannedHostKey?
+    /// Состояние обновления для кнопки в шапке.
+    public internal(set) var updateState: UpdateState = .idle
+    let updater = Updater()
+    var updateWatch: Task<Void, Never>?
     /// Отпечаток получить не удалось: сервер ответил на подключение, но ключ
     /// не отдал. Тогда «доверять» не предлагаем — доверять нечему.
     public internal(set) var hostKeyScanFailed = false

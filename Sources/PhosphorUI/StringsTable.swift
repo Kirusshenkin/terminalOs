@@ -681,6 +681,27 @@ extension Strings {
             .russian: "найти хост, тег, группу или user@host…",
             .english: "find a host, tag, group or user@host…",
         ],
+        "upd.available": [.russian: "обновить до", .english: "update to"],
+        "upd.hint": [
+            .russian: "скачает, проверит подпись и перезапустит Phosphor; сессии tmux на серверах не прервутся",
+            .english: "downloads, checks the signature and restarts Phosphor; tmux sessions on servers keep running",
+        ],
+        "upd.installing": [.russian: "ставлю обновление…", .english: "installing the update…"],
+        "upd.retry": [.russian: "щёлкни, чтобы повторить", .english: "click to retry"],
+        "upd.failedShort": [.russian: "обновление не встало", .english: "update failed"],
+        "upd.failed": [.russian: "обновление не встало:", .english: "the update failed:"],
+        "upd.network": [
+            .russian: "не удалось скачать обновление — нет сети или GitHub не отвечает; попробуем позже",
+            .english: "could not download the update — no network or GitHub is not answering; will try later",
+        ],
+        "upd.badSignature": [
+            .russian: "подпись обновления не сошлась — ставить его нельзя; сообщи об этом в issues репозитория",
+            .english: "the update signature does not match — it must not be installed; please report it in the repository issues",
+        ],
+        "upd.corrupted": [
+            .russian: "архив обновления повреждён при скачивании — нажми ещё раз позже",
+            .english: "the update archive was damaged in transit — try again later",
+        ],
         "common.nothingFound": [.russian: "ничего не нашлось", .english: "nothing matches"],
         "hosts.connect": [.russian: "подключиться", .english: "connect"],
         "hosts.new": [.russian: "+ новый хост", .english: "+ new host"],

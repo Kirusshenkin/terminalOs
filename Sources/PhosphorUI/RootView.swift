@@ -25,6 +25,8 @@ public struct RootView: View {
             .modifier(Sheets(model: model))
             .modifier(Alerts(model: model))
             .task { await model.startBridge() }
+            // Релизы проверяются и до входа: обновление не требует профиля.
+            .task { model.startUpdateChecks() }
             // Опрос замирает, когда на окно никто не смотрит: терминал открыт
             // весь день, и фоновому окну незачем будить процессор.
             .task(id: scenePhase) { await model.setWindowActive(scenePhase == .active) }
@@ -256,7 +258,10 @@ public struct RootView: View {
             Text("PHOSPHOR")
                 .font(model.style.font(11)).tracking(3)
                 .foregroundStyle(model.style.muted)
-                .padding(.trailing, 22)
+                .padding(.trailing, updateBadge == nil ? 22 : 10)
+            if let badge = updateBadge {
+                badge.padding(.trailing, 18)
+            }
             tab(.hosts)
                 .padding(.trailing, 18)
             HStack(alignment: .firstTextBaseline, spacing: 14) {
@@ -269,6 +274,47 @@ public struct RootView: View {
             HStack(alignment: .firstTextBaseline, spacing: 14) {
                 ForEach(globalTabs, id: \.self) { tab($0) }
             }
+        }
+    }
+
+    /// Метка обновления рядом с названием: видна с любого экрана, а щелчок по
+    /// ней и есть «обновить». Нет обновления — нет и метки.
+    private var updateBadge: AnyView? {
+        switch model.updateState {
+        case .idle:
+            return nil
+        case .available(let manifest):
+            return AnyView(
+                Button {
+                    Task { await model.installUpdate() }
+                } label: {
+                    Text("↑ \(model.strings("upd.available")) \(manifest.version)")
+                        .font(model.style.font(11)).tracking(1)
+                        .foregroundStyle(model.style.background)
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(model.style.accent)
+                }
+                .buttonStyle(PressFeedback())
+                .help(model.strings("upd.hint")))
+        case .installing:
+            return AnyView(
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.mini)
+                    Text(model.strings("upd.installing"))
+                        .font(model.style.font(11)).foregroundStyle(model.style.bright)
+                })
+        case .failed(let message, let retry):
+            let label = Text("↑ \(model.strings("upd.failedShort"))")
+                .font(model.style.font(11)).foregroundStyle(model.style.warning)
+            guard retry != nil else { return AnyView(label.help(message)) }
+            return AnyView(
+                Button {
+                    Task { await model.installUpdate() }
+                } label: {
+                    label
+                }
+                .buttonStyle(PressFeedback())
+                .help("\(message) · \(model.strings("upd.retry"))"))
         }
     }
 

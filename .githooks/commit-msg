@@ -1,0 +1,5 @@
+#!/bin/bash
+# В истории — только люди. Соавторство ИИ-ассистентов и их подписи
+# («Generated with …») в сообщение коммита не попадают.
+# Включается один раз: git config core.hooksPath .githooks
+"$(git rev-parse --show-toplevel)/.github/scripts/no-ai-trailers.sh" "$1"

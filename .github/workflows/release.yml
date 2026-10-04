@@ -1,4 +1,12 @@
-name: release
+name: release      # В истории только люди: релиз с соавторством ИИ в коммитах не выходит.
+      - name: История без следов ИИ
+        run: ./.github/scripts/no-ai-trailers.sh --range "$GITHUB_REF_NAME"
+
+      - name: Релиз
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./.github/scripts/release-notes.sh "$GITHUB_REF_NAME" "${{ steps.ver.outputs.build }}" dist > "$RUNNER_TEMP/notes.md"
 
 # Тег вида v0.1.0 — единственный триггер релиза.
 on:
@@ -76,14 +84,20 @@ jobs:
           test -x /tmp/mcpb/server/phosphor-mcp
           test -s /tmp/mcpb/manifest.json
 
+      # В истории только люди: релиз с соавторством ИИ в коммитах не выходит.
+      - name: История без следов ИИ
+        run: ./.github/scripts/no-ai-trailers.sh --range "$GITHUB_REF_NAME"
+
+      # Заметки собираются из коммитов между тегами: что нового, кто сделал,
+      # суммы файлов. Шаблон — в самом скрипте.
       - name: Релиз
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          ./.github/scripts/release-notes.sh "$GITHUB_REF_NAME" "${{ steps.ver.outputs.build }}" dist > "$RUNNER_TEMP/notes.md"
           gh release create "$GITHUB_REF_NAME" \
             --title "Phosphor ${{ steps.ver.outputs.short }}${{ startsWith(steps.ver.outputs.short, '0.') && ' (alpha)' || '' }}" \
-            --generate-notes \
-            --notes-file .github/release-notes.md \
+            --notes-file "$RUNNER_TEMP/notes.md" \
             dist/Phosphor-${{ steps.ver.outputs.short }}.zip \
             dist/Phosphor.zip \
             dist/SHA256SUMS.txt \

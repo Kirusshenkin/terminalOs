@@ -111,7 +111,7 @@ public struct FilesView: View {
     private var columns: some View {
         HStack(spacing: 8) {
             Label2(strings("host.name")).frame(maxWidth: .infinity, alignment: .leading)
-            Label2(strings("files.modified")).frame(width: 120, alignment: .leading)
+            Label2(strings("files.modified")).frame(width: 140, alignment: .leading)
             Label2(strings("files.size")).frame(width: 80, alignment: .trailing)
         }
         .padding(.bottom, 4)
@@ -175,7 +175,8 @@ public struct FilesView: View {
 
                 Text(file.modified.map { $0.formatted(date: .numeric, time: .shortened) } ?? "—")
                     .font(style.font(11)).foregroundStyle(style.muted)
-                    .frame(width: 120, alignment: .leading)
+                    .lineLimit(1)
+                    .frame(width: 140, alignment: .leading)
 
                 Text(file.isDirectory ? "—" : strings.size(file.size))
                     .font(style.font(11)).foregroundStyle(style.muted)

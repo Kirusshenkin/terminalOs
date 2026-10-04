@@ -42,8 +42,14 @@ public struct HostPicker: View {
                 .buttonStyle(PressFeedback())
                 .padding(.top, 2)
             } else {
-                ForEach(model.book.hosts) { host in
-                    row(host)
+                // Хостов бывает десятки: без прокрутки список вырастает выше
+                // окна и выталкивает шапку за его верхний край.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(model.book.hosts) { host in
+                            row(host)
+                        }
+                    }
                 }
             }
         }

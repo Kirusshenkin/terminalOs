@@ -196,7 +196,7 @@ public struct ThemeView: View {
                         .font(style.font(12.5))
                         .foregroundStyle(language == model.language ? style.bright : style.text)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressFeedback())
                 }
                 Label2(strings("settings.eggs"))
                 Toggle(
@@ -278,7 +278,7 @@ public struct ThemeView: View {
             } label: {
                 Text("−").font(style.font(13)).foregroundStyle(style.text).frame(width: 16)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressFeedback())
             Text(step < 1 ? String(format: "%.1f", value) : String(Int(value)) + unit)
                 .font(style.font(11.5)).foregroundStyle(style.bright)
                 .frame(width: 38)
@@ -287,7 +287,7 @@ public struct ThemeView: View {
             } label: {
                 Text("+").font(style.font(13)).foregroundStyle(style.text).frame(width: 16)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressFeedback())
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
         .background(style.surface)
@@ -306,7 +306,7 @@ public struct ThemeView: View {
             .background(style.surface)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedback())
         .accessibilityLabel(title)
         .accessibilityAddTraits(on ? .isSelected : [])
     }
@@ -331,7 +331,7 @@ public struct ThemeView: View {
                     .background(theme.id == model.themeID ? style.surface : .clear)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
             }
             Spacer(minLength: 0)
             Label2(strings("set.binding")).padding(.bottom, 4)
@@ -355,7 +355,7 @@ public struct ThemeView: View {
                     .font(style.font(11))
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
             }
             Text(strings("set.bindingNote"))
                 .font(style.font(10)).foregroundStyle(style.muted).padding(.top, 4)

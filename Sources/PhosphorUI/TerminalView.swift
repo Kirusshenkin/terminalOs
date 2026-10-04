@@ -92,7 +92,7 @@ public struct TerminalPane: View {
                                 .foregroundStyle(style.muted)
                                 .padding(5)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressFeedback())
                         .accessibilityLabel(strings("common.close"))
                         .help("\(strings("cmd.closePane")) ⌘W")
                     }
@@ -155,7 +155,7 @@ public struct TerminalPane: View {
                 } label: {
                     Label2(model.strings("term.split"))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
                 .help("\(model.strings("cmd.splitSide")) ⌘D · \(model.strings("cmd.splitBelow")) ⇧⌘D")
             }
             if !model.extraSessions.isEmpty {
@@ -168,7 +168,7 @@ public struct TerminalPane: View {
                     )
                     .font(.system(size: 11)).foregroundStyle(style.muted)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
                 .accessibilityLabel(strings("nav.flipSplit"))
                 .help(strings("nav.flipSplit"))
                 Button {
@@ -176,7 +176,7 @@ public struct TerminalPane: View {
                 } label: {
                     Label2(model.strings("term.unsplit"))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
                 .help("\(model.strings("cmd.closePane")) ⌘W")
             }
         }
@@ -265,7 +265,7 @@ public struct PetCorner: View {
                                 pet == option ? style.accent : style.text.opacity(0.3), lineWidth: 1
                             ))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
             }
         }
     }

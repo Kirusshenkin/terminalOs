@@ -140,7 +140,7 @@ public struct ActivityView: View {
                                                     : style.text.opacity(0.25),
                                                 lineWidth: 1))
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(PressFeedback())
                             }
                         }
                     }
@@ -200,7 +200,7 @@ public struct ActivityView: View {
                                 .foregroundStyle(style.background)
                                 .background(commandCopied ? style.accent : style.text)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressFeedback())
                     }
 
                     HStack(spacing: 8) {
@@ -214,7 +214,7 @@ public struct ActivityView: View {
                         Button(strings("ai.recheck")) {
                             Task { await model.refreshClaudeCodeRegistration() }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressFeedback())
                         .font(style.font(11))
                         .foregroundStyle(style.text)
                     }

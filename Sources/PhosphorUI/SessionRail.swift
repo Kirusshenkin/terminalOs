@@ -33,7 +33,7 @@ struct SessionRail: View {
                     Image(systemName: "plus").font(.system(size: 11, weight: .bold))
                         .foregroundStyle(style.muted)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
                 .accessibilityLabel(model.strings("nav.addHost"))
             }
             .padding(.horizontal, 12).padding(.top, 12)
@@ -102,7 +102,7 @@ struct SessionRail: View {
                     Image(systemName: "plus").font(.system(size: 11, weight: .bold))
                         .foregroundStyle(style.muted)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
                 .accessibilityLabel(model.strings("nav.newSession"))
             }
         }
@@ -202,7 +202,7 @@ struct SessionRail: View {
                 .padding(.horizontal, 8).padding(.vertical, 6)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressFeedback())
             // Новая сессия заводится в живом спейсе: в чужой хост без
             // соединения её не завести.
             if isLive(host) {
@@ -213,7 +213,7 @@ struct SessionRail: View {
                         .foregroundStyle(style.muted)
                         .padding(.horizontal, 6)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
                 .accessibilityLabel(model.strings("nav.newSession"))
             }
         }
@@ -290,7 +290,7 @@ struct SessionRail: View {
                 Image(systemName: "return").font(.system(size: 10, weight: .bold))
                     .foregroundStyle(style.bright)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressFeedback())
             .accessibilityLabel(model.strings("nav.createSession"))
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
@@ -371,7 +371,7 @@ private struct SessionLine: View {
             .background(active ? style.text.opacity(0.08) : .clear)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedback())
         .onHover { inside in
             hover?.cancel()
             guard inside, !active else {

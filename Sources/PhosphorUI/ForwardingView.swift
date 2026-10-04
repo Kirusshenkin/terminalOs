@@ -72,7 +72,7 @@ public struct ForwardingView: View {
                                         direction == item ? style.accent : style.text.opacity(0.25),
                                         lineWidth: 1))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressFeedback())
                     }
                 }
             }

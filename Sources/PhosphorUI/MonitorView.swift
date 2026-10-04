@@ -103,10 +103,13 @@ public struct MonitorView: View {
 
     /// Верхняя строка: то, что хочется знать, не читая ничего дальше.
     private var summary: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 0) {
+        // Промежуток между колонками обязателен: ширина у них минимальная, и
+        // длинное значение («0.24 0.39 0.44») иначе вплотную врезалось в
+        // соседнее и читалось как одно число.
+        HStack(alignment: .firstTextBaseline, spacing: 24) {
             stat(strings("mon.uptime"), snapshot.map { strings.duration(seconds: $0.uptime) } ?? "—")
             stat(
-                "load",
+                strings("mon.load"),
                 snapshot.map {
                     String(format: "%.2f %.2f %.2f", $0.loadOne, $0.loadFive, $0.loadFifteen)
                 } ?? "—")
@@ -117,11 +120,18 @@ public struct MonitorView: View {
             stat(strings("mon.handles"), snapshot.map { "\($0.openFiles)" } ?? "—")
             stat(strings("mon.containers"), containersSummary)
             Spacer()
+            // Модель процессора и ядро сервер отдаёт не всегда; пустое не
+            // показываем, а не рисуем «—» с подписью без значения.
             VStack(alignment: .trailing, spacing: 2) {
-                Text(snapshot?.cpuModel.isEmpty == false ? snapshot?.cpuModel ?? "" : "—")
-                    .font(style.font(11)).foregroundStyle(style.muted).lineLimit(1)
-                Text(snapshot.map { "\(strings("mon.kernel")) \($0.kernel)" } ?? strings("mon.noLink"))
-                    .font(style.font(11)).foregroundStyle(style.muted)
+                if let cpu = snapshot?.cpuModel, !cpu.isEmpty {
+                    Text(cpu).font(style.font(11)).foregroundStyle(style.muted).lineLimit(1)
+                }
+                if let kernel = snapshot?.kernel, !kernel.isEmpty {
+                    Text("\(strings("mon.kernel")) \(kernel)")
+                        .font(style.font(11)).foregroundStyle(style.muted).lineLimit(1)
+                } else if snapshot == nil {
+                    Text(strings("mon.noLink")).font(style.font(11)).foregroundStyle(style.muted)
+                }
             }
         }
     }
@@ -140,6 +150,7 @@ public struct MonitorView: View {
         VStack(alignment: .leading, spacing: 3) {
             Label2(title)
             Text(value).font(style.font(14)).foregroundStyle(style.bright)
+                .lineLimit(1).fixedSize()
         }
         .frame(minWidth: 118, alignment: .leading)
     }
@@ -186,7 +197,7 @@ public struct MonitorView: View {
     private var middle: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
-                Label2("\(strings("monitor.memory")) · MemAvailable")
+                Label2(strings("monitor.memory"))
                 Bar(fraction: snapshot?.memoryUsage ?? 0, colour: style.accent)
                 HStack {
                     Text(

@@ -1,3 +1,4 @@
+import AppKit
 public import SwiftUI
 
 /// Страница внутри раздела.
@@ -183,10 +184,22 @@ public struct PressFeedback: ButtonStyle {
         @Environment(\.style) private var style
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
         let configuration: Configuration
+        @State private var hovering = false
 
         var body: some View {
             let still = reduceMotion || style.motion == 0
             return configuration.label
+                // Под курсором — рука и лёгкая подложка: так видно, что текст
+                // нажимается, а не просто подписан. Без анимации: это отклик.
+                .background(hovering ? style.text.opacity(0.07) : .clear)
+                .onHover { inside in
+                    guard inside != hovering else { return }
+                    hovering = inside
+                    if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                }
+                // Кнопка может исчезнуть под курсором (закрылось меню, сменился
+                // экран) — тогда «вышли» не придёт, и рука осталась бы навсегда.
+                .onDisappear { if hovering { NSCursor.pop() } }
                 .scaleEffect(configuration.isPressed && !still ? 0.96 : 1, anchor: .leading)
                 .opacity(configuration.isPressed ? 0.7 : 1)
                 .animation(

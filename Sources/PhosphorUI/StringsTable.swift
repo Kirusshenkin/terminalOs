@@ -511,6 +511,7 @@ extension Strings {
         "mon.sick": [.russian: "больных", .english: "unhealthy"],
         "mon.free": [.russian: "свободно", .english: "free"],
         "mon.kernel": [.russian: "ядро", .english: "kernel"],
+        "mon.load": [.russian: "нагрузка", .english: "load"],
         "dock.exposed": [
             .russian: "порт открыт наружу мимо UFW: ", .english: "a port is exposed past UFW: ",
         ],

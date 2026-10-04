@@ -106,7 +106,7 @@ public struct DockerView: View {
                     .padding(.horizontal, 6).padding(.vertical, 4)
                     .background(container.id == selected?.id ? style.surface : .clear)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
             }
             Spacer(minLength: 0)
         }
@@ -153,7 +153,7 @@ public struct DockerView: View {
                                     Rectangle().fill(tab == key ? style.accent : .clear).frame(height: 1)
                                 }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressFeedback())
                     }
                 }
                 content(for: container)

@@ -145,7 +145,7 @@ public struct FilesView: View {
                 .foregroundStyle(style.muted)
                 .padding(.horizontal, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedback())
         .accessibilityLabel(strings(action.titleKey))
         .help(strings(action.titleKey))
         .disabled(model.transfer != nil)
@@ -186,7 +186,7 @@ public struct FilesView: View {
             .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedback())
     }
 
     private var hint: some View {

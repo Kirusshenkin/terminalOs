@@ -45,7 +45,7 @@ public struct SnippetsView: View {
                     .background(snippet.id == current?.id ? style.surface : .clear)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressFeedback())
             }
             Rule().padding(.vertical, 6)
             Label2(strings("snip.new"))

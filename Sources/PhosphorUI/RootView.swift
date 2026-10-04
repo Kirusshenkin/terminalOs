@@ -11,6 +11,7 @@ public struct RootView: View {
     /// движение.
     @Namespace private var marker
     @State private var hovered: Section?
+    @State private var chipHovered = false
 
     public init() {}
 
@@ -296,33 +297,13 @@ public struct RootView: View {
 
     /// Сервер, к которому относятся вкладки в рамке. Без сервера он зовёт
     /// себя выбрать — ярко, потому что это и есть следующий шаг.
+    ///
+    /// Кнопка, а не системный `Menu`: у того на macOS из подписи остаётся
+    /// только первый элемент, и вместо имени сервера в шапке висела точка.
+    /// Щелчок открывает быстрое подключение — там поиск, а хостов десятки.
     private var hostChip: some View {
-        Menu {
-            if !model.book.hosts.isEmpty {
-                ForEach(model.book.hosts) { host in
-                    Button(action: { Task { await model.connect(to: host) } }) {
-                        HStack {
-                            if model.selectedHost == host.id {
-                                Image(systemName: "checkmark")
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(host.name)
-                                Text("\(host.user)@\(host.address)")
-                                    .font(.system(.caption))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-                Divider()
-            } else {
-                Text(model.strings("common.noHosts"))
-                Divider()
-            }
-            Button(model.strings("common.addHost")) {
-                model.screen = .hosts
-                model.isAddingHost = true
-            }
+        Button {
+            model.isQuickConnectOpen = true
         } label: {
             HStack(spacing: 6) {
                 Text(model.currentHost == nil ? "○" : "●")
@@ -334,11 +315,14 @@ public struct RootView: View {
                 Text("▾").foregroundStyle(model.style.muted)
             }
             .font(model.style.font(11)).tracking(1.2)
-            .frame(maxWidth: 190, alignment: .leading)
+            .frame(maxWidth: 220, alignment: .leading)
             .fixedSize()
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(chipHovered ? model.style.text.opacity(0.08) : .clear)
+            .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .buttonStyle(PressFeedback())
+        .onHover { chipHovered = $0 }
         .help(chipHelp)
         .accessibilityLabel(chipHelp)
     }

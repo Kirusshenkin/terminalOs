@@ -210,7 +210,7 @@ public struct HostEditor: View {
                     Rectangle().stroke(
                         selected ? style.accent : style.text.opacity(0.25), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedback())
     }
 
     private func close() {

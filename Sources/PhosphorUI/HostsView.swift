@@ -147,7 +147,7 @@ public struct HostsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .overlay(Rectangle().stroke(style.rule, lineWidth: 1))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressFeedback())
                         .contextMenu {
                             if !target.saved {
                                 Button(strings("hosts.remember")) { model.addHost(target.host) }
@@ -190,7 +190,7 @@ public struct HostsView: View {
                                 lineWidth: 1
                             ))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressFeedback())
                 }
             }
         }
@@ -259,7 +259,7 @@ public struct HostsView: View {
             )
             .connecting(model.isConnecting(host), model: model)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedback())
         .phContextMenu(
             isPresented: Binding(
                 get: { model.menuHost?.id == host.id },

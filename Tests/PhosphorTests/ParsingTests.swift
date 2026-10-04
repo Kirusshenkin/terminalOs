@@ -439,7 +439,18 @@ struct ProvisionTests {
         let output = livedInOutput.replacingOccurrences(of: "DOCKEROK yes", with: "DOCKEROK no")
         let profile = HostProbe.parse(output)
         #expect(profile.dockerNeedsSudo)
-        #expect(profile.dockerPrefix == "sudo /usr/bin/docker")
+        // `-n`: sudo без терминала не ждёт пароля, а сразу отказывает.
+        #expect(profile.dockerPrefix == "sudo -n /usr/bin/docker")
+    }
+
+    @Test("sudo только с паролем — не поможет, docker остаётся как есть")
+    func dockerSudoNeedsPassword() {
+        let output = livedInOutput
+            .replacingOccurrences(of: "DOCKEROK yes", with: "DOCKEROK no")
+            .replacingOccurrences(of: "SUDO yes", with: "SUDO no")
+        let profile = HostProbe.parse(output)
+        #expect(!profile.dockerNeedsSudo)
+        #expect(profile.dockerPrefix == "/usr/bin/docker")
     }
 
     @Test("не-apt дистрибутив честно объявляется неподдерживаемым")

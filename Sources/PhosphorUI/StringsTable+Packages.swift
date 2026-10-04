@@ -146,8 +146,10 @@ extension Strings {
         "err.cancelled": [.russian: "отменено", .english: "cancelled"],
         "err.done": [.russian: "готово", .english: "done"],
         "err.dockerSocket": [
-            .russian: "нет доступа к сокету docker — нужен sudo или группа docker",
-            .english: "no access to the docker socket — needs sudo or the docker group",
+            .russian: "нет доступа к сокету docker: добавь пользователя в группу — "
+                + "sudo usermod -aG docker $USER, затем переподключись",
+            .english: "no access to the docker socket: add the user to the group — "
+                + "sudo usermod -aG docker $USER, then reconnect",
         ],
         "err.dockerGone": [.russian: "этого уже нет", .english: "it is already gone"],
         "err.dockerNotRunning": [.russian: "контейнер не запущен", .english: "the container is not running"],

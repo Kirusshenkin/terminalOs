@@ -36,7 +36,9 @@ public struct HostProfile: Sendable, Equatable, Codable {
     public var dockerPrefix: String {
         guard let dockerPath else { return "docker" }
         let binary = isPodman ? "podman" : dockerPath
-        return dockerNeedsSudo ? "sudo \(binary)" : binary
+        // `-n`: без терминала sudo не может спросить пароль — пусть сразу
+        // откажет, а не повиснет в ожидании ввода, которого не будет.
+        return dockerNeedsSudo ? "sudo -n \(binary)" : binary
     }
 
     /// Supported for provisioning. Guessing a package manager we have not
@@ -61,7 +63,7 @@ public enum HostProbe {
         echo "CERTBOT $(command -v certbot || echo -)"; \
         echo "UFW $(command -v ufw || echo -)"; \
         echo "PKG $(command -v apt-get >/dev/null && echo apt || (command -v dnf >/dev/null && echo dnf) || echo -)"; \
-        echo "CONTAINERS $(docker ps -aq 2>/dev/null | wc -l | tr -d ' ')"; \
+        echo "CONTAINERS $( (docker ps -aq 2>/dev/null || sudo -n docker ps -aq 2>/dev/null) | wc -l | tr -d ' ')"; \
         echo "KEYS $(grep -cvE '^\\s*(#|$)' ~/.ssh/authorized_keys 2>/dev/null || echo 0)"
         """
 
@@ -85,7 +87,9 @@ public enum HostProbe {
             dockerPath: dockerPath ?? podmanPath,
             // Docker present but `docker info` refused means the socket needs
             // privileges — the single most common reason panels come up empty.
-            dockerNeedsSudo: dockerPath != nil && values["DOCKEROK"] == "no",
+            // sudo помогает, только если он без пароля: иначе честнее показать
+            // отказ docker и подсказку про группу, чем ошибку sudo о терминале.
+            dockerNeedsSudo: dockerPath != nil && values["DOCKEROK"] == "no" && values["SUDO"] == "yes",
             isPodman: dockerPath == nil && podmanPath != nil,
             hasNginx: values["NGINX"].map { $0 != "-" } ?? false,
             hasCertbot: values["CERTBOT"].map { $0 != "-" } ?? false,

@@ -20,12 +20,20 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Вся история: номер сборки — число коммитов, а мелкий клон его не знает.
+          fetch-depth: 0
 
       - name: Версия из тега
         id: ver
         run: |
           SHORT="${GITHUB_REF_NAME#v}"   # 0.1.0 — то, что видит человек
           echo "short=$SHORT" >> "$GITHUB_OUTPUT"
+          # Номер сборки — число коммитов: он только растёт, и локальная сборка
+          # с того же коммита получает тот же номер. Счётчик прогонов Actions
+          # для этого не годится: он отстаёт от локальных сборок, и macOS
+          # приняла бы новую версию за откат.
+          echo "build=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Проверки
         run: swift test
@@ -35,7 +43,7 @@ jobs:
       - name: Сборка и упаковка
         env:
           MARKETING_VERSION: ${{ steps.ver.outputs.short }}
-          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_NUMBER: ${{ steps.ver.outputs.build }}
         run: ./.github/scripts/package.sh
 
       - name: Проверка бандла
@@ -57,7 +65,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            --title "Phosphor ${{ steps.ver.outputs.short }}" \
+            --title "Phosphor ${{ steps.ver.outputs.short }}${{ startsWith(steps.ver.outputs.short, '0.') && ' (alpha)' || '' }}" \
             --generate-notes \
             --notes-file .github/release-notes.md \
             dist/Phosphor-${{ steps.ver.outputs.short }}.zip \

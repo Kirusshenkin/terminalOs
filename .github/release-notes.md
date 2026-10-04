@@ -1,3 +1,8 @@
+> **Альфа / Alpha.** Версии 0.x — ранние: интерфейс и форматы ещё меняются, а
+> приложение не подписано сертификатом Apple. Ошибки — в issues репозитория.
+> Early builds: the interface and formats still change, and the app is not
+> signed with an Apple certificate. Please report problems in issues.
+
 ## Установка
 
 ```sh

@@ -681,6 +681,7 @@ extension Strings {
             .russian: "найти хост, тег, группу или user@host…",
             .english: "find a host, tag, group or user@host…",
         ],
+        "common.nothingFound": [.russian: "ничего не нашлось", .english: "nothing matches"],
         "hosts.connect": [.russian: "подключиться", .english: "connect"],
         "hosts.new": [.russian: "+ новый хост", .english: "+ new host"],
         "hosts.import": [.russian: "импорт ~/.ssh/config", .english: "import ~/.ssh/config"],

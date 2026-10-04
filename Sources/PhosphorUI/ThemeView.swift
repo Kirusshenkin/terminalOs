@@ -61,7 +61,9 @@ public struct ThemeView: View {
                     swatch(strings("set.selection"), current.selection)
                 }
                 Label2(strings("set.font"))
-                HStack(spacing: 8) {
+                // Столбиком, а не в ряд: в ряд три контрола не влезали, и
+                // подписи сжимались до буквы в строке.
+                VStack(alignment: .leading, spacing: 8) {
                     stepper(
                         strings("set.size"), value: model.fontSize, unit: strings("set.pt"), step: 1,
                         range: 10...20
@@ -258,9 +260,13 @@ public struct ThemeView: View {
     private func swatch(_ title: String, _ colour: RGBA) -> some View {
         HStack(spacing: 8) {
             Rectangle().fill(Color(colour)).frame(width: 22, height: 16)
+            // Подпись не переносится: «backgrou-nd» в две строки читалось хуже,
+            // чем подпись, укороченная многоточием.
             Text(title).font(style.font(11.5)).foregroundStyle(style.muted)
-            Spacer()
+                .lineLimit(1).truncationMode(.tail)
+            Spacer(minLength: 4)
             Text(colour.hex).font(style.font(11)).foregroundStyle(style.text)
+                .fixedSize()
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
         .background(style.surface)
@@ -273,6 +279,7 @@ public struct ThemeView: View {
     ) -> some View {
         HStack(spacing: 8) {
             Text(title).font(style.font(11.5)).foregroundStyle(style.muted)
+                .lineLimit(1).fixedSize()
             Button {
                 set(max(range.lowerBound, value - step))
             } label: {

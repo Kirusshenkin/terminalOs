@@ -32,23 +32,19 @@ public struct DockerView: View {
     }
 
     public var body: some View {
-        HStack(alignment: .top, spacing: 22) {
-            list
-            Rectangle().fill(style.rule).frame(width: 1)
-            inspector
-        }
-    }
-
-    @ViewBuilder private var list: some View {
         if model.session == nil {
-            HostPicker(
-                model: model,
-                title: strings("docker.containers"),
-                note: strings("dock.pickNote")
-            )
-            .frame(width: 250)
+            // Без сервера правой половине показать нечего: «ничего не найдено»
+            // рядом со списком хостов читалось как пустой сервер. Выбор хоста
+            // занимает экран целиком, как в файлах и метриках.
+            HostPicker(model: model, title: strings("docker.containers"), note: strings("dock.pickNote"))
+                .frame(maxWidth: 420, alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
-            liveList
+            HStack(alignment: .top, spacing: 22) {
+                liveList
+                Rectangle().fill(style.rule).frame(width: 1)
+                inspector
+            }
         }
     }
 

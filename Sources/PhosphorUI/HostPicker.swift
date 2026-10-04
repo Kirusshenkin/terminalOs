@@ -12,6 +12,7 @@ public struct HostPicker: View {
     @Bindable var model: AppModel
     private let title: String
     private let note: String
+    @State private var query = ""
 
     public init(model: AppModel, title: String, note: String) {
         self.model = model
@@ -42,12 +43,20 @@ public struct HostPicker: View {
                 .buttonStyle(PressFeedback())
                 .padding(.top, 2)
             } else {
-                // Хостов бывает десятки: без прокрутки список вырастает выше
-                // окна и выталкивает шапку за его верхний край.
+                // Хостов бывают десятки: искать глазами по списку из сорока
+                // строк — это не выбор, а пролистывание. Поиск сразу под рукой.
+                search
+                // Без прокрутки список вырастает выше окна и выталкивает шапку
+                // за его верхний край.
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        ForEach(model.book.hosts) { host in
+                        ForEach(shown) { host in
                             row(host)
+                        }
+                        if shown.isEmpty {
+                            Text(model.strings("common.nothingFound"))
+                                .font(style.font(11.5)).foregroundStyle(style.muted)
+                                .padding(.vertical, 6)
                         }
                     }
                 }
@@ -79,5 +88,56 @@ public struct HostPicker: View {
             .connecting(model.isConnecting(host), model: model)
         }
         .buttonStyle(PressFeedback())
+    }
+}
+
+extension HostPicker {
+    fileprivate var search: some View {
+        HStack(spacing: 6) {
+            Text(">").foregroundStyle(style.accent)
+            TextField(model.strings("hosts.search"), text: $query)
+                .textFieldStyle(.plain)
+                .foregroundStyle(style.text)
+                // Enter подключает первый найденный: набрал «b2b», нажал — и всё.
+                .onSubmit {
+                    if let first = shown.first { Task { await model.connect(to: first) } }
+                }
+        }
+        .font(style.font(12))
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))
+        .padding(.bottom, 4)
+    }
+
+    /// Что показать: найденное, а без запроса — сначала те, с кем недавно
+    /// работали. Порядок в книге — порядок добавления, и нужный сервер в нём
+    /// оказывается где-то на третьем экране.
+    fileprivate var shown: [ServerHost] {
+        let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let hosts = model.book.hosts.filter { host in
+            needle.isEmpty
+                || host.name.lowercased().contains(needle)
+                || host.address.lowercased().contains(needle)
+                || host.tags.contains { $0.lowercased().contains(needle) }
+        }
+        return Self.ordered(hosts, current: model.selectedHost, spaces: model.spaces)
+    }
+
+    /// Текущий — первым, за ним открытые спейсы, потом по свежести ответа,
+    /// остальные — в прежнем порядке. Чистая функция.
+    static func ordered(
+        _ hosts: [ServerHost], current: ServerHost.ID?, spaces: [ServerHost.ID]
+    ) -> [ServerHost] {
+        hosts.enumerated().sorted { lhs, rhs in
+            func rank(_ host: ServerHost) -> Int {
+                if host.id == current { return 0 }
+                if spaces.contains(host.id) { return 1 }
+                return host.lastSeen == nil ? 3 : 2
+            }
+            let (left, right) = (rank(lhs.element), rank(rhs.element))
+            if left != right { return left < right }
+            if left == 2, let a = lhs.element.lastSeen, let b = rhs.element.lastSeen, a != b { return a > b }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
     }
 }

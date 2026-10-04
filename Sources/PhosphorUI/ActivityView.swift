@@ -277,12 +277,17 @@ public struct ActivityView: View {
                                     .foregroundStyle(style.muted)
                             }
                             .font(style.font(12))
-                            if !entry.arguments.isEmpty {
-                                Text(entry.arguments)
+                            let arguments = Self.readableArguments(entry.arguments, hostName: entry.hostName)
+                            if !arguments.isEmpty {
+                                Text(arguments)
                                     .font(style.font(11)).foregroundStyle(style.text.opacity(0.7))
+                                    .lineLimit(1).truncationMode(.tail)
                             }
-                            Text("\(entry.decision) · \(entry.summary)")
+                            // Ответ инструмента бывает простынёй (весь список хостов):
+                            // в журнале хватает начала, остальное — шум.
+                            Text(Self.outcome(decision: entry.decision, summary: entry.summary))
                                 .font(style.font(11)).foregroundStyle(style.muted)
+                                .lineLimit(2).truncationMode(.tail)
                         }
                         .padding(.bottom, 4)
                         .overlay(alignment: .bottom) {
@@ -293,5 +298,26 @@ public struct ActivityView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+    }
+}
+
+extension ActivityView {
+    /// Аргументы без `host=<uuid>`, когда имя хоста уже стоит в заголовке
+    /// строки: идентификатор нужен машине, человеку он ничего не говорит.
+    /// Чистая функция.
+    static func readableArguments(_ arguments: String, hostName: String) -> String {
+        guard !hostName.isEmpty else { return arguments }
+        return arguments.split(separator: " ")
+            .filter { !$0.hasPrefix("host=") }
+            .joined(separator: " ")
+    }
+
+    /// Решение и итог одной строкой. У отказа причина приходит дважды — в
+    /// решении и в итоге; повтор убираем, оставляя только слово решения.
+    /// Чистая функция.
+    static func outcome(decision: String, summary: String) -> String {
+        let verdict = decision.split(separator: ":", maxSplits: 1).first.map(String.init) ?? decision
+        let flat = summary.replacingOccurrences(of: "\n", with: " ")
+        return flat.isEmpty ? verdict : "\(verdict) · \(flat)"
     }
 }

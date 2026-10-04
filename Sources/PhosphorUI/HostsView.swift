@@ -94,13 +94,12 @@ public struct HostsView: View {
                 Text(importSummary(report))
                     .font(style.font(11))
                     .foregroundStyle(report.skipped.isEmpty && report.problem == nil ? style.muted : style.warning)
-            } else {
-                Text(
-                    model.selectedGroup == nil
-                        ? strings("hosts.filterHint") : strings("hosts.clearFilter")
-                )
-                .font(style.font(11))
-                .foregroundStyle(style.muted)
+            } else if model.selectedGroup != nil, !model.book.groups.isEmpty {
+                // Подсказка «нажми, чтобы отфильтровать» без единой группы
+                // висела ни к чему; осталась только отмена активного фильтра.
+                Text(strings("hosts.clearFilter"))
+                    .font(style.font(11))
+                    .foregroundStyle(style.muted)
             }
         }
     }
@@ -192,6 +191,21 @@ public struct HostsView: View {
                     }
                     .buttonStyle(PressFeedback())
                 }
+                // Группу завести было негде: форма есть, а входа в неё не было,
+                // и раздел «группы» стоял пустым заголовком. Плитка — вход.
+                Button {
+                    model.isAddingGroup = true
+                } label: {
+                    Text("+ \(strings("group.new"))")
+                        .font(style.font(12))
+                        .foregroundStyle(style.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12).padding(.vertical, 10)
+                        .overlay(
+                            Rectangle().stroke(
+                                style.text.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                }
+                .buttonStyle(PressFeedback())
             }
         }
     }
@@ -301,7 +315,11 @@ public struct HostsView: View {
     /// Вторая строка живёт, только когда есть что сказать.
     private func cardDetails(_ host: ServerHost, profile: HostProfile?) -> some View {
         HStack(spacing: 10) {
-            detail(icon: "→", text: strings.reach(model.book.reach(for: host)))
+            // «Напрямую» — норма, и на каждой из сорока карточек это шум.
+            // Путь показываем, только когда он особый: прокси или бастион.
+            if model.book.reach(for: host) != .direct {
+                detail(icon: "→", text: strings.reach(model.book.reach(for: host)))
+            }
             if let group = model.book.group(for: host) {
                 detail(icon: "■", text: group.name)
             }

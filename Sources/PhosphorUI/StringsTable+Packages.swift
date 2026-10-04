@@ -6,6 +6,15 @@ import Foundation
 /// растут вместе с пакетами, а не с экранами.
 extension Strings {
     static let packageTable: [String: [Language: String]] = [
+        // Перезапуск ради обновления (здесь, а не в основной таблице: та у предела длины).
+        "upd.interruptTitle": [.russian: "перезапуск оборвёт работу агента", .english: "restarting will stop an agent"],
+        "upd.interruptBody": [
+            .russian: "работает в обычном шелле этого Мака и завершится при перезапуске. Сессии tmux не пострадают — "
+                + "в следующий раз запускай агента в tmux-сессии (+ у «этот мак»)",
+            .english: "is running in the plain shell of this Mac and will end on restart. tmux sessions are not affected — "
+                + "next time start the agent in a tmux session (+ next to this Mac)",
+        ],
+        "upd.interruptGo": [.russian: "всё равно обновить", .english: "update anyway"],
         "reach.direct": [.russian: "напрямую", .english: "direct"],
         "reach.proxy": [.russian: "прокси", .english: "proxy"],
         "reach.jump": [.russian: "через бастион", .english: "via bastion"],

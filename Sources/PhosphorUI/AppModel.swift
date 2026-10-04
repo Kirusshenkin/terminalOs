@@ -298,6 +298,8 @@ public final class AppModel {
     public internal(set) var pendingHostKey: ScannedHostKey?
     /// Состояние обновления для кнопки в шапке.
     public internal(set) var updateState: UpdateState = .idle
+    /// Обновление ждёт согласия: перезапуск оборвёт агента в обычном шелле.
+    public var updateNeedsConfirm = false
     let updater = Updater()
     var updateWatch: Task<Void, Never>?
     /// Отпечаток получить не удалось: сервер ответил на подключение, но ключ

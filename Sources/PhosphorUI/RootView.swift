@@ -27,6 +27,14 @@ public struct RootView: View {
             .task { await model.startBridge() }
             // Релизы проверяются и до входа: обновление не требует профиля.
             .task { model.startUpdateChecks() }
+            .alert(model.strings("upd.interruptTitle"), isPresented: $model.updateNeedsConfirm) {
+                Button(model.strings("upd.interruptGo"), role: .destructive) {
+                    Task { await model.installUpdate(confirmed: true) }
+                }
+                Button(model.strings("common.cancel"), role: .cancel) {}
+            } message: {
+                Text("\(model.updateWouldInterrupt.joined(separator: ", ")) · \(model.strings("upd.interruptBody"))")
+            }
             // Опрос замирает, когда на окно никто не смотрит: терминал открыт
             // весь день, и фоновому окну незачем будить процессор.
             .task(id: scenePhase) { await model.setWindowActive(scenePhase == .active) }

@@ -52,8 +52,21 @@ extension AppModel {
         }
     }
 
-    /// Скачивает, проверяет, ставит и перезапускает приложение.
-    public func installUpdate() async {
+    /// Что оборвёт перезапуск: агенты в обычных шеллах этого Мака. Сессии
+    /// tmux — здесь и на серверах — переживают его, а обычный шелл — нет.
+    public var updateWouldInterrupt: [String] {
+        // Даже ждущий ввода агент теряет разговор: процесс шелла умирает.
+        guard let agent = plainShell?.agent else { return [] }
+        return [agent.title]
+    }
+
+    /// Скачивает, проверяет, ставит и перезапускает приложение. Если
+    /// перезапуск оборвёт работающего агента, сначала спрашивает.
+    public func installUpdate(confirmed: Bool = false) async {
+        if !confirmed, !updateWouldInterrupt.isEmpty {
+            updateNeedsConfirm = true
+            return
+        }
         let manifest: UpdateManifest
         switch updateState {
         case .available(let offered), .failed(_, retry: let offered?): manifest = offered

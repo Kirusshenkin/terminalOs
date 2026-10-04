@@ -18,6 +18,8 @@ public struct HostEditor: View {
     @State private var reachKind: ReachKind
     @State private var proxyHost: String
     @State private var proxyPort: String
+    /// Путь к ключу. nil — ключ выбирает ssh: ключи по умолчанию и агент.
+    @State private var identityFile: String?
 
     private enum ReachKind: String, CaseIterable {
         case direct, socks
@@ -39,6 +41,7 @@ public struct HostEditor: View {
         _port = State(initialValue: String(host?.port ?? 22))
         _tags = State(initialValue: host?.tags.joined(separator: ", ") ?? "")
         _groupID = State(initialValue: host?.groupID)
+        _identityFile = State(initialValue: host?.identityFile)
         if case .socks(let proxyHost, let proxyPort) = host?.reach {
             _reachKind = State(initialValue: .socks)
             _proxyHost = State(initialValue: proxyHost)
@@ -80,6 +83,7 @@ public struct HostEditor: View {
                 field(strings("host.tags"), text: $tags, placeholder: strings("host.tagsHint"))
             }
 
+            key
             group
             reach
 
@@ -104,7 +108,10 @@ public struct HostEditor: View {
             }
         }
         .padding(22)
-        .frame(width: 520, height: 480)
+        .frame(width: 520, height: 540)
+        // Ключи Мака читаются при открытии формы: новый ключ, сделанный
+        // минуту назад в терминале, должен уже быть в списке.
+        .task { model.loadLocalKeys() }
         .background(style.background)
     }
 
@@ -132,6 +139,47 @@ public struct HostEditor: View {
                 }
             }
         }
+    }
+
+    /// Каким ключом входить. Список — ключи из `~/.ssh` с приватной половиной:
+    /// без неё войти нечем, и предлагать такой ключ значило бы обещать вход.
+    private var key: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label2(strings("host.key"))
+            Menu {
+                Button(strings("host.keyAuto")) { identityFile = nil }
+                Divider()
+                ForEach(model.localKeys.filter(\.hasPrivate)) { local in
+                    Button(local.name) { identityFile = Self.shortPath(local.id) }
+                }
+            } label: {
+                Text(identityFile.map { ($0 as NSString).lastPathComponent } ?? strings("host.keyAuto"))
+                    .font(style.font(12.5))
+                    .foregroundStyle(style.text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            if let identityFile, !FileManager.default.fileExists(atPath: Self.expanded(identityFile)) {
+                // Ключ переименовали или удалили — говорим до подключения, а не
+                // отказом сервера после.
+                Text("\(strings("host.keyMissing")) \(identityFile)")
+                    .font(style.font(11)).foregroundStyle(style.warning)
+            }
+        }
+    }
+
+    /// `~/.ssh/имя` вместо полного пути: профиль переезжает на другой Мак, где
+    /// домашняя папка зовётся иначе. ssh раскрывает `~` в `-i` сам.
+    static func shortPath(_ path: String) -> String {
+        let home = NSHomeDirectory()
+        return path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
+    }
+
+    static func expanded(_ path: String) -> String {
+        (path as NSString).expandingTildeInPath
     }
 
     private var reach: some View {
@@ -171,20 +219,27 @@ public struct HostEditor: View {
     }
 
     private func save() {
-        let host = ServerHost(
-            id: existing?.id ?? UUID(),
-            name: resolvedName,
-            address: address.trimmingCharacters(in: .whitespaces),
-            port: Int(port) ?? 22,
-            user: user.trimmingCharacters(in: .whitespaces),
-            groupID: groupID,
-            tags: tags.split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty },
-            reach: reachKind == .socks
-                ? .socks(host: proxyHost, port: Int(proxyPort) ?? 1080)
-                : .direct
-        )
+        // Правка начинается с того, что было: иначе форма молча сбрасывала бы
+        // поля, которых в ней нет, — режим MCP, защиту, память о сервере.
+        var host = existing ?? ServerHost(name: resolvedName, address: "")
+        host.name = resolvedName
+        host.address = address.trimmingCharacters(in: .whitespaces)
+        host.port = Int(port) ?? 22
+        host.user = user.trimmingCharacters(in: .whitespaces)
+        host.groupID = groupID
+        host.tags = tags.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        switch (reachKind, host.reach) {
+        case (.socks, _):
+            host.reach = .socks(host: proxyHost, port: Int(proxyPort) ?? 1080)
+        case (.direct, .jump):
+            // Бастион форма не показывает — и поэтому не трогает.
+            break
+        case (.direct, _):
+            host.reach = .direct
+        }
+        host.identityFile = identityFile
         if existing == nil { model.addHost(host) } else { model.update(host) }
         close()
     }

@@ -300,8 +300,8 @@ struct SSHConfigTests {
         #expect(skipped.contains { $0.lowercased().contains("match") })
     }
 
-    @Test("IdentityFile попадает в «не распознано», раз ключ никуда не едет")
-    func identityFileIsReported() {
+    @Test("IdentityFile доезжает до хоста")
+    func identityFileIsKept() {
         let result = SSHConfigImport.parse(
             """
             Host prod
@@ -309,9 +309,8 @@ struct SSHConfigTests {
                 IdentityFile ~/.ssh/id_prod
             """)
         #expect(result.entries.count == 1)
-        // Молча принять и выбросить хуже, чем честно сказать: ключ для этого
-        // сервера придётся назначить самому.
-        #expect(result.skipped.contains { $0.directive.lowercased().contains("identityfile") })
+        #expect(result.skipped.isEmpty)
+        #expect(SSHConfigImport.hosts(from: result).first?.identityFile == "~/.ssh/id_prod")
     }
 
     @Test("ProxyJump превращается в бастион")

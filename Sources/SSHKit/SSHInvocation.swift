@@ -31,6 +31,12 @@ public enum SSHInvocation {
             "-o", "ForwardAgent=no",
             "-p", String(host.port),
         ]
+        if let key = host.identityFile, !key.isEmpty {
+            // Только названный ключ: без `IdentitiesOnly` ssh сперва перебрал бы
+            // агент и ключи по умолчанию, и сервер с жёстким `MaxAuthTries`
+            // закрыл бы дверь раньше, чем дошла очередь до нужного.
+            arguments += ["-i", key, "-o", "IdentitiesOnly=yes"]
+        }
         if case .socks(let proxyHost, let proxyPort) = reach {
             // Имя хоста уходит прокси целиком, чтобы DNS резолвился на его
             // стороне: ни утечки, ни «у меня этот домен не резолвится».

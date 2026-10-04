@@ -66,6 +66,9 @@ of sources. Add a server by hand: **add host** or **⌘N**.
 - **port** — default `22`;
 - **name** — optional, the address is used if missing;
 - **tags** — comma-separated, they power search;
+- **key** — "automatic" (ssh tries the default keys itself) or a specific key
+  from `~/.ssh`. Needed when a server has its own key, say a deploy key with a
+  non-standard name.
 - **how to reach it** — "direct" or "proxy". For proxy, give the host and port
   of your SOCKS5, like `127.0.0.1` and `10808` for V2Box.
 

@@ -44,6 +44,9 @@ public struct ServerHost: Codable, Identifiable, Hashable, Sendable {
     /// Nil means inherit from the group.
     public var guardLevel: GuardLevel?
     public var mcpMode: MCPMode?
+    /// Путь к приватному ключу (`-i`). nil — ssh выбирает ключ сам, по своим
+    /// правилам. Хранится путь, а не ключ: сам ключ остаётся в `~/.ssh`.
+    public var identityFile: String?
     /// Имя системы из пробы и время, когда сервер последний раз отозвался.
     ///
     /// Заполняются через `HostBook.remember(_:osName:at:)` — сама проба живёт в
@@ -62,6 +65,7 @@ public struct ServerHost: Codable, Identifiable, Hashable, Sendable {
         reach: Reach = .direct,
         guardLevel: GuardLevel? = nil,
         mcpMode: MCPMode? = nil,
+        identityFile: String? = nil,
         osName: String? = nil,
         lastSeen: Date? = nil
     ) {
@@ -75,6 +79,7 @@ public struct ServerHost: Codable, Identifiable, Hashable, Sendable {
         self.reach = reach
         self.guardLevel = guardLevel
         self.mcpMode = mcpMode
+        self.identityFile = identityFile
         self.osName = osName
         self.lastSeen = lastSeen
     }

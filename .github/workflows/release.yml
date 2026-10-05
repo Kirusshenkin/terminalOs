@@ -1,12 +1,4 @@
-name: release      # В истории только люди: релиз с соавторством ИИ в коммитах не выходит.
-      - name: История без следов ИИ
-        run: ./.github/scripts/no-ai-trailers.sh --range "$GITHUB_REF_NAME"
-
-      - name: Релиз
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          ./.github/scripts/release-notes.sh "$GITHUB_REF_NAME" "${{ steps.ver.outputs.build }}" dist > "$RUNNER_TEMP/notes.md"
+name: release
 
 # Тег вида v0.1.0 — единственный триггер релиза.
 on:

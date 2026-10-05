@@ -125,8 +125,10 @@ public struct CRTFrame<Content: View>: View {
             }
         }
         .background(.black.opacity(style.theme.windowOpacity))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .padding(14)
+        // The surface is the window itself: an inset panel left the system's
+        // grey window background showing as a frame around it. The window's
+        // own corners round it, and the title bar strip belongs to it too.
+        .ignoresSafeArea()
         .background { WindowGlass(opacity: style.theme.windowOpacity) }
     }
 }

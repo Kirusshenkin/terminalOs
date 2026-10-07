@@ -24,11 +24,11 @@ public enum Subprocess {
         let collector = OutputCollector()
         outPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            if !data.isEmpty { Task { await collector.appendOut(data) } }
+            if !data.isEmpty { collector.appendOut(data) }
         }
         errPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            if !data.isEmpty { Task { await collector.appendErr(data) } }
+            if !data.isEmpty { collector.appendErr(data) }
         }
 
         try process.run()
@@ -46,10 +46,10 @@ public enum Subprocess {
         // Anything buffered between the last handler call and exit.
         let tailOut = try? outPipe.fileHandleForReading.readToEnd()
         let tailErr = try? errPipe.fileHandleForReading.readToEnd()
-        if let tailOut, !tailOut.isEmpty { await collector.appendOut(tailOut) }
-        if let tailErr, !tailErr.isEmpty { await collector.appendErr(tailErr) }
+        if let tailOut, !tailOut.isEmpty { collector.appendOut(tailOut) }
+        if let tailErr, !tailErr.isEmpty { collector.appendErr(tailErr) }
 
-        return await CommandResult(
+        return CommandResult(
             status: process.terminationStatus,
             stdout: collector.outText,
             stderr: collector.errText
@@ -73,7 +73,7 @@ public enum Subprocess {
         pipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            Task { await splitter.feed(data) }
+            splitter.feed(data)
         }
         try process.run()
         await withTaskCancellationHandler {
@@ -133,32 +133,50 @@ private final class ExitLatch: @unchecked Sendable {
     }
 }
 
-/// Accumulates process output off the main actor.
-private actor OutputCollector {
+/// Accumulates process output in the order it arrives.
+///
+/// Appends happen right in the pipe's handler, under a lock. Handing each
+/// chunk to its own `Task` (as before) lets chunks of a large output land out
+/// of order, or after the result was already read — a big JSON then comes
+/// back shuffled.
+private final class OutputCollector: @unchecked Sendable {
+    // Ручная синхронизация намеренная: пишут обработчики Foundation на своих
+    // очередях, читает вызывающий после выхода процесса; оба поля под замком.
+    private let lock = NSLock()
     private var out = Data()
     private var err = Data()
 
-    func appendOut(_ data: Data) { out.append(data) }
-    func appendErr(_ data: Data) { err.append(data) }
-    var outText: String { String(decoding: out, as: UTF8.self) }
-    var errText: String { String(decoding: err, as: UTF8.self) }
+    func appendOut(_ data: Data) { lock.withLock { out.append(data) } }
+    func appendErr(_ data: Data) { lock.withLock { err.append(data) } }
+    var outText: String { lock.withLock { String(decoding: out, as: UTF8.self) } }
+    var errText: String { lock.withLock { String(decoding: err, as: UTF8.self) } }
 }
 
 /// Splits a byte stream into lines, holding partial ones until they complete.
-private actor LineSplitter {
+///
+/// Fed synchronously from the pipe's handler, for the same reason as
+/// `OutputCollector`: lines must come out in the order they were written.
+private final class LineSplitter: @unchecked Sendable {
+    // Ручная синхронизация: обработчик трубы вызывается последовательно, но
+    // на чужой очереди; буфер под замком, `onLine` зовётся вне его.
+    private let lock = NSLock()
     private var buffer = Data()
     private let onLine: @Sendable (String) -> Void
 
     init(onLine: @escaping @Sendable (String) -> Void) { self.onLine = onLine }
 
     func feed(_ data: Data) {
-        buffer.append(data)
-        while let index = buffer.firstIndex(of: 0x0A) {
-            let line = buffer[buffer.startIndex..<index]
-            buffer = buffer[buffer.index(after: index)...]
-            onLine(String(decoding: line, as: UTF8.self))
+        let lines: [String] = lock.withLock {
+            buffer.append(data)
+            var lines: [String] = []
+            while let index = buffer.firstIndex(of: 0x0A) {
+                lines.append(String(decoding: buffer[buffer.startIndex..<index], as: UTF8.self))
+                buffer = buffer[buffer.index(after: index)...]
+            }
+            // A line that never ends must not grow without bound.
+            if buffer.count > 1 << 20 { buffer.removeAll(keepingCapacity: false) }
+            return lines
         }
-        // A line that never ends must not grow without bound.
-        if buffer.count > 1 << 20 { buffer.removeAll(keepingCapacity: false) }
+        lines.forEach(onLine)
     }
 }

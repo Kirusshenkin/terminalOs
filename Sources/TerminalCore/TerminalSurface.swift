@@ -26,6 +26,15 @@ public final class TerminalSurface: LocalProcessTerminalView {
         super.dataReceived(slice: slice)
     }
 
+    /// Когда в шелл последний раз что-то ввели — с клавиатуры или вставкой.
+    /// Вместе с `lastOutput` это и есть «терминал занят»: питомец спит.
+    public private(set) var lastInput: ContinuousClock.Instant?
+
+    public override func send(source: TerminalView, data: ArraySlice<UInt8>) {
+        lastInput = .now
+        super.send(source: source, data: data)
+    }
+
     /// Процесс шелла, если он запущен.
     public var shellPid: pid_t? {
         guard let pid = process?.shellPid, pid > 0, isRunning else { return nil }

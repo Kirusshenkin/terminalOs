@@ -64,7 +64,8 @@ struct SessionRail: View {
             // Питомец живёт в пустом низу рейла, а не поверх вывода терминала:
             // там он закрывал строки. Выбрать или выключить — в настройках.
             if model.petVisible {
-                PetCorner(pet: $model.pet, showsPicker: false)
+                PetCorner(
+                    pet: $model.pet, showsPicker: false, lastActivity: { model.lastTerminalActivity })
                     .frame(maxWidth: .infinity)
                     .clipped()
             }

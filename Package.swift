@@ -57,6 +57,10 @@ let package = Package(
         // Host capability probe and provisioning recipes.
         .target(name: "ProvisionKit", dependencies: ["PhosphorCore", "SSHKit"], swiftSettings: strict),
 
+        // The pet corner: pixel frames and behaviour, no drawing. Pure data, so
+        // it is tested without a window.
+        .target(name: "PetKit", swiftSettings: strict),
+
         // Terminal emulator wiring: local PTY and remote channels.
         .target(
             name: "TerminalCore",
@@ -90,7 +94,7 @@ let package = Package(
             dependencies: [
                 "PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit", "DockerKit",
                 "MetricsKit", "KeysKit", "ThemeKit", "ProvisionKit", "SessionKit",
-                "TerminalCore", "MCPBridge",
+                "TerminalCore", "MCPBridge", "PetKit",
             ],
             swiftSettings: strict
         ),
@@ -104,7 +108,7 @@ let package = Package(
             dependencies: [
                 "PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit",
                 "DockerKit", "MetricsKit", "KeysKit", "ThemeKit",
-                "ProvisionKit", "SessionKit", "MCPBridge", "PhosphorUI",
+                "ProvisionKit", "SessionKit", "MCPBridge", "PhosphorUI", "PetKit",
             ],
             swiftSettings: strict
         ),

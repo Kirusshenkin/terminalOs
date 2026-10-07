@@ -46,6 +46,15 @@ extension AppModel {
         [terminalDestination] + extraPanes.map(\.destination)
     }
 
+    /// Когда терминал на экране последний раз что-то принял или напечатал.
+    /// Пока это было недавно, питомец спит: ты работаешь (план §14.5).
+    var lastTerminalActivity: ContinuousClock.Instant? {
+        paneDestinations.compactMap { surfaces.existing($0) }
+            .flatMap { [$0.lastInput, $0.lastOutput] }
+            .compactMap { $0 }
+            .max()
+    }
+
     /// Поверхность, в которой сейчас курсор.
     private var focusedSurface: TerminalSurface? {
         NSApp.keyWindow?.firstResponder as? TerminalSurface

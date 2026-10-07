@@ -99,7 +99,7 @@ let package = Package(
             dependencies: [
                 "PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit", "DockerKit",
                 "MetricsKit", "KeysKit", "ThemeKit", "ProvisionKit", "SessionKit",
-                "TerminalCore", "MCPBridge", "PetKit",
+                "TerminalCore", "MCPBridge", "PetKit", "SyncKit",
             ],
             swiftSettings: strict
         ),

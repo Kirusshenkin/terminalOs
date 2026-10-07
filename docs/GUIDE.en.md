@@ -203,6 +203,18 @@ To restore the profile or move it to another Mac: **import profile…**, pick th
 file and type the passphrase. The current server list is replaced with what is
 in the file.
 
+### Several Macs
+
+To keep hosts, groups, snippets and forwards the same on all your Macs:
+**⌘9 → profile → sync between machines**, pick a storage server and press
+**turn on**. A `~/.phosphor-sync` folder appears on the server; it holds only
+ciphertext. Passwords and keys do not sync.
+
+On the second Mac add the same server, pick it as storage and press **turn on** —
+an eight-character code appears. On the first Mac the same section shows a request
+with the same code: compare and press **let in**. A lost machine can be revoked: it
+will not read anything new, but what it already downloaded stays with it.
+
 ## 9. Connect an AI client (optional)
 
 Phosphor can let Claude Code, Claude Desktop and other MCP clients work with

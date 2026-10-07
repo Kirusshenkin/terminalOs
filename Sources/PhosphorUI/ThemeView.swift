@@ -228,6 +228,8 @@ public struct ThemeView: View {
                 Text(note).font(style.font(11.5)).foregroundStyle(style.muted)
             }
 
+            SyncSection(model: model)
+
             Label2(strings("profile.reuse"))
             HStack(spacing: 8) {
                 stepper(

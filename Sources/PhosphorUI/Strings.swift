@@ -30,7 +30,8 @@ public struct Strings: Sendable {
     public init(language: Language = .system) { self.language = language }
 
     public func callAsFunction(_ key: String) -> String {
-        (Self.table[key] ?? Self.packageTable[key] ?? Self.recipeTable[key] ?? Self.petTable[key])?[language] ?? key
+        (Self.table[key] ?? Self.packageTable[key] ?? Self.recipeTable[key] ?? Self.petTable[key]
+            ?? Self.syncTable[key])?[language] ?? key
     }
 
     /// Имя встроенной темы на языке интерфейса.

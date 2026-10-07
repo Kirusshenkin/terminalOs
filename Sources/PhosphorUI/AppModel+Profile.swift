@@ -41,11 +41,22 @@ extension AppModel {
     public func performImport(from url: URL, passphrase: String) async {
         do {
             let data = try Data(contentsOf: url)
+            var own = book.sync
             book = try await profiles.importProfile(
                 data, as: HostBook.self, passphrase: passphrase, reason: strings("auth.saveReason"))
             // Профиль снова на диске и прочитан — писать в него безопасно.
             profileWritable = true
             saveError = nil
+            // Ключи синхронизации в файле — той машины, откуда экспорт: здесь они
+            // либо не откроются (анклав), либо сделают из двух машин одну.
+            // Остаются свои, если были. История сверки забывается: импорт —
+            // это правки поверх общего профиля, а не удаление всего, чего нет
+            // в файле, на всех машинах сразу.
+            own?.forgetHistory()
+            if book.sync != own {
+                book.sync = own
+                await writeProfile()
+            }
             syncForwardsFromBook()
             await syncMCPModesFromBook()
             profileNote = strings("profile.imported")
@@ -83,14 +94,17 @@ extension AppModel {
         saveError = "\(reason). \(strings("vault.writesHeld"))"
     }
 
+    /// `startingSync` — запланировать синхронизацию после записи. Сама
+    /// синхронизация пишет с `false`, иначе круг запускал бы сам себя.
     @discardableResult
-    func writeProfile() async -> Bool {
+    func writeProfile(startingSync: Bool = true) async -> Bool {
         // Профиль на диске не прочитан — значит в памяти не он, а пустышка.
         // Запись затёрла бы настоящие серверы; причина уже на плашке.
         guard profileWritable else { return false }
         do {
             try await profiles.save(book, reason: strings("auth.saveReason"))
             saveError = nil
+            if startingSync { scheduleSync() }
             return true
         } catch SecretError.keychain(errSecMissingEntitlement) {
             // Сборка без подписи с доступом к связке ключей: macOS не заводит

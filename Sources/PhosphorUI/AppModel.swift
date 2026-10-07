@@ -11,6 +11,7 @@ public import PhosphorCore
 public import ProvisionKit
 public import SSHKit
 public import SessionKit
+public import SyncKit
 public import ThemeKit
 
 /// Which screen the window is showing.
@@ -239,6 +240,14 @@ public final class AppModel {
     /// Экспорт/импорт профиля: что делаем и итог для человека.
     public var profilePrompt: ProfilePrompt?
     public internal(set) var profileNote: String?
+    /// Синхронизация между своими машинами (#18): что с ней сейчас и кто
+    /// просится в профиль.
+    public internal(set) var syncPhase: SyncPhase = .off
+    public internal(set) var syncRequests: [SyncMachine] = []
+    var syncTask: Task<Void, Never>?
+    var syncRunning = false
+    var syncAgain = false
+    var syncPending = SyncEngine.Changes()
     /// Окно повторного Touch ID в секундах — то же, что задаётся из настроек.
     public var biometricReuseSeconds: Double = 10
 
@@ -567,6 +576,7 @@ public final class AppModel {
             // Дверь открыта — можно спрашивать о сессиях, не дожидаясь, пока
             // человек сам зайдёт в раздел: метка о ждущем агенте нужна раньше.
             startSessionWatch()
+            if book.sync != nil { Task { await syncNow() } }
         } catch let failure as GateError where failure != .refused {
             unlockError = strings.gateError(failure)
         } catch {
@@ -740,7 +750,10 @@ public final class AppModel {
         // Слежение за сессиями — такой же опрос, и в фоне оно гаснет само,
         // если ни один агент не работает. Работающего досматривает реже: иначе
         // некому сказать, что он ждёт ответа.
-        if active { startSessionWatch() }
+        if active {
+            startSessionWatch()
+            syncIfStale()
+        }
     }
 
     /// Планирует запись профиля, схлопывая частые правки в одну.

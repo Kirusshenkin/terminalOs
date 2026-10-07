@@ -106,5 +106,10 @@ public struct SyncState: Codable, Sendable, Equatable {
         }
     }
 
+    /// Forgets what was last agreed on: every local item then counts as an
+    /// edit, and nothing counts as deleted. For a profile replaced wholesale
+    /// by an import, which must not delete on every machine what it lacks.
+    public mutating func forgetHistory() { baseline = [:] }
+
     static func digest(_ payload: Data) -> Data { Data(SHA256.hash(data: payload)) }
 }

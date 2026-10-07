@@ -10,7 +10,8 @@ public import SwiftUI
 public struct ActivityView: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
-    @State private var commandCopied = false
+    /// Чья строка подключения только что скопирована.
+    @State private var copied: ClientRegistration.Client?
     private var strings: Strings { model.strings }
 
     public init(model: AppModel) { self.model = model }
@@ -29,7 +30,7 @@ public struct ActivityView: View {
         }
         .task {
             await model.loadAudit()
-            await model.refreshClaudeCodeRegistration()
+            await model.refreshClientRegistrations()
         }
     }
 
@@ -173,52 +174,22 @@ public struct ActivityView: View {
                         .background(style.surface)
                 }
 
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 8) {
                     Label2(strings("ai.title"))
                     Text(strings("ai.note"))
                         .font(style.font(11)).foregroundStyle(style.muted)
-
-                    HStack(spacing: 8) {
-                        Text(model.claudeCodeCommand)
-                            .font(style.font(10))
-                            .foregroundStyle(style.text.opacity(0.8))
-                            .textSelection(.enabled)
-                            .padding(.horizontal, 8).padding(.vertical, 6)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(style.surface)
-
-                        Button {
-                            model.copyClaudeCodeCommand()
-                            commandCopied = true
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                                commandCopied = false
-                            }
-                        } label: {
-                            Text(commandCopied ? strings("ai.copied") : strings("ai.copy"))
-                                .font(style.font(11))
-                                .padding(.horizontal, 10).padding(.vertical, 6)
-                                .foregroundStyle(style.background)
-                                .background(commandCopied ? style.accent : style.text)
-                        }
-                        .buttonStyle(PressFeedback())
+                    // Каждый агент держит серверы у себя — у каждого своя строка
+                    // подключения и свой статус. Не через API: мост — программа на
+                    // этом Маке, агент запускает её сам.
+                    ForEach(ClientRegistration.Client.allCases) { client in
+                        clientRow(client)
                     }
-
-                    HStack(spacing: 8) {
-                        Text(strings("ai.status"))
-                            .font(style.font(11)).foregroundStyle(style.muted)
-                        Spacer()
-                        Text(claudeCodeStatusText)
-                            .font(style.font(11))
-                            .foregroundStyle(
-                                model.claudeCodeStatus == .everywhere ? style.accent : style.warning)
-                        Button(strings("ai.recheck")) {
-                            Task { await model.refreshClaudeCodeRegistration() }
-                        }
-                        .buttonStyle(PressFeedback())
-                        .font(style.font(11))
-                        .foregroundStyle(style.text)
+                    Button(strings("ai.recheck")) {
+                        Task { await model.refreshClientRegistrations() }
                     }
-                    .padding(.top, 4)
+                    .buttonStyle(PressFeedback())
+                    .font(style.font(11))
+                    .foregroundStyle(style.text)
                 }
 
                 Text(strings("act.denyNote"))
@@ -233,8 +204,49 @@ public struct ActivityView: View {
         }
     }
 
-    private var claudeCodeStatusText: String {
-        switch model.claudeCodeStatus {
+    /// Агент: имя и статус, под ними — что выполнить или вставить, и «копировать».
+    private func clientRow(_ client: ClientRegistration.Client) -> some View {
+        let status = model.clientStatus[client]
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(client.title).font(style.font(12)).foregroundStyle(style.bright)
+                Spacer()
+                Text(statusText(status))
+                    .font(style.font(11))
+                    .foregroundStyle(status == .everywhere ? style.accent : style.warning)
+            }
+            if !client.isCommand {
+                Text(strings.format("ai.pasteInto", "~/" + client.configPath))
+                    .font(style.font(10.5)).foregroundStyle(style.muted)
+            }
+            HStack(spacing: 8) {
+                Text(model.clientSetup(client))
+                    .font(style.font(10))
+                    .foregroundStyle(style.text.opacity(0.8))
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(style.surface)
+                Button {
+                    model.copyClientSetup(client)
+                    copied = client
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        if copied == client { copied = nil }
+                    }
+                } label: {
+                    Text(copied == client ? strings("ai.copied") : strings("ai.copy"))
+                        .font(style.font(11))
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .foregroundStyle(style.background)
+                        .background(copied == client ? style.accent : style.text)
+                }
+                .buttonStyle(PressFeedback())
+            }
+        }
+    }
+
+    private func statusText(_ status: ClientRegistration.Status?) -> String {
+        switch status {
         case .everywhere: strings("ai.registered")
         case .someFolders: strings("ai.someFolders")
         case .missing, nil: strings("ai.notRegistered")

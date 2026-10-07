@@ -29,25 +29,29 @@ extension AppModel {
         Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/phosphor-mcp").path
     }
 
-    /// Команда, которой мост подключается к Claude Code.
-    public var claudeCodeCommand: String {
-        ClientRegistration.claudeCodeCommand(shimPath: shimPath)
+    /// Команда (или фрагмент конфига), которой мост подключается к агенту.
+    public func clientSetup(_ client: ClientRegistration.Client) -> String {
+        client.setup(shimPath: shimPath)
     }
 
-    func copyClaudeCodeCommand() {
+    func copyClientSetup(_ client: ClientRegistration.Client) {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(claudeCodeCommand, forType: .string)
+        NSPasteboard.general.setString(clientSetup(client), forType: .string)
     }
 
-    /// Смотрит, подключён ли мост в Claude Code. Файл читается вне главного
-    /// потока: он бывает в мегабайты, а страница перерисовывается часто.
-    func refreshClaudeCodeRegistration() async {
-        let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude.json")
-        claudeCodeStatus = await Task.detached(priority: .utility) {
-            // Нет файла или нет доступа — значит, Claude Code мост не видит;
-            // именно это и показывает строка статуса.
-            guard let data = try? Data(contentsOf: url) else { return .missing }
-            return ClientRegistration.status(inClaudeConfig: data)
+    /// Смотрит, какие агенты видят мост. Файлы читаются вне главного потока:
+    /// `.claude.json` бывает в мегабайты, а страница перерисовывается часто.
+    func refreshClientRegistrations() async {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        clientStatus = await Task.detached(priority: .utility) {
+            var result: [ClientRegistration.Client: ClientRegistration.Status] = [:]
+            for client in ClientRegistration.Client.allCases {
+                // Нет файла или нет доступа — значит, агент мост не видит;
+                // именно это и показывает строка статуса.
+                let data = try? Data(contentsOf: home.appendingPathComponent(client.configPath))
+                result[client] = data.map(client.status(inConfig:)) ?? .missing
+            }
+            return result
         }.value
     }
 

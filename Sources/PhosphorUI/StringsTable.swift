@@ -241,25 +241,6 @@ extension Strings {
         ],
         "act.empty": [.russian: "пока ничего не происходило", .english: "nothing has happened yet"],
 
-        // Подключение ИИ
-        "ai.title": [.russian: "подключить Claude Code", .english: "register Claude Code"],
-        "ai.command": [.russian: "команда для claude code", .english: "command for claude code"],
-        "ai.copy": [.russian: "копировать", .english: "copy"],
-        "ai.copied": [.russian: "скопировано", .english: "copied"],
-        "ai.status": [.russian: "статус подключения", .english: "registration status"],
-        "ai.registered": [.russian: "подключён", .english: "registered"],
-        "ai.notRegistered": [.russian: "не подключён", .english: "not registered"],
-        "ai.someFolders": [
-            .russian: "подключён только в одной папке — выполни команду выше, чтобы видеть везде",
-            .english: "registered for one folder only — run the command above to see it everywhere",
-        ],
-        "ai.recheck": [.russian: "проверить", .english: "check again"],
-        "ai.note": [
-            .russian: "скопируй команду и выполни её в обычном терминале — Claude Code увидит мост "
-                + "в любой папке. Потом выбери выше, что ИИ можно делать на каждом хосте.",
-            .english: "copy the command and run it in a regular terminal — Claude Code will see the bridge "
-                + "in any folder. Then choose above what the AI may do on each host.",
-        ],
 
         "clog.title": [.russian: "журнал подключений", .english: "connection log"],
         "clog.records": [.russian: "записей", .english: "records"],
@@ -399,8 +380,13 @@ extension Strings {
         "host.noGroup": [.russian: "без группы", .english: "no group"],
         "host.reach": [.russian: "как дотянуться", .english: "how to reach it"],
         "host.key": [.russian: "ключ", .english: "key"],
-        "host.keyAuto": [.russian: "автоматически — ключи по умолчанию", .english: "automatic — default keys"],
-        "host.keyMissing": [.russian: "файла ключа нет, войти им не выйдет:", .english: "key file is missing, it cannot log in:"],
+        "host.keyAuto": [
+            .russian: "автоматически — ключи по умолчанию", .english: "automatic — default keys",
+        ],
+        "host.keyMissing": [
+            .russian: "файла ключа нет, войти им не выйдет:",
+            .english: "key file is missing, it cannot log in:",
+        ],
         "host.proxyHost": [.russian: "хост прокси", .english: "proxy host"],
         "group.new": [.russian: "новая группа", .english: "new group"],
         "group.rename": [.russian: "переименовать группу", .english: "rename group"],
@@ -685,8 +671,10 @@ extension Strings {
         ],
         "upd.available": [.russian: "обновить до", .english: "update to"],
         "upd.hint": [
-            .russian: "скачает, проверит подпись и перезапустит Phosphor; сессии tmux на серверах не прервутся",
-            .english: "downloads, checks the signature and restarts Phosphor; tmux sessions on servers keep running",
+            .russian:
+                "скачает, проверит подпись и перезапустит Phosphor; сессии tmux на серверах не прервутся",
+            .english:
+                "downloads, checks the signature and restarts Phosphor; tmux sessions on servers keep running",
         ],
         "upd.installing": [.russian: "ставлю обновление…", .english: "installing the update…"],
         "upd.retry": [.russian: "щёлкни, чтобы повторить", .english: "click to retry"],
@@ -697,8 +685,10 @@ extension Strings {
             .english: "could not download the update — no network or GitHub is not answering; will try later",
         ],
         "upd.badSignature": [
-            .russian: "подпись обновления не сошлась — ставить его нельзя; сообщи об этом в issues репозитория",
-            .english: "the update signature does not match — it must not be installed; please report it in the repository issues",
+            .russian:
+                "подпись обновления не сошлась — ставить его нельзя; сообщи об этом в issues репозитория",
+            .english:
+                "the update signature does not match — it must not be installed; please report it in the repository issues",
         ],
         "upd.corrupted": [
             .russian: "архив обновления повреждён при скачивании — нажми ещё раз позже",

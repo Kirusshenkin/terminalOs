@@ -69,5 +69,28 @@ extension Strings {
                 "An agent started from the picker inside a git repository works in its own git worktree on an "
                 + "agent/… branch next to the project: two agents do not get in each other's way.",
         ],
+        // Подключение ИИ к мосту
+        "ai.title": [.russian: "подключить нейронку", .english: "connect an AI"],
+        "ai.command": [.russian: "команда для claude code", .english: "command for claude code"],
+        "ai.copy": [.russian: "копировать", .english: "copy"],
+        "ai.copied": [.russian: "скопировано", .english: "copied"],
+        "ai.status": [.russian: "статус подключения", .english: "registration status"],
+        "ai.registered": [.russian: "подключён", .english: "registered"],
+        "ai.notRegistered": [.russian: "не подключён", .english: "not registered"],
+        "ai.someFolders": [
+            .russian: "подключён только в одной папке — выполни команду выше, чтобы видеть везде",
+            .english: "registered for one folder only — run the command above to see it everywhere",
+        ],
+        "ai.pasteInto": [
+            .russian: "вставь в %@ (в mcpServers, если файл уже есть)",
+            .english: "paste into %@ (into mcpServers if the file exists)",
+        ],
+        "ai.recheck": [.russian: "проверить", .english: "check again"],
+        "ai.note": [
+            .russian: "без API-ключей: скопируй строку своего агента и выполни её в терминале — он увидит "
+                + "мост в любой папке. Потом выбери выше, что ИИ можно делать на каждом хосте.",
+            .english: "no API keys: copy your agent's line and run it in a terminal — it will see the bridge "
+                + "in any folder. Then choose above what the AI may do on each host.",
+        ],
     ]
 }

@@ -812,3 +812,45 @@ struct ToolCatalogCoverageTests {
         }
     }
 }
+
+@Suite("Подключение моста к другим агентам")
+struct OtherClientsTests {
+    private let shim = "/Apps/My Phos'phor.app/phosphor-mcp"
+
+    @Test("у каждого агента своя строка подключения, путь с пробелом и кавычкой не ломает её")
+    func setups() throws {
+        #expect(
+            ClientRegistration.Client.codex.setup(shimPath: shim).hasPrefix("codex mcp add phosphor -- '"))
+        #expect(
+            ClientRegistration.Client.gemini.setup(shimPath: shim)
+                .hasPrefix("gemini mcp add --scope user phosphor '"))
+        let cursor = ClientRegistration.Client.cursor.setup(shimPath: shim)
+        let root = try #require(
+            try JSONSerialization.jsonObject(with: Data(cursor.utf8)) as? [String: [String: [String: String]]]
+        )
+        #expect(root["mcpServers"]?["phosphor"]?["command"] == shim)
+        #expect(!cursor.contains(#"\/"#))
+    }
+
+    @Test("Codex: таблица сервера в config.toml — подключён, похожее имя — нет")
+    func codexStatus() {
+        let codex = ClientRegistration.Client.codex
+        #expect(
+            codex.status(inConfig: Data("model = \"x\"\n\n[mcp_servers.phosphor]\ncommand = \"/x\"\n".utf8))
+                == .everywhere)
+        #expect(codex.status(inConfig: Data("  [mcp_servers.\"phosphor\"]\n".utf8)) == .everywhere)
+        #expect(codex.status(inConfig: Data("[mcp_servers.phosphorus]\n".utf8)) == .missing)
+        #expect(codex.status(inConfig: Data("# [mcp_servers.phosphor]\n".utf8)) == .missing)
+    }
+
+    @Test("Gemini и Cursor: сервер в mcpServers — подключён; нет или не JSON — нет")
+    func jsonStatus() {
+        for client in [ClientRegistration.Client.gemini, .cursor] {
+            #expect(
+                client.status(inConfig: Data(#"{"mcpServers":{"phosphor":{"command":"/x"}}}"#.utf8))
+                    == .everywhere)
+            #expect(client.status(inConfig: Data(#"{"mcpServers":{}}"#.utf8)) == .missing)
+            #expect(client.status(inConfig: Data("nope".utf8)) == .missing)
+        }
+    }
+}

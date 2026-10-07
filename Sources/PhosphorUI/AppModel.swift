@@ -224,8 +224,8 @@ public final class AppModel {
     /// Локальный сокет для MCP-клиентов; живёт, пока открыто приложение.
     var bridge: SocketServer?
     public internal(set) var bridgeError: String?
-    /// Где Claude Code видит мост; `nil` — ещё не проверяли.
-    public internal(set) var claudeCodeStatus: ClientRegistration.Status?
+    /// Где каждый агент видит мост; нет ключа — ещё не проверяли.
+    public internal(set) var clientStatus: [ClientRegistration.Client: ClientRegistration.Status] = [:]
     /// Пишущие действия ИИ, ждущие ответа человека, в порядке прихода.
     public internal(set) var mcpQueue: [ConfirmationRequest] = []
 

@@ -8,7 +8,7 @@ set -euo pipefail
 PATTERN='^(co-authored-by|generated-by|assisted-by):.*(claude|anthropic|copilot|codex|openai|chatgpt|gemini|cursor)|generated with \[?(claude|copilot|codex)|noreply@anthropic\.com|claude\.ai/code'
 
 if [ "${1:-}" = "--range" ]; then
-  bad=$(git log --format='%h %an <%ae>%n%B%x00' "$2" | tr '\0' '\n' | grep -iE "$PATTERN|^[0-9a-f]+ .*(claude|anthropic)" || true)
+  bad=$(git log --format='%h %an <%ae>%n%B%x00' "$2" | tr '\0' '\n' | grep -iE "$PATTERN|^[0-9a-f]{7,} [^<]*(claude|anthropic)[^<]*<|^[0-9a-f]{7,} [^<]*<[^>]*(claude|anthropic)[^>]*>$" || true)
 else
   bad=$(grep -iE "$PATTERN" "$1" || true)
 fi

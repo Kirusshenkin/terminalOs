@@ -1,4 +1,6 @@
+import AppKit
 import SwiftUI
+import TerminalCore
 
 /// Что можно запустить в новой панели: шелл или кодирующего агента.
 ///
@@ -87,9 +89,19 @@ struct AgentPicker: View {
         .focused($focused)
         .focusEffectDisabled()
         .onKeyPress(phases: .down) { press in handle(press) }
-        // Окно — не системный лист, фокус само не забирает: без этого Tab ушёл
-        // бы в терминал под ним.
-        .onAppear { focused = true }
+        // Строка — не системный лист и фокус сама не забирает. Терминал под
+        // ней, появившись, делает себя первым ответчиком (`TerminalSlot.show`),
+        // и SwiftUI-фокус у NSView его не отнимает: Tab ушёл бы в шелл. Поэтому
+        // на следующем витке, когда терминал уже встал, он отпускает клавиатуру
+        // явно, и только потом фокус берёт строка.
+        .onAppear {
+            DispatchQueue.main.async {
+                if NSApp.keyWindow?.firstResponder is TerminalSurface {
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                }
+                focused = true
+            }
+        }
     }
 
     private var note: String {
@@ -137,4 +149,3 @@ struct AgentPicker: View {
         selection = (selection + step + choices.count) % choices.count
     }
 }
-

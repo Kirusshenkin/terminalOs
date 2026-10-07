@@ -48,6 +48,14 @@ public struct SyncRemote: Sendable {
     /// The lock is a directory, since `mkdir` is atomic on every system and
     /// `flock` is missing on a Mac server. A lock left by a write that died
     /// halfway is taken over after two minutes.
+    ///
+    /// Two writers can both find the same stale lock and both go ahead. That
+    /// costs one overwritten write, not lost data: the losing machine still
+    /// has its records and their stamps, and its next round puts them back.
+    ///
+    /// The size is checked before the snapshot replaces the old one: a
+    /// connection cut mid-upload ends `cat` as cleanly as a full one, and a
+    /// truncated snapshot would stop sync on every machine.
     public func write(
         _ signed: SignedSnapshot, revision: UInt64, expecting: UInt64, consuming requests: [String] = []
     ) async throws {
@@ -63,7 +71,11 @@ public struct SyncRemote: Sendable {
             if [ "$(cat "$d/revision" 2>/dev/null || echo 0)" != '\(expecting)' ]; then
               rmdir "$d/lock"; exit \(Self.busyStatus)
             fi
-            cat > "$d/snapshot.tmp" && mv "$d/snapshot.tmp" "$d/snapshot.json" \\
+            cat > "$d/snapshot.tmp"
+            if [ "$(wc -c < "$d/snapshot.tmp" | tr -d ' ')" != '\(body.count)' ]; then
+              rm -f "$d/snapshot.tmp"; rmdir "$d/lock"; echo 'upload cut short' >&2; exit 1
+            fi
+            mv "$d/snapshot.tmp" "$d/snapshot.json" \\
               && printf '%s' '\(revision)' > "$d/revision.tmp" && mv "$d/revision.tmp" "$d/revision"
             s=$?
             \(consumed.isEmpty ? ":" : "rm -f " + consumed.joined(separator: " "))

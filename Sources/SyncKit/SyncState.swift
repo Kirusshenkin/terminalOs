@@ -39,6 +39,8 @@ public struct SyncState: Codable, Sendable, Equatable {
     /// protects: the local profile is encrypted under the Keychain key anyway.
     var profileKey: Data?
     public var keyGeneration: UInt32 = 0
+    /// The storage epoch last seen; see `SyncSnapshot.epoch`.
+    public var epoch: UInt32 = 0
     var lastStamp: Stamp?
     var baseline: [String: SyncBaseline] = [:]
     public var lastSync: Date?

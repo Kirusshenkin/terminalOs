@@ -9,6 +9,8 @@ public enum SyncPhase: Equatable, Sendable {
     case working
     /// Эта машина оставила просьбу и ждёт, пока её пустят с другой.
     case waiting(code: String)
+    /// Машину пустили; перед первой записью человек сверяет код той, что пустила.
+    case confirm(signer: SyncMachine)
     case synced(Date)
     case failed(String)
 }
@@ -61,6 +63,9 @@ extension AppModel {
 
     public func revokeMachine(_ id: String) async { await syncNow(SyncEngine.Changes(revoke: [id])) }
 
+    /// Код машины, которая пустила эту, совпал: можно доверять её подписи.
+    public func trustSigner(_ id: String) async { await syncNow(SyncEngine.Changes(trust: id)) }
+
     /// Убирает просьбу, не пуская машину.
     public func dismissMachine(_ id: String) async {
         guard let remote = syncRemote() else { return }
@@ -99,6 +104,7 @@ extension AppModel {
             // Круг уже идёт; просьбу человека (пустить, отозвать) не теряем.
             syncPending.approve += changes.approve
             syncPending.revoke += changes.revoke
+            syncPending.trust = changes.trust ?? syncPending.trust
             syncAgain = true
             return
         }
@@ -111,6 +117,7 @@ extension AppModel {
         for _ in 0..<3 {
             changes.approve += syncPending.approve
             changes.revoke += syncPending.revoke
+            changes.trust = changes.trust ?? syncPending.trust
             syncPending = SyncEngine.Changes()
             syncAgain = false
             guard await syncRound(changes) else { return }
@@ -140,6 +147,9 @@ extension AppModel {
         case .awaitingApproval(let next, let code):
             book.sync = next
             syncPhase = .waiting(code: code)
+        case .confirmSigner(let next, let signer):
+            book.sync = next
+            syncPhase = .confirm(signer: signer)
         case .synced(let records, var next, let waiting):
             book.applySync(records)
             next.rebase(book.syncItems(), merged: records)

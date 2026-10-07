@@ -9,16 +9,25 @@ public enum SyncEngine {
         /// Storage already holds a profile, and this machine is not let in yet.
         /// The request is left there; another machine shows the same code.
         case awaitingApproval(state: SyncState, code: String)
+        /// This machine was let in, but it trusts nobody yet. Before anything of
+        /// its own goes into storage, the person compares the code of the
+        /// machine that let it in with what that machine shows for itself:
+        /// otherwise storage could build a snapshot of its own around this
+        /// machine's public keys and collect its hosts.
+        case confirmSigner(state: SyncState, signer: SyncMachine)
     }
 
     /// What the person asked for on this round, besides syncing.
     public struct Changes: Sendable, Equatable {
         public var approve: [String] = []
         public var revoke: [String] = []
+        /// The machine whose code the person confirmed on first joining.
+        public var trust: String?
 
-        public init(approve: [String] = [], revoke: [String] = []) {
+        public init(approve: [String] = [], revoke: [String] = [], trust: String? = nil) {
             self.approve = approve
             self.revoke = revoke
+            self.trust = trust
         }
     }
 
@@ -58,6 +67,11 @@ public enum SyncEngine {
             if !view.requests.contains(where: { $0.id == me.id }) { try await remote.request(me) }
             return .awaitingApproval(state: state, code: me.code)
         }
+        if state.machines.isEmpty, let signer = view.snapshot?.signer, signer != changes.trust,
+            let machine = base.snapshot.machines.first(where: { $0.id == signer })
+        {
+            return .confirmSigner(state: state, signer: machine)
+        }
 
         // Свои правки штампуются до того, как часы увидят чужие: так штамп
         // ближе ко времени правки, а не ко времени синхронизации.
@@ -81,6 +95,7 @@ public enum SyncEngine {
         state.lastRevision = base.snapshot.revision
         state.machines = base.snapshot.machines
         state.keyGeneration = base.snapshot.keyGeneration
+        state.epoch = base.snapshot.epoch
         state.profileKey = base.key.withUnsafeBytes { Data($0) }
         state.lastSync = Date(timeIntervalSince1970: Double(now) / 1_000)
         let members = Set(base.snapshot.machines.map(\.id))
@@ -97,7 +112,7 @@ public enum SyncEngine {
                 snapshot = first
             } else {
                 snapshot = try SyncCrypto.accept(
-                    signed, trusted: state.machines, lastRevision: state.lastRevision)
+                    signed, trusted: state.machines, lastRevision: state.lastRevision, lastEpoch: state.epoch)
             }
             guard snapshot.machines.contains(where: { $0.id == me.id }) else {
                 throw SyncError.notForThisMachine
@@ -113,6 +128,7 @@ public enum SyncEngine {
             var snapshot = SyncSnapshot(
                 revision: max(state.lastRevision, view.revision), keyGeneration: state.keyGeneration,
                 machines: state.machines.isEmpty ? [me] : state.machines)
+            snapshot.epoch = state.epoch + 1
             snapshot.keys = try snapshot.machines.map { machine throws(SyncError) in
                 try SyncCrypto.wrap(key, for: machine)
             }

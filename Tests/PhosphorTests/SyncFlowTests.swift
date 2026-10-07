@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import HostsKit
 import PhosphorCore
@@ -10,6 +11,8 @@ import Testing
 /// пошли бы по ssh. Сети нет: проверяется сам сценарий и сами команды.
 private struct Folder {
     let home: String
+    /// Оболочка сервера: на Маке sh — это bash, на Debian и Ubuntu — dash.
+    var shell = "/bin/sh"
 
     init() throws {
         home = NSTemporaryDirectory() + "phosphor-sync-\(UUID().uuidString)"
@@ -18,9 +21,10 @@ private struct Folder {
 
     var remote: SyncRemote {
         let home = home
+        let shell = shell
         return SyncRemote { command, input in
             try await Subprocess.run(
-                executable: "/bin/sh", arguments: ["-c", "HOME=\(Shell.quote(home)); \(command)"],
+                executable: shell, arguments: ["-c", "HOME=\(Shell.quote(home)); \(command)"],
                 input: input)
         }
     }
@@ -33,6 +37,8 @@ private struct Mac {
     var book = HostBook()
     var state: SyncState
     var requests: [SyncMachine] = []
+    /// Машина, которая пустила эту и ждёт сверки кода.
+    var signer: SyncMachine?
 
     init(_ name: String, storage: UUID) throws {
         state = SyncState(identity: try SyncIdentity.create(name: name, useEnclave: false), storage: storage)
@@ -52,6 +58,10 @@ private struct Mac {
         case .awaitingApproval(let next, let code):
             state = next
             return code
+        case .confirmSigner(let next, let machine):
+            state = next
+            signer = machine
+            return nil
         case .synced(let records, let next, let waiting):
             state = next
             book.applySync(records)
@@ -62,12 +72,11 @@ private struct Mac {
     }
 }
 
-@Suite("Синхронизация: две машины через папку на сервере")
-struct SyncFlowTests {
-    let storage = UUID()
+/// A заводит хранилище, B просится, A пускает по совпавшему коду.
+private struct SyncFlowPairing {
+    let storage: UUID
 
-    /// A заводит хранилище, B просится, A пускает по совпавшему коду.
-    private func pair(_ folder: Folder) async throws -> (Mac, Mac) {
+    func pair(_ folder: Folder) async throws -> (Mac, Mac) {
         var a = try Mac("a", storage: storage)
         a.book.hosts = [ServerHost(name: "web", address: "10.0.0.1")]
         try await a.sync(folder.remote)
@@ -77,8 +86,23 @@ struct SyncFlowTests {
         try await a.sync(folder.remote)
         #expect(a.requests.map(\.code) == [code])
         try await a.sync(folder.remote, .init(approve: a.requests.map(\.id)), at: 2_000)
-        #expect(try await b.sync(folder.remote, at: 3_000) == nil)
+        try await b.sync(folder.remote, at: 3_000)
+        // Новая машина сверяет код той, что её пустила, и только потом льёт своё.
+        let signer = try #require(b.signer)
+        #expect(try signer.code == a.state.identity.machine().code)
+        #expect(!b.state.isJoined)
+        try await b.sync(folder.remote, .init(trust: signer.id), at: 3_000)
+        #expect(b.state.isJoined)
         return (a, b)
+    }
+}
+
+@Suite("Синхронизация: две машины через папку на сервере")
+struct SyncFlowTests {
+    let storage = UUID()
+
+    private func pair(_ folder: Folder) async throws -> (Mac, Mac) {
+        try await SyncFlowPairing(storage: storage).pair(folder)
     }
 
     @Test("новая машина ждёт подтверждения, а после него получает хосты")
@@ -171,5 +195,94 @@ struct SyncFlowTests {
         let machine = try SyncIdentity.create(name: "a", useEnclave: false).machine()
         #expect(machine.code.count == 9 && machine.code.contains("-"))
         #expect(!machine.code.contains { "ILOU".contains($0) })
+    }
+}
+
+/// Хранилище, которое ведёт себя плохо: обрывает передачу, подделывает снимок.
+@Suite("Синхронизация: враждебное или ненадёжное хранилище")
+struct SyncHostileStorageTests {
+    let storage = UUID()
+
+    @Test("оборванная передача не заменяет снимок")
+    func truncatedUpload() async throws {
+        let folder = try Folder()
+        var a = try Mac("a", storage: storage)
+        a.book.hosts = [ServerHost(name: "web", address: "10.0.0.1")]
+        try await a.sync(folder.remote)
+        let before = try Data(contentsOf: URL(fileURLWithPath: folder.path + "/snapshot.json"))
+        let home = folder.home
+        let cut = SyncRemote { command, input in
+            try await Subprocess.run(
+                executable: "/bin/sh", arguments: ["-c", "HOME=\(Shell.quote(home)); \(command)"],
+                input: input.map { $0.prefix($0.count / 2) })
+        }
+        a.book.hosts.append(ServerHost(name: "db", address: "10.0.0.2"))
+        await #expect(throws: SyncError.storage("upload cut short")) { try await a.sync(cut, at: 2_000) }
+        let after = try Data(contentsOf: URL(fileURLWithPath: folder.path + "/snapshot.json"))
+        #expect(after == before)
+        try await a.sync(folder.remote, at: 3_000)
+        #expect(a.book.hosts.count == 2)
+    }
+
+    @Test("снимок, собранный хранилищем вокруг ключей новой машины, выдаёт чужой код и ничего не получает")
+    func forgedWelcome() async throws {
+        let folder = try Folder()
+        var a = try Mac("a", storage: storage)
+        try await a.sync(folder.remote)
+        var b = try Mac("b", storage: storage)
+        b.book.hosts = [ServerHost(name: "secret", address: "10.0.0.9")]
+        try await b.sync(folder.remote)
+
+        // Хранилище видит публичные ключи B в просьбе и пишет свой снимок.
+        let attacker = try SyncIdentity.create(name: "a", useEnclave: false)
+        let key = SymmetricKey(size: .bits256)
+        let me = try b.state.identity.machine(), evil = try attacker.machine()
+        let forged = SyncSnapshot(
+            revision: 9, machines: [evil, me],
+            keys: [try SyncCrypto.wrap(key, for: evil), try SyncCrypto.wrap(key, for: me)])
+        try JSONEncoder().encode(try attacker.sign(forged))
+            .write(to: URL(fileURLWithPath: folder.path + "/snapshot.json"))
+        try "9".write(toFile: folder.path + "/revision", atomically: true, encoding: .utf8)
+        let planted = try Data(contentsOf: URL(fileURLWithPath: folder.path + "/snapshot.json"))
+
+        try await b.sync(folder.remote, at: 2_000)
+        let signer = try #require(b.signer)
+        #expect(try signer.code != a.state.identity.machine().code)
+        #expect(!b.state.isJoined)
+        #expect(try Data(contentsOf: URL(fileURLWithPath: folder.path + "/snapshot.json")) == planted)
+    }
+
+    @Test("папку стёрли, отстающая машина её пересоздала — ушедшая вперёд не застревает на «откате»")
+    func wipedAndRebuilt() async throws {
+        let folder = try Folder()
+        let pairing = SyncFlowPairing(storage: storage)
+        var (a, b) = try await pairing.pair(folder)
+        for step in 0..<3 {
+            b.book.hosts.append(ServerHost(name: "b\(step)", address: "10.0.1.\(step)"))
+            try await b.sync(folder.remote, at: 10_000 + Int64(step))
+        }
+        try FileManager.default.removeItem(atPath: folder.path)
+        a.book.hosts.append(ServerHost(name: "a-only", address: "10.0.2.1"))
+        try await a.sync(folder.remote, at: 20_000)
+        try await b.sync(folder.remote, at: 21_000)
+        try await a.sync(folder.remote, at: 22_000)
+        #expect(Set(b.book.hosts.map(\.name)) == Set(a.book.hosts.map(\.name)))
+        #expect(b.book.hosts.count == 5)
+    }
+}
+
+@Suite("Синхронизация: команды под dash")
+struct SyncDashTests {
+    @Test(
+        "тот же сценарий под dash — это /bin/sh на Debian и Ubuntu",
+        .enabled(if: FileManager.default.isExecutableFile(atPath: "/bin/dash")))
+    func dash() async throws {
+        var folder = try Folder()
+        folder.shell = "/bin/dash"
+        var (a, b) = try await SyncFlowPairing(storage: UUID()).pair(folder)
+        b.book.hosts.append(ServerHost(name: "db", address: "10.0.0.2"))
+        try await b.sync(folder.remote, at: 4_000)
+        try await a.sync(folder.remote, at: 5_000)
+        #expect(a.book.hosts.count == 2)
     }
 }

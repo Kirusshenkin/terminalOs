@@ -44,6 +44,11 @@ public struct SyncSnapshot: Codable, Sendable, Equatable {
     public var machines: [SyncMachine]
     public var keys: [WrappedKey]
     public var records: [SealedRecord]
+    /// Grows when a machine rebuilds storage that was wiped. Revisions start
+    /// over in a new epoch, so a machine that had seen a higher revision in
+    /// the old one accepts the rebuilt snapshot instead of calling it a
+    /// rollback. Signed like the rest: storage cannot raise it on its own.
+    public var epoch: UInt32 = 0
 
     public init(
         revision: UInt64 = 0, keyGeneration: UInt32 = 0, machines: [SyncMachine] = [],
@@ -206,7 +211,7 @@ public enum SyncCrypto {
     /// machine this one trusts signed it, and it is not older than what was
     /// already seen. The machine list inside becomes the next trusted list.
     public static func accept(
-        _ signed: SignedSnapshot, trusted: [SyncMachine], lastRevision: UInt64
+        _ signed: SignedSnapshot, trusted: [SyncMachine], lastRevision: UInt64, lastEpoch: UInt32 = 0
     ) throws(SyncError) -> SyncSnapshot {
         guard let machine = trusted.first(where: { $0.id == signed.signer }) else {
             throw .unknownSigner(signed.signer)
@@ -224,7 +229,8 @@ public enum SyncCrypto {
         } catch {
             throw .malformed("snapshot")
         }
-        guard snapshot.revision >= lastRevision else {
+        guard snapshot.epoch > lastEpoch || (snapshot.epoch == lastEpoch && snapshot.revision >= lastRevision)
+        else {
             throw .rollback(seen: lastRevision, got: snapshot.revision)
         }
         return snapshot

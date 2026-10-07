@@ -75,6 +75,9 @@ struct SyncSection: View {
         case .off: EmptyView()
         case .working: note(strings("sync.working"))
         case .waiting(let code): note(strings.format("sync.waiting", code), color: style.bright)
+        case .confirm(let signer):
+            note(strings.ordered("sync.confirm", [signer.name, signer.code]), color: style.bright)
+            PhButton(strings("sync.trust"), kind: .primary) { Task { await model.trustSigner(signer.id) } }
         case .synced(let date):
             note(strings.format("sync.synced", date.formatted(date: .omitted, time: .shortened)))
         case .failed(let text): note(text, color: style.warning)

@@ -28,6 +28,15 @@ extension Strings {
             .english: "This machine is not let in yet. On another one, open Settings → Profile and let in "
                 + "the machine with code %@.",
         ],
+        "sync.confirm": [
+            .russian: "Эту машину пустила «%@». Открой на ней Настройки → Профиль: в списке машин у строки "
+                + "«эта машина» должен стоять код %@. Совпадает — подтверди. Не совпадает — хранилище подменили, "
+                + "ничего не подтверждай.",
+            .english: "This machine was let in by «%@». Open Settings → Profile there: the «this machine» "
+                + "row must show code %@. If it matches, confirm. If not, storage was tampered with — do not "
+                + "confirm.",
+        ],
+        "sync.trust": [.russian: "код совпадает", .english: "the code matches"],
         "sync.check": [.russian: "проверить", .english: "check"],
         "sync.machines": [.russian: "машины", .english: "machines"],
         "sync.thisMachine": [.russian: "эта машина", .english: "this machine"],

@@ -17,6 +17,10 @@ struct LightModal<Panel: View>: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            // Под открытым окном интерфейс выключен целиком: иначе Tab уводил
+            // бы фокус к кнопкам под затемнением, а VoiceOver читал бы всё окно.
+            .disabled(isPresented)
+            .accessibilityHidden(isPresented)
             .overlay {
                 if isPresented {
                     ZStack {

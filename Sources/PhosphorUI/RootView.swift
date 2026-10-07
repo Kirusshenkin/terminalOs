@@ -21,7 +21,7 @@ public struct RootView: View {
             .frame(minWidth: 1_060, minHeight: 680)
             // Меню живёт вне окна; модель ему отдаётся только пока окно открыто
             // и разблокировано — за замком клавиши ничего делать не должны.
-            .focusedSceneValue(\.appModel, model.isUnlocked ? model : nil)
+            .focusedSceneValue(\.appModel, model.isUnlocked && !model.isModalOpen ? model : nil)
             .modifier(WindowModals(model: model))
             .modifier(Alerts(model: model))
             .task { await model.startBridge() }

@@ -32,3 +32,12 @@ struct WindowModals: ViewModifier {
             }
     }
 }
+
+extension AppModel {
+    /// Открыто ли окно поверх интерфейса. Пока открыто, команды меню молчат:
+    /// иначе ⌘N открыл бы вторую форму поверх первой.
+    var isModalOpen: Bool {
+        isAddingHost || editingHost != nil || isAddingGroup || editingGroup != nil || profilePrompt != nil
+            || isQuickConnectOpen || showsPlannedCommands
+    }
+}

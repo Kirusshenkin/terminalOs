@@ -34,9 +34,13 @@ extension AppModel {
             guard let tmux = localTmuxPath,
                 let command = Self.replyCommand(reply, session: name, tmux: Shell.quote(tmux))
             else { return false }
-            succeeded = await LocalTmux.run(command + "; echo sent") == "sent\n"
+            // `&&`, а не `;`: «отправлено» только если вся цепочка tmux прошла.
+            succeeded = await LocalTmux.run("{ \(command); } && echo sent") == "sent\n"
         case .remote(let id, let name):
-            guard let command = Self.replyCommand(reply, session: name) else { return false }
+            // С путями пакетов: на Мак-сервере tmux в /opt/homebrew/bin, а
+            // неинтерактивный ssh этого пути не знает.
+            guard let bare = Self.replyCommand(reply, session: name) else { return false }
+            let command = Shell.withPackagePaths + bare
             if id == selectedHost, let session {
                 succeeded = (try? await session.run(command))?.succeeded == true
             } else {

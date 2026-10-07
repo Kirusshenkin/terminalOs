@@ -19,7 +19,16 @@ enum AgentWorktree {
     ///   - origin: папка панели, из которой открыли новую; nil — не знаем,
     ///     агент стартует там, где открылась панель.
     ///   - worktree: заводить ли копию, если папка в git-репозитории.
-    static func launchLine(command: String, origin: String?, worktree: Bool, stamp: String) -> String {
+    ///   - notice: строка, которую панель печатает после переезда в копию;
+    ///     `%@` — путь копии. В свежей копии нет node_modules и .build, и без
+    ///     этой строки первая упавшая сборка агента была бы загадкой.
+    ///
+    /// Синтаксис POSIX: в fish строка не сработает — fish как шелл панели пока
+    /// не поддерживается. Набирается после ответа о папке, поэтому то, что
+    /// человек успел напечатать в панели за это время, окажется перед ней.
+    static func launchLine(
+        command: String, origin: String?, worktree: Bool, stamp: String, notice: String = ""
+    ) -> String {
         var parts: [String] = []
         if let origin { parts.append("cd \(Shell.quote(origin))") }
         if worktree {
@@ -29,10 +38,19 @@ enum AgentWorktree {
             parts.append(
                 "r=$(git rev-parse --show-toplevel 2>/dev/null) && w=\"$r-\(suffix)\" "
                     + "&& git -C \"$r\" worktree add -q -b \(Shell.quote("agent/" + suffix)) \"$w\" && cd \"$w\" "
-                    + "&& { tmux set-option \(option) \"$w\" 2>/dev/null; true; }")
+                    + "&& { tmux set-option \(option) \"$w\" 2>/dev/null; true; }"
+                    + (notice.isEmpty ? "" : " && printf \(printfFormat(notice)) \"$w\""))
         }
         parts.append(command)
         return parts.joined(separator: "; ")
+    }
+
+    /// Подпись в формат printf: `%@` — место пути, прочие `%` экранируются,
+    /// кавычки — по правилам шелла. Чистая функция.
+    static func printfFormat(_ text: String) -> String {
+        Shell.quote(
+            text.replacingOccurrences(of: "%", with: "%%").replacingOccurrences(of: "%%@", with: "%s") + "\\n"
+        )
     }
 
     /// Метка времени для имени копии и ветки: `0408-153012`. Чистая функция.

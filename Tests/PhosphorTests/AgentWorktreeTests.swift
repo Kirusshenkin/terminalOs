@@ -45,6 +45,15 @@ struct AgentWorktreeTests {
         #expect(branches.out.contains("agent/pwd-0101-000000"))
     }
 
+    @Test("после переезда в копию панель печатает, где она; % и кавычки в подписи не ломают printf")
+    func notice() async throws {
+        let path = try await repo()
+        let line = AgentWorktree.launchLine(
+            command: "true", origin: path, worktree: true, stamp: "0202-000000", notice: "copy '%@' at 100%")
+        let printed = try await sh(line).out.trimmingCharacters(in: .whitespacesAndNewlines)
+        #expect(printed.hasPrefix("copy '") && printed.hasSuffix("-true-0202-000000' at 100%"))
+    }
+
     @Test("не репозиторий — агент просто стартует в папке панели")
     func launchOutsideRepo() async throws {
         let plain = (NSTemporaryDirectory() as NSString).resolvingSymlinksInPath

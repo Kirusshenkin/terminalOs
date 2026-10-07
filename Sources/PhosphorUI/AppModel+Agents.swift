@@ -62,7 +62,8 @@ extension AppModel {
             // проект, а не в домашней папке, где открывается свежая панель.
             let origin = await originPath()
             let line = AgentWorktree.launchLine(
-                command: command, origin: origin, worktree: worktree, stamp: AgentWorktree.stamp(Date()))
+                command: command, origin: origin, worktree: worktree, stamp: AgentWorktree.stamp(Date()),
+                notice: strings("term.worktree.notice"))
             surface.send(txt: line + "\r")
         }
     }

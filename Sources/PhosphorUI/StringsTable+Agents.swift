@@ -26,6 +26,13 @@ extension Strings {
         "term.reply.acceptAction": [.russian: "Enter — принять", .english: "Enter — accept"],
         "term.reply.textAction": [.russian: "Ответить…", .english: "Reply…"],
         "term.reply.send": [.russian: "Отправить", .english: "Send"],
+        "term.worktree.notice": [
+            .russian:
+                "phosphor: агент работает в своей копии проекта %@ — зависимости (node_modules, .build) "
+                + "в ней ещё не ставились.",
+            .english: "phosphor: the agent works in its own project copy %@ — dependencies (node_modules, "
+                + ".build) are not installed there yet.",
+        ],
         "term.worktree.close": [
             .russian: "закрыть и убрать копию проекта", .english: "close and remove its project copy",
         ],

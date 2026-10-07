@@ -9,6 +9,7 @@ public enum Subprocess {
     public static func run(
         executable: String,
         arguments: [String],
+        input: Data? = nil,
         timeout: Duration = .seconds(30)
     ) async throws -> CommandResult {
         let process = Process()
@@ -17,6 +18,8 @@ public enum Subprocess {
         let outPipe = Pipe(), errPipe = Pipe()
         process.standardOutput = outPipe
         process.standardError = errPipe
+        let inPipe = input.map { _ in Pipe() }
+        if let inPipe { process.standardInput = inPipe }
 
         let collector = OutputCollector()
         outPipe.fileHandleForReading.readabilityHandler = { handle in
@@ -29,6 +32,7 @@ public enum Subprocess {
         }
 
         try process.run()
+        if let input, let inPipe { feed(input, to: inPipe.fileHandleForWriting) }
 
         let deadline = Task {
             try await Task.sleep(for: timeout)
@@ -78,6 +82,22 @@ public enum Subprocess {
             process.terminate()
         }
         pipe.fileHandleForReading.readabilityHandler = nil
+    }
+}
+
+/// Пишет ввод процессу с отдельного потока и закрывает его.
+///
+/// Запись в трубу блокирует, пока процесс не прочтёт: с вызывающего потока
+/// большой ввод подвесил бы его до выхода процесса, а тот ждал бы конца ввода.
+private func feed(_ data: Data, to handle: FileHandle) {
+    // Без этого запись в трубу вышедшего процесса шлёт SIGPIPE, и он убивает
+    // всё приложение, а не одну команду.
+    _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
+    DispatchQueue.global(qos: .utility).async {
+        // Процесс мог выйти, не дочитав, — тогда запись падает с EPIPE. Итог
+        // решает его код выхода, а не то, сколько байт он успел взять.
+        try? handle.write(contentsOf: data)
+        try? handle.close()
     }
 }
 

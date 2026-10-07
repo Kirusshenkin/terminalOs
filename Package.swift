@@ -31,7 +31,7 @@ let package = Package(
         .target(name: "AuthKit", dependencies: ["PhosphorCore", "VaultKit"], swiftSettings: strict),
 
         // Hosts, groups, tags, ssh_config import, snippets.
-        .target(name: "HostsKit", dependencies: ["PhosphorCore"], swiftSettings: strict),
+        .target(name: "HostsKit", dependencies: ["PhosphorCore", "SyncKit"], swiftSettings: strict),
 
         // Transport abstraction over ssh(1); proxy and jump support.
         .target(name: "SSHKit", dependencies: ["PhosphorCore", "HostsKit"], swiftSettings: strict),
@@ -62,8 +62,9 @@ let package = Package(
         .target(name: "PetKit", swiftSettings: strict),
 
         // Sync between the person's own machines: records, merge, machine keys.
-        // No network and no files here — the transport comes separately.
-        .target(name: "SyncKit", swiftSettings: strict),
+        // No network here: the storage commands run through whatever runner the
+        // app hands in — ssh in the app, a local shell in tests.
+        .target(name: "SyncKit", dependencies: ["PhosphorCore"], swiftSettings: strict),
 
         // Terminal emulator wiring: local PTY and remote channels.
         .target(

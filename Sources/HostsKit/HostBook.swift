@@ -1,5 +1,6 @@
 public import Foundation
 public import PhosphorCore
+public import SyncKit
 
 /// The whole address book, as stored inside the encrypted profile.
 public struct HostBook: Codable, Sendable {
@@ -11,6 +12,9 @@ public struct HostBook: Codable, Sendable {
     public var forwards: [ForwardSpec]
     /// Ключи, которые добавил сам Phosphor, — ради даты: в `authorized_keys` её нет.
     public var addedKeys: [AddedKey]
+    /// Синхронизация между своими машинами: ключи этой машины, ключ профиля и
+    /// что последний раз согласовано. nil — выключена. Сама не синхронизируется.
+    public var sync: SyncState?
 
     public init(
         groups: [HostGroup] = [], hosts: [ServerHost] = [],
@@ -24,7 +28,7 @@ public struct HostBook: Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case groups, hosts, snippets, forwards, addedKeys
+        case groups, hosts, snippets, forwards, addedKeys, sync
     }
 
     public init(from decoder: any Decoder) throws {
@@ -35,6 +39,7 @@ public struct HostBook: Codable, Sendable {
         forwards = try container.decode([ForwardSpec].self, forKey: .forwards)
         // Поле появилось 07.10.2026: профили, записанные раньше, его не знают.
         addedKeys = try container.decodeIfPresent([AddedKey].self, forKey: .addedKeys) ?? []
+        sync = try container.decodeIfPresent(SyncState.self, forKey: .sync)
     }
 
     public func group(for host: ServerHost) -> HostGroup? {

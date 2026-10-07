@@ -38,6 +38,14 @@ public actor SystemSSHTransport: SSHTransport {
     }
 
     public func run(_ command: String, timeout: Duration = .seconds(30)) async throws -> CommandResult {
+        try await run(command, input: nil, timeout: timeout)
+    }
+
+    /// То же, но с данными на stdin команды: так на сервер едет файл любого
+    /// размера, без упора в предел длины командной строки.
+    public func run(
+        _ command: String, input: Data?, timeout: Duration = .seconds(30)
+    ) async throws -> CommandResult {
         if let problem = route.problem { throw TransportError.route(problem) }
         if case .socks(let proxyHost, let proxyPort) = route.entry {
             guard await Reachability.canConnect(host: proxyHost, port: proxyPort, timeout: .seconds(2)) else {
@@ -48,6 +56,7 @@ public actor SystemSSHTransport: SSHTransport {
         let result = try await Subprocess.run(
             executable: SSHInvocation.executable,
             arguments: baseArguments + [target, command],
+            input: input,
             timeout: timeout
         )
         if result.status != 0 {
@@ -135,7 +144,6 @@ public actor SystemSSHTransport: SSHTransport {
         proxyCheckedAt = .now
     }
 
-
     // MARK: - Первый визит
 
     /// Достаёт ключ сервера, которого ещё нет в known_hosts, — не входя на него.
@@ -185,10 +193,13 @@ public actor SystemSSHTransport: SSHTransport {
 
     /// Записывает принятый ключ в `~/.ssh/known_hosts`. Только по явному
     /// согласию человека, увидевшего отпечаток.
-    public func trust(_ key: ScannedHostKey, knownHosts path: String = NSHomeDirectory() + "/.ssh/known_hosts") throws {
+    public func trust(
+        _ key: ScannedHostKey, knownHosts path: String = NSHomeDirectory() + "/.ssh/known_hosts"
+    ) throws {
         let manager = FileManager.default
         if !manager.fileExists(atPath: path) {
-            guard manager.createFile(atPath: path, contents: nil, attributes: [.posixPermissions: 0o600]) else {
+            guard manager.createFile(atPath: path, contents: nil, attributes: [.posixPermissions: 0o600])
+            else {
                 throw TransportError.commandFailed(status: 1, stderr: "cannot create \(path)")
             }
         }
@@ -227,7 +238,9 @@ public struct ScannedHostKey: Sendable, Equatable {
     public static func fingerprints(_ listing: String) -> [String] {
         listing.split(separator: "\n").compactMap { line in
             let parts = line.split(separator: " ")
-            guard parts.count >= 2, let hash = parts.first(where: { $0.hasPrefix("SHA256:") }) else { return nil }
+            guard parts.count >= 2, let hash = parts.first(where: { $0.hasPrefix("SHA256:") }) else {
+                return nil
+            }
             let kind = parts.last.map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "()")) } ?? ""
             return kind.isEmpty ? String(hash) : "\(kind) \(hash)"
         }

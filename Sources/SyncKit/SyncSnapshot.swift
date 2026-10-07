@@ -79,6 +79,14 @@ public enum SyncError: Error, Sendable, Equatable {
     /// A record or wrapped key does not open: damaged or tampered with.
     case unreadable(String)
     case malformed(String)
+    /// This machine's own keys do not work: the profile was moved here from
+    /// another Mac, or the Secure Enclave was reset.
+    case keys
+    /// Another machine kept writing at the same moment, three times running.
+    case busy
+    /// The folder on the server could not be read or written; the text is
+    /// what the server said.
+    case storage(String)
 }
 
 /// The cryptography of sync, with no storage and no network.

@@ -13,17 +13,17 @@ extension AppModel {
     public func startProvisioning(inputs: RecipeInputs = RecipeInputs()) async {
         guard let session, let profile, !isProvisioning else { return }
         let host = book.hosts.first { $0.id == selectedHost }
-        let reach = host.map { book.reach(for: $0) } ?? .direct
+        let route = host.map { book.route(for: $0) } ?? .direct
 
         let fresh = ProvisionRunner(
-            transport: SystemSSHTransport(host: host ?? ServerHost(name: "", address: ""), reach: reach),
+            transport: SystemSSHTransport(host: host ?? ServerHost(name: "", address: ""), route: route),
             recipe: BuiltInRecipe.base(inputs),
             profile: profile,
             proveKeyAccess: {
                 // Отдельное соединение, а не текущая сессия: смысл проверки в
                 // том, что ключ работает сам по себе.
                 guard let host else { return false }
-                let probe = SystemSSHTransport(host: host, reach: reach)
+                let probe = SystemSSHTransport(host: host, route: route)
                 defer { Task { await probe.close() } }
                 let result = try? await probe.run("true", timeout: .seconds(15))
                 return result?.succeeded == true

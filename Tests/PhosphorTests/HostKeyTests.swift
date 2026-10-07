@@ -9,7 +9,7 @@ struct HostKeyTests {
     @Test("названный ключ уходит в ssh вместе с IdentitiesOnly")
     func namedKey() {
         let host = ServerHost(name: "prod", address: "10.0.0.2", identityFile: "~/.ssh/deploy")
-        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x.sock")
+        let arguments = SSHInvocation.arguments(host: host, route: .direct, controlPath: "/tmp/x.sock")
         let index = arguments.firstIndex(of: "-i")
         #expect(index.map { arguments[$0 + 1] } == "~/.ssh/deploy")
         #expect(arguments.contains("IdentitiesOnly=yes"))
@@ -18,7 +18,7 @@ struct HostKeyTests {
     @Test("без ключа ssh выбирает сам — ни -i, ни IdentitiesOnly")
     func automatic() {
         let host = ServerHost(name: "prod", address: "10.0.0.2")
-        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x.sock")
+        let arguments = SSHInvocation.arguments(host: host, route: .direct, controlPath: "/tmp/x.sock")
         #expect(!arguments.contains("-i"))
         #expect(!arguments.contains("IdentitiesOnly=yes"))
     }

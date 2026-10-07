@@ -54,7 +54,7 @@ public struct PortForward: Identifiable, Codable, Hashable, Sendable {
 /// открытому соединению, без второго логина и без отдельного процесса.
 public actor ForwardManager {
     private let host: ServerHost
-    private let reach: Reach
+    private let route: Route
     private let controlPath: String
     // Свой список поднятых пробросов убран, а не удалён: его никто не читал,
     // потому что состояние держит приложение (`AppModel.activeForwards`) — там
@@ -62,9 +62,9 @@ public actor ForwardManager {
     // умирала вместе с менеджером при переподключении.
     // private var active: Set<UUID> = []
 
-    public init(host: ServerHost, reach: Reach, controlPath: String) {
+    public init(host: ServerHost, route: Route, controlPath: String) {
         self.host = host
-        self.reach = reach
+        self.route = route
         self.controlPath = controlPath
     }
 
@@ -77,7 +77,7 @@ public actor ForwardManager {
     }
 
     private func control(_ verb: String, _ forward: PortForward) async throws {
-        var arguments = SSHInvocation.arguments(host: host, reach: reach, controlPath: controlPath)
+        var arguments = SSHInvocation.arguments(host: host, route: route, controlPath: controlPath)
         arguments += [
             "-O", verb, forward.direction.flag, forward.specification,
             SSHInvocation.target(host),

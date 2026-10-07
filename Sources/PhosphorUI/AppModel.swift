@@ -476,7 +476,7 @@ public final class AppModel {
         // Постоянные сессии (herdr-стиль): шелл живёт внутри tmux на сервере и
         // переживает закрытие приложения. Выключено — обычный одноразовый шелл.
         return .remote(
-            host: host, reach: book.reach(for: host), controlPath: socket,
+            host: host, route: book.route(for: host), controlPath: socket,
             session: persistentSessions ? name : nil)
     }
 
@@ -672,7 +672,7 @@ public final class AppModel {
         terminalSession = spaceSessions[host.id]
         // Спейс открыт — запоминаем раскладку, чтобы перезапуск её вернул.
         saveLayout()
-        let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
+        let transport = SystemSSHTransport(host: host, route: book.route(for: host))
         sessionSocketPath = transport.socketPath
         let fresh = HostSession(host: host, transport: transport)
         session = fresh
@@ -700,7 +700,7 @@ public final class AppModel {
             await record(.failed, host: host, detail: strings.connectionFailure(reason))
             // Первый визит — не ошибка, а вопрос: показываем отпечаток сразу,
             // чтобы решение «доверять» было принято, глядя на него.
-            if case .hostKeyUnknown = reason { await scanHostKey(host) }
+            if let unknown = trustTarget(of: reason, connecting: host) { await scanHostKey(unknown) }
         default:
             break
         }

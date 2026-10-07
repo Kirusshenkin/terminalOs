@@ -213,10 +213,10 @@ public struct RootView: View {
                                 .font(model.style.font(11.5))
                                 .foregroundStyle(model.style.warning)
                                 .fixedSize(horizontal: false, vertical: true)
-                            if case .hostKeyUnknown = failure { fingerprintLine }
+                            if failure.needsTrust { fingerprintLine }
                         }
                         Spacer(minLength: 8)
-                        if case .hostKeyUnknown = failure, model.pendingHostKey != nil {
+                        if failure.needsTrust, model.pendingHostKey != nil {
                             Button {
                                 Task { await model.trustPendingHost() }
                             } label: {
@@ -457,7 +457,7 @@ public struct RootView: View {
 
     private var chipHelp: String {
         guard let host = model.currentHost else { return model.strings("head.pickServerHint") }
-        return "\(host.user)@\(host.address) · \(model.strings.reach(model.book.reach(for: host)))"
+        return "\(host.user)@\(host.address) · \(model.reachLabel(for: host))"
     }
 
     /// Выбранный ярче всех, под курсором — на полпути, остальные приглушены.

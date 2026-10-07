@@ -82,7 +82,7 @@ extension AppModel {
     func spaceTransport(for id: ServerHost.ID, keep: Bool = true) -> SystemSSHTransport? {
         if let existing = spaceTransports[id] { return existing }
         guard let host = book.hosts.first(where: { $0.id == id }) else { return nil }
-        let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
+        let transport = SystemSSHTransport(host: host, route: book.route(for: host))
         if keep { spaceTransports[id] = transport }
         return transport
     }

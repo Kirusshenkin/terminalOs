@@ -114,9 +114,9 @@ public actor HostSession {
     /// day; a background window has no business waking the CPU.
     public private(set) var isActive = true
 
-    public init(host: ServerHost, reach: Reach, archive: MetricStore = .shared) {
+    public init(host: ServerHost, route: Route, archive: MetricStore = .shared) {
         self.host = host
-        self.transport = SystemSSHTransport(host: host, reach: reach)
+        self.transport = SystemSSHTransport(host: host, route: route)
         self.archive = archive
     }
 
@@ -187,6 +187,9 @@ public actor HostSession {
         case TransportError.hostKeyUnknown: .hostKeyUnknown(host: host.name)
         case TransportError.hostUnreachable(let address): .unreachable(address: address)
         case TransportError.commandFailed(_, let stderr) where !stderr.isEmpty: .remote(String(stderr.prefix(200)))
+        case TransportError.route(let problem): .route(problem)
+        case TransportError.bastion(let bastion, let inner):
+            .bastion(bastionID: bastion.id, inner: explain(inner, host: bastion))
         default: .other(host: host.name)
         }
     }

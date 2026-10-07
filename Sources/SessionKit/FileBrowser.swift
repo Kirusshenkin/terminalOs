@@ -106,13 +106,13 @@ public enum ListingParser {
 public actor FileBrowser {
     private let transport: any SSHTransport
     private let host: ServerHost
-    private let reach: Reach
+    private let route: Route
     private let controlPath: String
 
-    public init(transport: any SSHTransport, host: ServerHost, reach: Reach, controlPath: String) {
+    public init(transport: any SSHTransport, host: ServerHost, route: Route, controlPath: String) {
         self.transport = transport
         self.host = host
-        self.reach = reach
+        self.route = route
         self.controlPath = controlPath
     }
 
@@ -164,7 +164,7 @@ public actor FileBrowser {
     /// в кавычках: без них файл с пробелом в имени превращается в два аргумента,
     /// а файл с `;` — в команду.
     private func copy(from source: String, to destination: String, directory: Bool) async throws {
-        var arguments = SSHInvocation.arguments(host: host, reach: reach, controlPath: controlPath)
+        var arguments = SSHInvocation.arguments(host: host, route: route, controlPath: controlPath)
         // scp понимает те же -o, но порт задаётся большой буквой.
         arguments = arguments.map { $0 == "-p" ? "-P" : $0 }
         // Папку без `-r` scp молча пропускает, сказав «not a regular file».

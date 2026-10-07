@@ -18,6 +18,12 @@ extension Strings {
         "reach.direct": [.russian: "напрямую", .english: "direct"],
         "reach.proxy": [.russian: "прокси", .english: "proxy"],
         "reach.jump": [.russian: "через бастион", .english: "via bastion"],
+        "host.viaBastion": [.russian: "через бастион", .english: "through a bastion"],
+        "host.pickBastion": [.russian: "выбери хост-бастион", .english: "pick a bastion host"],
+        "host.noBastions": [
+            .russian: "сначала добавь сам бастион как обычный хост",
+            .english: "add the bastion itself as a regular host first",
+        ],
         "guard.never": [.russian: "не спрашивать", .english: "never ask"],
         "guard.dangerous": [.russian: "при опасных действиях", .english: "on dangerous actions"],
         "guard.always": [.russian: "при подключении", .english: "on connect"],
@@ -140,6 +146,23 @@ extension Strings {
         "err.hostKeyUnknownPlain": [
             .russian: "сервер ещё не знаком этому Маку — откройте его в Phosphor и примите отпечаток",
             .english: "the server is new to this Mac — open it in Phosphor and accept its fingerprint",
+        ],
+        "err.viaBastion": [.russian: "бастион: ", .english: "bastion: "],
+        "err.routeMissing": [
+            .russian: "%@ ходит через бастион, которого больше нет в списке — выбери другой "
+                + "в настройках хоста или поставь «напрямую»",
+            .english: "%@ goes through a bastion that is no longer in the list — pick another one "
+                + "in the host settings or set it to direct",
+        ],
+        "err.routeLoop": [
+            .russian: "цепочка бастионов замкнулась на %@ — хост не может идти через самого себя; "
+                + "поправь «как дотянуться» у хостов цепочки",
+            .english: "the bastion chain loops back to %@ — a host cannot go through itself; "
+                + "fix how the hosts in the chain are reached",
+        ],
+        "err.routeDeep": [
+            .russian: "у %@ больше трёх бастионов подряд — сократи цепочку в настройках хостов",
+            .english: "%@ has more than three bastions in a row — shorten the chain in the host settings",
         ],
         "err.unreachable": [
             .russian: "%@ не отвечает — сервер выключен, адрес неверный или порт закрыт",

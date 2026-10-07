@@ -35,6 +35,8 @@ extension Strings {
         case .unreachable(let address): format("err.unreachable", address)
         case .remote(let text): text
         case .other(let host): format("err.connectFailed", host)
+        case .route(let problem): routeProblem(problem)
+        case .bastion(_, let inner): self("err.viaBastion") + connectionFailure(inner)
         }
     }
 
@@ -50,9 +52,19 @@ extension Strings {
         case .commandFailed(let status, let stderr):
             stderr.isEmpty ? format("err.exitCode", "\(status)") : String(stderr.prefix(200))
         case .cancelled: self("err.cancelled")
+        case .route(let problem): routeProblem(problem)
+        case .bastion(let bastion, let inner):
+            self("err.viaBastion") + bastion.name + " — " + transport(inner)
         }
     }
 
+    public func routeProblem(_ problem: RouteProblem) -> String {
+        switch problem {
+        case .missingBastion(let host): format("err.routeMissing", host)
+        case .loop(let host): format("err.routeLoop", host)
+        case .tooDeep(let host): format("err.routeDeep", host)
+        }
+    }
     public func dockerProblem(_ problem: DockerProblem) -> String {
         switch problem {
         case .noSocketAccess: self("err.dockerSocket")

@@ -96,7 +96,8 @@ struct NetworkTests {
     func transportExplainsProxyDown() async throws {
         let host = ServerHost(name: "prod", address: "127.0.0.1", port: 1)
         // Прокси указан, но его нет — ошибка обязана назвать именно прокси.
-        let transport = SystemSSHTransport(host: host, reach: .socks(host: "127.0.0.1", port: 1))
+        let transport = SystemSSHTransport(
+            host: host, route: Route(entry: .socks(host: "127.0.0.1", port: 1)))
         await #expect(throws: TransportError.proxyUnreachable(host: "127.0.0.1", port: 1)) {
             _ = try await transport.run("true", timeout: .seconds(3))
         }
@@ -111,8 +112,8 @@ struct SSHInvocationTests {
     @Test("команды и интерактивный шелл идут по одному сокету")
     func sharesControlPath() {
         let socket = "/tmp/phosphor-test.sock"
-        let forCommands = SSHInvocation.arguments(host: host, reach: .direct, controlPath: socket)
-        let forShell = SSHInvocation.shellArguments(host: host, reach: .direct, controlPath: socket)
+        let forCommands = SSHInvocation.arguments(host: host, route: .direct, controlPath: socket)
+        let forShell = SSHInvocation.shellArguments(host: host, route: .direct, controlPath: socket)
         // Иначе будет второй логин и второй Touch ID на ровном месте.
         #expect(forShell.starts(with: forCommands))
         #expect(forCommands.contains("ControlPath=\(socket)"))
@@ -122,7 +123,7 @@ struct SSHInvocationTests {
 
     @Test("AES-GCM стоит впереди ChaCha20 — обход Terrapin")
     func prefersAESGCM() throws {
-        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x")
+        let arguments = SSHInvocation.arguments(host: host, route: .direct, controlPath: "/tmp/x")
         let index = try #require(
             arguments.firstIndex(
                 of: "Ciphers=aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr"))
@@ -134,21 +135,21 @@ struct SSHInvocationTests {
 
     @Test("смена ключа хоста блокирует подключение, а не спрашивает")
     func strictHostKey() {
-        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x")
+        let arguments = SSHInvocation.arguments(host: host, route: .direct, controlPath: "/tmp/x")
         #expect(arguments.contains("StrictHostKeyChecking=yes"))
         #expect(arguments.contains("ForwardAgent=no"), "агент не пробрасываем")
     }
 
     @Test("порт берётся из хоста, а не из умолчания")
     func usesHostPort() {
-        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x")
+        let arguments = SSHInvocation.arguments(host: host, route: .direct, controlPath: "/tmp/x")
         #expect(arguments.contains("2222"))
     }
 
     @Test("через прокси имя хоста уходит целиком: DNS резолвит прокси")
     func proxyResolvesName() throws {
         let arguments = SSHInvocation.arguments(
-            host: host, reach: .socks(host: "127.0.0.1", port: 10_808), controlPath: "/tmp/x")
+            host: host, route: Route(entry: .socks(host: "127.0.0.1", port: 10_808)), controlPath: "/tmp/x")
         let command = try #require(arguments.first { $0.hasPrefix("ProxyCommand=") })
         #expect(command.contains("127.0.0.1:10808"))
         #expect(command.contains("%h"), "адрес подставляет ssh, а не мы")
@@ -157,7 +158,7 @@ struct SSHInvocationTests {
 
     @Test("без прокси лишнего ProxyCommand нет")
     func directHasNoProxy() {
-        let arguments = SSHInvocation.arguments(host: host, reach: .direct, controlPath: "/tmp/x")
+        let arguments = SSHInvocation.arguments(host: host, route: .direct, controlPath: "/tmp/x")
         #expect(!arguments.contains { $0.hasPrefix("ProxyCommand") })
     }
 }

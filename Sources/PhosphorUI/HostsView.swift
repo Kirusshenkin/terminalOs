@@ -318,7 +318,7 @@ public struct HostsView: View {
             // «Напрямую» — норма, и на каждой из сорока карточек это шум.
             // Путь показываем, только когда он особый: прокси или бастион.
             if model.book.reach(for: host) != .direct {
-                detail(icon: "→", text: strings.reach(model.book.reach(for: host)))
+                detail(icon: "→", text: model.reachLabel(for: host))
             }
             if let group = model.book.group(for: host) {
                 detail(icon: "■", text: group.name)

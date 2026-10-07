@@ -13,7 +13,7 @@ extension AppModel {
     public func loadKeys() async {
         guard let host = book.hosts.first(where: { $0.id == selectedHost }) else { return }
         let manager = KeyManager(
-            transport: SystemSSHTransport(host: host, reach: book.reach(for: host)))
+            transport: SystemSSHTransport(host: host, route: book.route(for: host)))
         keysError = nil
         do {
             serverKeys = try await manager.load()
@@ -35,7 +35,7 @@ extension AppModel {
             return
         }
         let manager = KeyManager(
-            transport: SystemSSHTransport(host: host, reach: book.reach(for: host)))
+            transport: SystemSSHTransport(host: host, route: book.route(for: host)))
         do {
             serverKeys = try await manager.add(
                 line: newKeyLine, to: serverKeys, currentFingerprint: myFingerprint)
@@ -64,7 +64,7 @@ extension AppModel {
     private func removeKey(_ key: AuthorizedKey, force: Bool = false) async {
         guard let host = book.hosts.first(where: { $0.id == selectedHost }) else { return }
         let manager = KeyManager(
-            transport: SystemSSHTransport(host: host, reach: book.reach(for: host)))
+            transport: SystemSSHTransport(host: host, route: book.route(for: host)))
         do {
             // При явном согласии перестаём считать этот ключ своим — проверка
             // должна пропустить осознанное решение, но не случайное.

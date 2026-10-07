@@ -342,7 +342,7 @@ struct ListingParserTests {
     func resolveStaysInsideRoot() {
         let browser = FileBrowser(
             transport: RecordingTransport(host: ServerHost(name: "x", address: "1")),
-            host: ServerHost(name: "x", address: "1"), reach: .direct, controlPath: "/tmp/x")
+            host: ServerHost(name: "x", address: "1"), route: .direct, controlPath: "/tmp/x")
         #expect(browser.resolve("/srv/app", entering: "..") == "/srv")
         #expect(browser.resolve("/srv", entering: "..") == "/")
         #expect(browser.resolve("/", entering: "..") == "/")

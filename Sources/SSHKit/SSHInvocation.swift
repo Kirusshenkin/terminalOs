@@ -1,5 +1,6 @@
 public import Foundation
 public import HostsKit
+import PhosphorCore
 
 /// Как именно вызывается `ssh`.
 ///
@@ -10,8 +11,15 @@ public import HostsKit
 public enum SSHInvocation {
     public static let executable = "/usr/bin/ssh"
 
+    /// Управляющий сокет хоста. Один на хост, чтобы и сам хост, и прыжок через
+    /// него как через бастион ехали по одному соединению.
+    public static func controlPath(for host: ServerHost) -> String {
+        // Socket names have a hard length limit, so the identifier is hashed.
+        NSTemporaryDirectory() + "phosphor-\(host.id.uuidString.prefix(8)).sock"
+    }
+
     public static func arguments(
-        host: ServerHost, reach: Reach, controlPath: String
+        host: ServerHost, route: Route, controlPath: String
     ) -> [String] {
         var arguments = [
             // Мультиплексирование: первый вызов логинится, остальные едут по
@@ -37,7 +45,13 @@ public enum SSHInvocation {
             // закрыл бы дверь раньше, чем дошла очередь до нужного.
             arguments += ["-i", key, "-o", "IdentitiesOnly=yes"]
         }
-        if case .socks(let proxyHost, let proxyPort) = reach {
+        if route.problem != nil {
+            // Сломанная цепочка бастионов закрывается, а не обходится: без
+            // ProxyCommand ssh пошёл бы напрямую, мимо выбранного пути.
+            arguments += ["-o", "ProxyCommand=/usr/bin/false"]
+        } else if let bastion = route.bastions.last {
+            arguments += ["-o", "ProxyCommand=\(jumpCommand(through: bastion, route: route))"]
+        } else if case .socks(let proxyHost, let proxyPort) = route.entry {
             // Имя хоста уходит прокси целиком, чтобы DNS резолвился на его
             // стороне: ни утечки, ни «у меня этот домен не резолвится».
             arguments += [
@@ -48,6 +62,25 @@ public enum SSHInvocation {
         return arguments
     }
 
+    /// Вложенный ssh до бастиона, который отдаёт свой stdio как канал к цели.
+    ///
+    /// Не `-J`: тот не умеет передать бастиону его ключ, его прокси и его
+    /// сокет. Здесь бастион собирается тем же `arguments`, что и прямой вход
+    /// на него, — с остатком цепочки, если бастионов несколько. `ControlMaster=no`
+    /// стоит первым: открытое соединение с бастионом переиспользуется, но
+    /// новое мастером не становится — его жизнь привязана к цели.
+    static func jumpCommand(through bastion: ServerHost, route: Route) -> String {
+        let rest = Route(entry: route.entry, bastions: Array(route.bastions.dropLast()))
+        let nested =
+            [executable, "-o", "ControlMaster=no"]
+            + arguments(host: bastion, route: rest, controlPath: controlPath(for: bastion))
+        // ssh раскрывает %-токены в ProxyCommand один раз, поэтому % внутри
+        // вложенных аргументов удваивается: их %h и %p — для вложенного ssh.
+        let quoted = nested.map { Shell.quote($0).replacingOccurrences(of: "%", with: "%%") }
+        let target = Shell.quote(self.target(bastion)).replacingOccurrences(of: "%", with: "%%")
+        return Shell.line(quoted + ["-W", "%h:%p", target])
+    }
+
     /// Аргументы для интерактивного шелла: то же самое плюс запрос PTY.
     ///
     /// Если задано имя tmux-сессии — шелл открывается внутри неё: `-A` значит
@@ -56,10 +89,10 @@ public enum SSHInvocation {
     /// подключаемся к той же живой сессии, а не начинаем с нуля. Если tmux на
     /// сервере нет — молча откатываемся на обычный логин-шелл, а не падаем.
     public static func shellArguments(
-        host: ServerHost, reach: Reach, controlPath: String, tmuxSession: String? = nil
+        host: ServerHost, route: Route, controlPath: String, tmuxSession: String? = nil
     ) -> [String] {
         var result =
-            arguments(host: host, reach: reach, controlPath: controlPath)
+            arguments(host: host, route: route, controlPath: controlPath)
             + ["-t", "\(host.user)@\(host.address)"]
         if let tmuxSession, let name = tmuxSessionName(tmuxSession) {
             // exec, чтобы tmux (или откат) стал самим шеллом, а не его ребёнком.

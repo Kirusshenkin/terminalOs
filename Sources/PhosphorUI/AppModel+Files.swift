@@ -62,8 +62,8 @@ extension AppModel {
             return
         }
         let browser = FileBrowser(
-            transport: SystemSSHTransport(host: host, reach: book.reach(for: host)),
-            host: host, reach: book.reach(for: host), controlPath: socket
+            transport: SystemSSHTransport(host: host, route: book.route(for: host)),
+            host: host, route: book.route(for: host), controlPath: socket
         )
         do {
             remoteFiles = try await browser.list(remotePath)
@@ -161,8 +161,8 @@ extension AppModel {
             return
         }
         let browser = FileBrowser(
-            transport: SystemSSHTransport(host: host, reach: book.reach(for: host)),
-            host: host, reach: book.reach(for: host), controlPath: socket
+            transport: SystemSSHTransport(host: host, route: book.route(for: host)),
+            host: host, route: book.route(for: host), controlPath: socket
         )
         transfer = request
         filesError = nil

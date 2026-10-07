@@ -27,7 +27,7 @@ struct HostTrustTests {
         // Чужой файл без перевода строки в конце — обычное дело после ручной правки.
         try "old.example ssh-ed25519 AAAAold".write(toFile: path, atomically: true, encoding: .utf8)
 
-        let transport = SystemSSHTransport(host: ServerHost(name: "t", address: "10.0.0.2"), reach: .direct)
+        let transport = SystemSSHTransport(host: ServerHost(name: "t", address: "10.0.0.2"), route: .direct)
         try await transport.trust(
             ScannedHostKey(lines: "10.0.0.2 ssh-ed25519 AAAAnew\n", fingerprints: []), knownHosts: path)
 
@@ -43,7 +43,7 @@ struct HostTrustTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let path = directory.appendingPathComponent("known_hosts").path
 
-        let transport = SystemSSHTransport(host: ServerHost(name: "t", address: "10.0.0.2"), reach: .direct)
+        let transport = SystemSSHTransport(host: ServerHost(name: "t", address: "10.0.0.2"), route: .direct)
         try await transport.trust(ScannedHostKey(lines: "10.0.0.2 ssh-ed25519 AAAA", fingerprints: []), knownHosts: path)
 
         let attributes = try FileManager.default.attributesOfItem(atPath: path)

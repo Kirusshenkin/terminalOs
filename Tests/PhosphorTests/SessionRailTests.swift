@@ -125,12 +125,12 @@ struct SessionRailTests {
     func shellArgs() {
         let host = ServerHost(name: "h", address: "10.0.0.1", user: "root")
         let args = SSHInvocation.shellArguments(
-            host: host, reach: .direct, controlPath: "/tmp/s", tmuxSession: "main")
+            host: host, route: .direct, controlPath: "/tmp/s", tmuxSession: "main")
         let joined = args.joined(separator: " ")
         #expect(joined.contains("tmux new-session -A -s main"))
         #expect(joined.contains("exec \"${SHELL:-/bin/sh}\" -l"))
         let plain = SSHInvocation.shellArguments(
-            host: host, reach: .direct, controlPath: "/tmp/s")
+            host: host, route: .direct, controlPath: "/tmp/s")
         #expect(!plain.joined(separator: " ").contains("tmux"))
     }
 }

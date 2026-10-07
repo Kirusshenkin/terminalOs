@@ -37,6 +37,10 @@ extension ToolRunner {
         case .unreachable(let address): "\(address) not responding"
         case .remote(let text): text
         case .other(let host): "failed to connect to \(host)"
+        case .route(.missingBastion(let host)): "\(host) goes through a bastion that no longer exists"
+        case .route(.loop(let host)): "bastion chain loops back to \(host)"
+        case .route(.tooDeep(let host)): "\(host) has more than three bastions in a row"
+        case .bastion(_, let inner): "bastion: " + describe(inner)
         }
     }
 }

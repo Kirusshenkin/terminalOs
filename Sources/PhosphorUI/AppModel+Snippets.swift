@@ -47,7 +47,7 @@ extension AppModel {
         }
 
         for host in targets {
-            let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
+            let transport = SystemSSHTransport(host: host, route: book.route(for: host))
             let text: String
             if let result = try? await transport.run(command, timeout: .seconds(120)) {
                 text = result.succeeded ? result.stdout : result.stderr

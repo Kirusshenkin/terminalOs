@@ -17,6 +17,10 @@ public enum TransportError: Error, Equatable {
     case hostKeyUnknown
     case commandFailed(status: Int32, stderr: String)
     case cancelled
+    /// The chain of bastions is broken; ssh was not started.
+    case route(RouteProblem)
+    /// The failure is the bastion's, not the target's.
+    indirect case bastion(ServerHost, TransportError)
 }
 
 /// Anything that can carry commands to a host.

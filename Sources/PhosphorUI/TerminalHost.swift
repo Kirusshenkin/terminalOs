@@ -20,7 +20,7 @@ public struct TerminalHost: NSViewRepresentable {
         /// только здесь. Путь к нему часть адреса потому, что он же ключ
         /// поверхности, а ставят tmux один раз и надолго.
         case localSession(name: String, tmux: String)
-        case remote(host: ServerHost, reach: Reach, controlPath: String, session: String?)
+        case remote(host: ServerHost, route: Route, controlPath: String, session: String?)
     }
 
     private let theme: Theme
@@ -80,9 +80,9 @@ public struct TerminalHost: NSViewRepresentable {
         case .localSession(let name, let tmux):
             surface.startLocalShell(
                 tmux: tmux, session: name, environment: LocalTmux.environment())
-        case .remote(let host, let reach, let controlPath, let session):
+        case .remote(let host, let route, let controlPath, let session):
             surface.startRemoteShell(
-                host: host, reach: reach, controlPath: controlPath, tmuxSession: session)
+                host: host, route: route, controlPath: controlPath, tmuxSession: session)
         }
     }
 }

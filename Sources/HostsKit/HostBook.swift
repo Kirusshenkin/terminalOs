@@ -27,7 +27,12 @@ public struct HostBook: Codable, Sendable {
 
     /// Effective reachability: the host's own setting wins, then the group's.
     public func reach(for host: ServerHost) -> Reach {
-        if case .direct = host.reach, let inherited = group(for: host)?.reach { return inherited }
+        if case .direct = host.reach, let inherited = group(for: host)?.reach {
+            // Бастион группы сам в ней состоит: «через себя» значит напрямую,
+            // иначе у группы с бастионом ни один хост не был бы доступен.
+            if case .jump(host.id) = inherited { return .direct }
+            return inherited
+        }
         return host.reach
     }
 

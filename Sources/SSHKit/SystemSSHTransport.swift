@@ -11,7 +11,7 @@ public actor SystemSSHTransport: SSHTransport {
     nonisolated public let host: ServerHost
 
     private let controlPath: String
-    private let reach: Reach
+    private let route: Route
     /// Когда прокси в последний раз подтверждённо отвечал.
     ///
     /// Проверять его перед каждой командой — лишний коннект каждые несколько
@@ -25,22 +25,21 @@ public actor SystemSSHTransport: SSHTransport {
     /// тому же соединению: иначе будет второй логин и второй Touch ID.
     nonisolated public let socketPath: String
 
-    public init(host: ServerHost, reach: Reach) {
+    public init(host: ServerHost, route: Route) {
         self.host = host
-        self.reach = reach
-        // Socket names have a hard length limit, so the identifier is hashed.
-        let short = String(host.id.uuidString.prefix(8))
-        self.controlPath = NSTemporaryDirectory() + "phosphor-\(short).sock"
+        self.route = route
+        self.controlPath = SSHInvocation.controlPath(for: host)
         self.socketPath = controlPath
     }
 
     /// Аргументы, общие для каждого вызова.
     private var baseArguments: [String] {
-        SSHInvocation.arguments(host: host, reach: reach, controlPath: controlPath)
+        SSHInvocation.arguments(host: host, route: route, controlPath: controlPath)
     }
 
     public func run(_ command: String, timeout: Duration = .seconds(30)) async throws -> CommandResult {
-        if case .socks(let proxyHost, let proxyPort) = reach {
+        if let problem = route.problem { throw TransportError.route(problem) }
+        if case .socks(let proxyHost, let proxyPort) = route.entry {
             guard await Reachability.canConnect(host: proxyHost, port: proxyPort, timeout: .seconds(2)) else {
                 throw TransportError.proxyUnreachable(host: proxyHost, port: proxyPort)
             }
@@ -52,18 +51,38 @@ public actor SystemSSHTransport: SSHTransport {
             timeout: timeout
         )
         if result.status != 0 {
-            let stderr = result.stderr.lowercased()
-            if stderr.contains("permission denied") { throw TransportError.authenticationFailed }
-            // «No ED25519 host key is known for …» — первый визит, а не подмена.
-            if stderr.contains("host key is known") { throw TransportError.hostKeyUnknown }
-            if stderr.contains("host key") && stderr.contains("changed") {
-                throw TransportError.hostKeyChanged
+            if let failure = SSHFailure.classify(result.stderr, host: host, bastions: route.bastions) {
+                throw failure
             }
-            if stderr.contains("could not resolve") || stderr.contains("connection timed out") {
-                throw TransportError.hostUnreachable(host.address)
-            }
+            if let failure = await diagnoseBastions(stderr: result.stderr) { throw failure }
         }
         return result
+    }
+
+    /// Ищет, на каком бастионе оборвался путь, — проверкой, а не догадкой.
+    ///
+    /// С `ControlPersist` ssh отправляет stderr вложенного ProxyCommand в
+    /// /dev/null: отказ бастиона виден только как «Connection closed by UNKNOWN».
+    /// Поэтому бастионы проверяются по очереди, снаружи внутрь, каждый своим
+    /// входом; первый, кто не пустил, и есть причина. Все пустили — значит,
+    /// последний не достучался до цели.
+    private func diagnoseBastions(stderr: String) async -> TransportError? {
+        guard !route.bastions.isEmpty, stderr.lowercased().contains("connection closed") else {
+            return nil
+        }
+        for (index, bastion) in route.bastions.enumerated() {
+            let before = Route(entry: route.entry, bastions: Array(route.bastions.prefix(index)))
+            let probe = SystemSSHTransport(host: bastion, route: before)
+            do {
+                _ = try await probe.run("true", timeout: .seconds(15))
+            } catch let failure as TransportError {
+                if case .bastion = failure { return failure }
+                return .bastion(bastion, failure)
+            } catch {
+                return .bastion(bastion, .hostUnreachable(bastion.address))
+            }
+        }
+        return .hostUnreachable(host.address)
     }
 
     /// Выполняет команду, только если канал к хосту уже открыт. nil — канала нет.
@@ -139,13 +158,26 @@ public actor SystemSSHTransport: SSHTransport {
             "-o", "PubkeyAuthentication=no", "-o", "PasswordAuthentication=no",
             "-o", "KbdInteractiveAuthentication=no",
         ]
-        _ = try await Subprocess.run(
+        if let problem = route.problem { throw TransportError.route(problem) }
+        let scan = try await Subprocess.run(
             executable: SSHInvocation.executable,
             arguments: probe + baseArguments + [SSHInvocation.target(host), "true"],
             timeout: .seconds(15))
         guard let lines = try? String(contentsOfFile: scratch, encoding: .utf8),
             !lines.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else { throw TransportError.hostUnreachable(host.address) }
+        else {
+            // Вход на цель заведомо не случится, поэтому её отказы не в счёт;
+            // а вот бастион, не пустивший дальше, — настоящая причина.
+            if case .bastion(let bastion, let failure)? =
+                SSHFailure.classify(scan.stderr, host: host, bastions: route.bastions)
+            {
+                throw TransportError.bastion(bastion, failure)
+            }
+            if case .bastion(let bastion, let failure)? = await diagnoseBastions(stderr: scan.stderr) {
+                throw TransportError.bastion(bastion, failure)
+            }
+            throw TransportError.hostUnreachable(host.address)
+        }
         let listing = try await Subprocess.run(
             executable: "/usr/bin/ssh-keygen", arguments: ["-l", "-f", scratch], timeout: .seconds(5))
         return ScannedHostKey(lines: lines, fingerprints: ScannedHostKey.fingerprints(listing.stdout))

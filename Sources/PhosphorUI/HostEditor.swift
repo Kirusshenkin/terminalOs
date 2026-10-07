@@ -18,16 +18,19 @@ public struct HostEditor: View {
     @State private var reachKind: ReachKind
     @State private var proxyHost: String
     @State private var proxyPort: String
+    /// Хост, через который идём, когда выбран бастион.
+    @State private var bastionID: ServerHost.ID?
     /// Путь к ключу. nil — ключ выбирает ssh: ключи по умолчанию и агент.
     @State private var identityFile: String?
 
     private enum ReachKind: String, CaseIterable {
-        case direct, socks
+        case direct, socks, jump
         /// Ключ, а не готовая строка: enum не знает про язык интерфейса.
         var key: String {
             switch self {
             case .direct: "host.direct"
             case .socks: "host.viaProxy"
+            case .jump: "host.viaBastion"
             }
         }
     }
@@ -42,15 +45,24 @@ public struct HostEditor: View {
         _tags = State(initialValue: host?.tags.joined(separator: ", ") ?? "")
         _groupID = State(initialValue: host?.groupID)
         _identityFile = State(initialValue: host?.identityFile)
-        if case .socks(let proxyHost, let proxyPort) = host?.reach {
+        _proxyHost = State(initialValue: "127.0.0.1")
+        _proxyPort = State(initialValue: "10808")
+        switch host?.reach {
+        case .socks(let proxyHost, let proxyPort):
             _reachKind = State(initialValue: .socks)
             _proxyHost = State(initialValue: proxyHost)
             _proxyPort = State(initialValue: String(proxyPort))
-        } else {
+        case .jump(let bastion):
+            _reachKind = State(initialValue: .jump)
+            _bastionID = State(initialValue: bastion)
+        case .direct, nil:
             _reachKind = State(initialValue: .direct)
-            _proxyHost = State(initialValue: "127.0.0.1")
-            _proxyPort = State(initialValue: "10808")
         }
+    }
+
+    /// Хосты, годные в бастионы: не сам хост и не те, что уже ходят через него.
+    private var bastionCandidates: [ServerHost] {
+        model.book.bastionCandidates(for: existing?.id)
     }
 
     /// Имя не обязательно: если его не задали, берём адрес — так карточка
@@ -65,7 +77,15 @@ public struct HostEditor: View {
         !address.trimmingCharacters(in: .whitespaces).isEmpty
             && !user.trimmingCharacters(in: .whitespaces).isEmpty
             && (Int(port).map { (1...65_535).contains($0) } ?? false)
-            && (reachKind == .direct || Int(proxyPort).map { (1...65_535).contains($0) } ?? false)
+            && reachIsValid
+    }
+
+    private var reachIsValid: Bool {
+        switch reachKind {
+        case .direct: true
+        case .socks: Int(proxyPort).map { (1...65_535).contains($0) } ?? false
+        case .jump: bastionCandidates.contains { $0.id == bastionID }
+        }
     }
 
     public var body: some View {
@@ -196,6 +216,32 @@ public struct HostEditor: View {
                     field(strings("host.port"), text: $proxyPort).frame(width: 110)
                 }
             }
+            if reachKind == .jump { bastionPicker }
+        }
+    }
+
+    @ViewBuilder private var bastionPicker: some View {
+        let candidates = bastionCandidates
+        if candidates.isEmpty {
+            Text(strings("host.noBastions"))
+                .font(style.font(11)).foregroundStyle(style.warning)
+        } else {
+            Menu {
+                ForEach(candidates) { candidate in
+                    Button("\(candidate.name) · \(candidate.user)@\(candidate.address)") {
+                        bastionID = candidate.id
+                    }
+                }
+            } label: {
+                Text(candidates.first { $0.id == bastionID }?.name ?? strings("host.pickBastion"))
+                    .font(style.font(12.5))
+                    .foregroundStyle(style.text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
         }
     }
 
@@ -230,14 +276,15 @@ public struct HostEditor: View {
         host.tags = tags.split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        switch (reachKind, host.reach) {
-        case (.socks, _):
-            host.reach = .socks(host: proxyHost, port: Int(proxyPort) ?? 1080)
-        case (.direct, .jump):
-            // Бастион форма не показывает — и поэтому не трогает.
-            break
-        case (.direct, _):
+        switch reachKind {
+        case .direct:
             host.reach = .direct
+        case .socks:
+            host.reach = .socks(host: proxyHost, port: Int(proxyPort) ?? 1080)
+        case .jump:
+            // `isValid` не пускает сюда без выбранного бастиона.
+            guard let bastionID else { return }
+            host.reach = .jump(hostID: bastionID)
         }
         host.identityFile = identityFile
         if existing == nil { model.addHost(host) } else { model.update(host) }

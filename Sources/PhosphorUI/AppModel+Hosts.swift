@@ -2,6 +2,7 @@ public import Foundation
 public import HostsKit
 public import KeysKit
 import MetricsKit
+import PhosphorCore
 import SSHKit
 
 /// Правка списка хостов. Любое изменение сразу планирует запись профиля.
@@ -335,7 +336,7 @@ extension AppModel {
     func scanHostKey(_ host: ServerHost) async {
         pendingHostKey = nil
         hostKeyScanFailed = false
-        let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
+        let transport = SystemSSHTransport(host: host, route: book.route(for: host))
         do {
             pendingHostKey = try await transport.scanHostKey()
         } catch {
@@ -346,7 +347,7 @@ extension AppModel {
     /// Записывает показанный ключ в known_hosts и подключается заново.
     public func trustPendingHost() async {
         guard let key = pendingHostKey, let host = currentHost else { return }
-        let transport = SystemSSHTransport(host: host, reach: book.reach(for: host))
+        let transport = SystemSSHTransport(host: host, route: book.route(for: host))
         do {
             try await transport.trust(key)
             pendingHostKey = nil
@@ -355,5 +356,41 @@ extension AppModel {
         } catch {
             saveError = "\(strings("err.trustFailed")) \(error.localizedDescription)"
         }
+    }
+}
+
+@MainActor
+extension AppModel {
+    /// Чей ключ показывать при первом визите: самого хоста или бастиона перед
+    /// ним. nil — отказ не про незнакомый ключ.
+    func trustTarget(of failure: ConnectionFailure, connecting host: ServerHost) -> ServerHost? {
+        switch failure {
+        case .hostKeyUnknown: host
+        case .bastion(let id, .hostKeyUnknown): book.hosts.first { $0.id == id }
+        default: nil
+        }
+    }
+}
+
+extension ConnectionFailure {
+    /// Отказ, который снимается доверием к отпечатку, а не правкой настроек.
+    var needsTrust: Bool {
+        switch self {
+        case .hostKeyUnknown, .bastion(_, .hostKeyUnknown): true
+        default: false
+        }
+    }
+}
+
+@MainActor
+extension AppModel {
+    /// Как дотягиваемся до хоста — словами для карточки: у бастиона имя,
+    /// иначе «через бастион» не говорит, через какой.
+    func reachLabel(for host: ServerHost) -> String {
+        let reach = book.reach(for: host)
+        if case .jump(let id) = reach, let bastion = book.hosts.first(where: { $0.id == id }) {
+            return "\(strings.reach(reach)) \(bastion.name)"
+        }
+        return strings.reach(reach)
     }
 }

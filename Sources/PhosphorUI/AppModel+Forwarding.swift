@@ -97,6 +97,6 @@ extension AppModel {
         guard let host = book.hosts.first(where: { $0.id == selectedHost }),
             let socket = sessionSocketPath
         else { return nil }
-        return ForwardManager(host: host, reach: book.reach(for: host), controlPath: socket)
+        return ForwardManager(host: host, route: book.route(for: host), controlPath: socket)
     }
 }

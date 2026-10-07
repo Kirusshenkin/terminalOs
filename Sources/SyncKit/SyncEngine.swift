@@ -47,6 +47,7 @@ public enum SyncEngine {
     ) async throws -> Outcome {
         for attempt in 1...attempts {
             var round = Round(items: items, state: state, remotes: remotes, changes: changes, now: now())
+            round.lastAttempt = attempt == attempts
             do {
                 return try await round.run()
             } catch SyncError.busy where attempt < attempts {
@@ -70,6 +71,10 @@ private struct Round {
     let remotes: [UUID: SyncRemote]
     let changes: SyncEngine.Changes
     let now: Int64
+    /// On the last attempt a storage that stays busy is its own failure, not
+    /// the round's: the others were written, and one stuck lock must not stop
+    /// sync everywhere.
+    var lastAttempt = false
 
     /// What one storage showed this round.
     private struct Copy {
@@ -125,7 +130,7 @@ private struct Round {
             guard failures[id] == nil, let remote = remotes[id] else { continue }
             do {
                 try await write(merged, shared: shared, copy: copy, to: remote, id: id, approved: approved)
-            } catch SyncError.busy {
+            } catch SyncError.busy where !lastAttempt {
                 busy = true
             } catch {
                 failures[id] = error

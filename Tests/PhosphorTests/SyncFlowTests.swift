@@ -374,11 +374,11 @@ struct SyncManyStoragesTests {
         #expect(a.book.hosts.count == 2)
         // Первый вернулся: A дописывает туда то, что он пропустил.
         try await a.sync(remotes: [first: one.remote, second: two.remote], at: 6_000)
-        var c = b
-        c.book = HostBook()
-        c.state.forgetHistory()
-        try await c.sync(remotes: [first: one.remote], at: 7_000)
-        #expect(c.book.hosts.count == 2)
+        var fresh = b
+        fresh.book = HostBook()
+        fresh.state.forgetHistory()
+        try await fresh.sync(remotes: [first: one.remote], at: 7_000)
+        #expect(fresh.book.hosts.count == 2)
     }
 
     @Test("хранилище, пропустившее отзыв, не возвращает отозванную машину")
@@ -497,5 +497,49 @@ struct SyncManyStoragesReviewTests {
             return
         }
         #expect(Set(signers.map(\.code)) == [evil.code, try a.state.identity.machine().code])
+    }
+}
+
+@Suite("Синхронизация: хранилище читается, но не пишется")
+struct SyncStuckStorageTests {
+    let first = UUID(), second = UUID()
+
+    @Test("папка только для чтения — ошибка в её строке, ключ не крутится каждый круг, другое пишется")
+    func readOnly() async throws {
+        let one = try Folder(), two = try Folder()
+        let both = [first: one.remote, second: two.remote]
+        var a = try Mac("a", storages: [first, second])
+        try await a.sync(remotes: both)
+        let generation = a.state.keyGeneration
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: two.path)
+        defer {
+            // Вернуть права, чтобы временная папка удалялась; ошибка тут — не повод валить тест.
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: two.path)
+        }
+        for step in 0..<3 {
+            a.book.hosts.append(ServerHost(name: "h\(step)", address: "10.0.0.\(step)"))
+            try await a.sync(remotes: both, at: 2_000 + Int64(step))
+            #expect(a.failures[second] as? SyncError == .storage("cannot create files in ~/.phosphor-sync"))
+        }
+        #expect(a.state.keyGeneration == generation)
+        var fresh = try Mac("c", storages: [first])
+        fresh.state = a.state
+        fresh.book = HostBook()
+        fresh.state.forgetHistory()
+        try await fresh.sync(remotes: [first: one.remote], at: 3_000)
+        #expect(fresh.book.hosts.count == 3)
+    }
+
+    @Test("вечный замок на одном хранилище не останавливает синхронизацию через другое")
+    func stuckLock() async throws {
+        let one = try Folder(), two = try Folder()
+        let both = [first: one.remote, second: two.remote]
+        var a = try Mac("a", storages: [first, second])
+        try await a.sync(remotes: both)
+        try FileManager.default.createDirectory(atPath: two.path + "/lock", withIntermediateDirectories: true)
+        a.book.hosts.append(ServerHost(name: "db", address: "10.0.0.2"))
+        try await a.sync(remotes: both, at: 2_000)
+        #expect(a.failures[second] as? SyncError == .busy)
+        #expect(a.failures[first] == nil)
     }
 }

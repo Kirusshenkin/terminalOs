@@ -67,7 +67,11 @@ public struct SyncRemote: Sendable {
             if [ -d "$d/lock" ] && [ -n "$(find "$d/lock" -maxdepth 0 -mmin +2 2>/dev/null)" ]; then
               rmdir "$d/lock" 2>/dev/null
             fi
-            mkdir "$d/lock" 2>/dev/null || exit \(Self.busyStatus)
+            if ! mkdir "$d/lock" 2>/dev/null; then
+              # lock exists: another machine is writing; no lock: the folder is not writable
+              [ -d "$d/lock" ] && exit \(Self.busyStatus)
+              echo "cannot create files in ~/\(folder)" >&2; exit 1
+            fi
             if [ "$(cat "$d/revision" 2>/dev/null || echo 0)" != '\(expecting)' ]; then
               rmdir "$d/lock"; exit \(Self.busyStatus)
             fi

@@ -87,6 +87,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ./.github/scripts/release-notes.sh "$GITHUB_REF_NAME" "${{ steps.ver.outputs.build }}" dist > "$RUNNER_TEMP/notes.md"
+          # Описание релиза — про Phosphor, а не про чужие продукты: имя
+          # ИИ-вендора в нём означает, что заметки не вычитаны.
+          if grep -inE "claude|anthropic" "$RUNNER_TEMP/notes.md"; then
+            echo "::error::в заметках к релизу упомянут ИИ-вендор — поправь docs/releases/$GITHUB_REF_NAME.md"; exit 1
+          fi
           gh release create "$GITHUB_REF_NAME" \
             --title "Phosphor ${{ steps.ver.outputs.short }}${{ startsWith(steps.ver.outputs.short, '0.') && ' (alpha)' || '' }}" \
             --notes-file "$RUNNER_TEMP/notes.md" \

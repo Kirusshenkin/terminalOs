@@ -136,9 +136,18 @@ To the left of the terminal — a column:
 Hover over a session and hold — the last lines of its screen pop up. You see
 what the agent is asking without switching to it.
 
-Above the terminal — **split** button — up to four panes, each with its own
-session. The icon next to it changes the orientation. Splits work on server
-sessions; "this Mac" is one stream.
+Above the terminal — **split** button (⌘D) — up to four panes, each with its own
+session. The icon next to it changes the orientation. Splits work on servers and
+on this Mac (with tmux and persistent sessions on).
+
+A new pane first asks what to run: the **shell** or an agent (Codex, Gemini CLI,
+Cursor, opencode…). **Tab** and the arrows choose, **Enter** runs it, **Esc**
+keeps a plain shell. The agent runs as its own program under your subscription —
+Phosphor asks for no API keys. If it is not installed, Enter types the install
+command without running it; that is up to you.
+
+**Drag** a file or a picture onto a pane to type its path, escaped the way
+Terminal.app does it — the quickest way to hand a screenshot to an agent.
 
 If an agent (Claude Code, Codex, Aider…) in some session is waiting for an
 answer while you look elsewhere, a macOS notification arrives — clicking it
@@ -237,7 +246,7 @@ will not read anything new, but what it already downloaded stays with it.
 Phosphor can let Claude Code, Claude Desktop and other MCP clients work with
 your servers — without handing over your keys.
 
-1. **Claude Code:** open **⌘8 → access**, block "register Claude Code", click
+1. **Claude Code:** open **⌘8 → access**, block "connect an AI", click
    "copy" and run the command in a regular terminal. It looks like this:
 
    ```sh
@@ -247,6 +256,11 @@ your servers — without handing over your keys.
    `--scope user` matters: without it the bridge is only seen in the folder where
    you ran the command. The status line in the same block shows whether Claude
    Code sees the bridge everywhere, in one folder, or not at all.
+
+   **Codex, Gemini CLI, Cursor:** the same block lists each of them with its own
+   line — a command for Codex (`codex mcp add phosphor -- …`) and Gemini CLI
+   (`gemini mcp add --scope user phosphor …`), a snippet for `~/.cursor/mcp.json`
+   — and whether it sees the bridge.
 
    **Claude Desktop and other clients** — add to their settings:
 

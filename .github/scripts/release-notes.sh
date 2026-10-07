@@ -45,6 +45,11 @@ done | sort -u | paste -sd ' ' - | sed 's/ /, /g')
 
 section() { [ -n "$2" ] && printf '### %s\n\n%s\n' "$1" "$2"; }
 
+# Рукописные заметки, если есть: docs/releases/<тег>.md заменяет список
+# коммитов. Темы коммитов пишутся для истории, а не для людей, и в них
+# встречаются названия чужих продуктов, которым в описании релиза не место.
+HANDWRITTEN="docs/releases/$TAG.md"
+
 cat <<MD
 $( [[ "$VERSION" == 0.* ]] && cat <<'ALPHA'
 > [!WARNING]
@@ -62,10 +67,12 @@ Already have Phosphor? The update shows up in the app header — click it.
 
 ## Что нового · What's new
 
-$(section "Новое · Changes" "$features")
-$(section "Исправления · Fixes" "$fixes")
-$(section "Документация и план · Docs" "$docs")
-$(section "Зависимости · Dependencies" "$deps")
+$(if [ -f "$HANDWRITTEN" ]; then cat "$HANDWRITTEN"; else
+  section "Новое · Changes" "$features"
+  section "Исправления · Fixes" "$fixes"
+  section "Документация и план · Docs" "$docs"
+  section "Зависимости · Dependencies" "$deps"
+fi)
 ${PREV:+**Все изменения · Full changelog:** [\`$PREV...$TAG\`](https://github.com/$REPO/compare/$PREV...$TAG)}
 ${authors:+
 
@@ -90,7 +97,7 @@ Ad-hoc signed, not notarized — remove the quarantine as above, or right-click 
 | \`Phosphor.zip\` | приложение, постоянная ссылка на последнюю версию |
 | \`Phosphor-$VERSION.zip\` | то же приложение с версией в имени |
 | \`latest.json\` + \`.sig\` | манифест обновления и его подпись P-256 — по ним приложение обновляется само |
-| \`phosphor-mcp-$VERSION.mcpb\` | MCP-шим для клиентов (Claude Desktop и др.) |
+| \`phosphor-mcp-$VERSION.mcpb\` | MCP-шим для ИИ-клиентов · MCP shim for AI clients |
 | \`server.json\` | описание для реестра MCP (\`io.github.kirusshenkin/phosphor\`) |
 | \`SHA256SUMS.txt\` | контрольные суммы: \`shasum -a 256 -c SHA256SUMS.txt\` |
 

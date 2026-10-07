@@ -231,7 +231,7 @@ struct SessionRail: View {
                 // Без tmux постоянных сессий не бывает: шелл каждый раз
                 // начинается с нуля. Говорим это словами и сразу даём, что
                 // сделать, — иначе пустой список выглядит поломкой.
-                Text(model.strings("term.noTmux"))
+                Text(model.strings.noTmux(model.profile))
                     .font(style.font(11)).foregroundStyle(style.warning)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.leading, 22).padding(.trailing, 4)

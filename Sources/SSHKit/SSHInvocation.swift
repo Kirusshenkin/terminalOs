@@ -97,7 +97,8 @@ public enum SSHInvocation {
         if let tmuxSession, let name = tmuxSessionName(tmuxSession) {
             // exec, чтобы tmux (или откат) стал самим шеллом, а не его ребёнком.
             result.append(
-                "command -v tmux >/dev/null 2>&1 && exec tmux new-session -A -s \(name) "
+                Shell.withPackagePaths
+                    + "command -v tmux >/dev/null 2>&1 && exec tmux new-session -A -s \(name) "
                     + "|| exec \"${SHELL:-/bin/sh}\" -l")
         }
         return result

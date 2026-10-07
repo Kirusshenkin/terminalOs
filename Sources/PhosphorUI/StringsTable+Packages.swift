@@ -241,6 +241,26 @@ extension Strings {
         "recipe.needsApt": [
             .russian: "нужен apt: Ubuntu или Debian", .english: "needs apt: Ubuntu or Debian",
         ],
+        "term.noTmuxNoCommand": [
+            .russian: "на сервере нет tmux — шелл начнётся с нуля при каждом заходе. "
+                + "поставьте tmux пакетным менеджером этой системы",
+            .english: "no tmux on the server — the shell starts over on every visit. "
+                + "install tmux with this system's package manager",
+        ],
+        "recipe.needsLinux": [.russian: "только для Linux", .english: "Linux only"],
+        "prov.unsupportedOS": [
+            .russian: "автонастройка пока не поддерживает %@: рецепт написан для Ubuntu и Debian. "
+                + "Ничего не запускаю — на этой системе команды рецепта не сработают",
+            .english: "provisioning does not support %@ yet: the recipe is written for Ubuntu and Debian. "
+                + "Nothing will run — the recipe commands would not work on this system",
+        ],
+        "mon.unsupportedOS": [
+            .russian: "метрики для %@ пока не собираются — они читаются из /proc, а он есть только в Linux. "
+                + "Соединение живо: терминал, Docker и файлы работают",
+            .english: "metrics for %@ are not collected yet — they are read from /proc, "
+                + "which only Linux has. "
+                + "The connection is alive: terminal, Docker and files work",
+        ],
         "recipe.noKeys": [
             .russian: "нет ни одного ключа — закрывать пароли нельзя",
             .english: "there is no key at all — closing passwords would lock you out",

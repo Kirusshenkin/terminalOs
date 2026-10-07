@@ -1,5 +1,6 @@
 public import MetricsKit
 public import PhosphorCore
+public import ProvisionKit
 public import SessionKit
 public import SwiftUI
 
@@ -13,6 +14,11 @@ public struct MonitorView: View {
     private var strings: Strings { model.strings }
     private var snapshot: Snapshot? { model.sessionState.latest }
     private var isLive: Bool { snapshot != nil }
+    /// Профиль хоста, метрики которого не собираются: не Linux, нет /proc.
+    private var withoutMetrics: HostProfile? {
+        guard model.session != nil, let profile = model.profile, !profile.hasProcMetrics else { return nil }
+        return profile
+    }
 
     public var body: some View {
         HStack(alignment: .top, spacing: 22) {
@@ -20,6 +26,12 @@ public struct MonitorView: View {
             Rectangle().fill(style.rule).frame(width: 1)
             VStack(alignment: .leading, spacing: 12) {
                 summary
+                if let profile = withoutMetrics {
+                    Rule()
+                    Text(strings.metricsUnsupported(profile))
+                        .font(style.font(12)).foregroundStyle(style.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Rule()
                 page
                 Spacer(minLength: 0)
@@ -129,7 +141,7 @@ public struct MonitorView: View {
                 if let kernel = snapshot?.kernel, !kernel.isEmpty {
                     Text("\(strings("mon.kernel")) \(kernel)")
                         .font(style.font(11)).foregroundStyle(style.muted).lineLimit(1)
-                } else if snapshot == nil {
+                } else if snapshot == nil, withoutMetrics == nil {
                     Text(strings("mon.noLink")).font(style.font(11)).foregroundStyle(style.muted)
                 }
             }

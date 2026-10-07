@@ -8,11 +8,13 @@ public struct RecipeStep: Identifiable, Sendable, Equatable {
         case alreadyInstalled(String)
         /// Cannot run here: no apt, so not Ubuntu or Debian.
         case needsApt
+        /// Cannot run here: the commands assume Linux (systemd, sshd_config.d).
+        case needsLinux
         /// Cannot run here: closing passwords with no key locks the door.
         case noKeys
 
         /// Cannot run here at all, as opposed to not being needed.
-        public var isUnsupported: Bool { self == .needsApt || self == .noKeys }
+        public var isUnsupported: Bool { self == .needsApt || self == .needsLinux || self == .noKeys }
     }
 
     /// Stable identifier; the interface names the step by it.
@@ -205,9 +207,8 @@ public enum BuiltInRecipe {
                 "systemctl reload ssh 2>/dev/null || systemctl reload sshd",
             ],
             skipReason: { profile in
-                profile.authorizedKeyCount > 0
-                    ? nil
-                    : .noKeys
+                guard profile.osFamily == .linux else { return .needsLinux }
+                return profile.authorizedKeyCount > 0 ? nil : .noKeys
             }
         )
     }

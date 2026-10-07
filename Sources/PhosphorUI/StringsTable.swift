@@ -341,9 +341,9 @@ extension Strings {
         "term.offline": [.russian: "нет связи · клик — подключить", .english: "no link · click to connect"],
         "term.noTmux": [
             .russian: "на сервере нет tmux — шелл начнётся с нуля при каждом заходе. "
-                + "поставьте его: apt install tmux",
+                + "поставьте его: %@",
             .english: "no tmux on the server — the shell starts over on every visit. "
-                + "install it: apt install tmux",
+                + "install it: %@",
         ],
         "term.closeSpace": [.russian: "убрать спейс", .english: "close space"],
         "term.persist": [.russian: "постоянные сессии", .english: "persistent sessions"],

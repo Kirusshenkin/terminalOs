@@ -38,9 +38,16 @@ public struct ProvisionView: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(strings("prov.recipe")).font(style.font(15)).foregroundStyle(style.bright)
                 if let profile = model.profile {
-                    Text("\(profile.osName) \(profile.osVersion)")
+                    Text(profile.displayName)
                         .font(style.font(12)).foregroundStyle(style.muted)
                 }
+            }
+            if let profile = model.profile, profile.osFamily != .linux {
+                // Шесть строк «нужен apt» не объясняют главного: рецепт не для
+                // этой системы целиком.
+                Text(strings.provisionUnsupported(profile))
+                    .font(style.font(11.5)).foregroundStyle(style.warning)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Text(counter).font(style.font(11.5)).foregroundStyle(style.muted)
             Rule()
@@ -66,7 +73,7 @@ public struct ProvisionView: View {
             HStack(spacing: 8) {
                 if model.isProvisioning {
                     PhButton(strings("prov.stopAfter"), kind: .danger) { model.stopProvisioning() }
-                } else {
+                } else if model.profile?.osFamily ?? .linux == .linux {
                     PhButton(strings("provision.run"), kind: .primary) {
                         Task { await model.startProvisioning() }
                     }

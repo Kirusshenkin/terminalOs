@@ -718,7 +718,9 @@ public final class AppModel {
             scheduleSave()
         }
         // Свежий сервер предлагаем настроить один раз, а не при каждом обновлении.
-        if let hostProfile = state.profile, hostProfile.isFresh, provisionOffer == nil {
+        if let hostProfile = state.profile, hostProfile.isFresh, hostProfile.isProvisionable,
+            provisionOffer == nil
+        {
             provisionOffer = hostProfile
         }
     }

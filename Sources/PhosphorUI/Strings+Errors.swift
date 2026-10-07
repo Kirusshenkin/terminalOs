@@ -146,10 +146,27 @@ extension Strings {
         return detail.map { "\(title) · \($0)" } ?? title
     }
 
+    /// Чего пока нет на этой системе — с её именем, чтобы было ясно, о чём речь.
+    public func provisionUnsupported(_ profile: HostProfile) -> String {
+        format("prov.unsupportedOS", profile.displayName)
+    }
+
+    public func metricsUnsupported(_ profile: HostProfile) -> String {
+        format("mon.unsupportedOS", profile.displayName)
+    }
+
+    /// Подсказка «нет tmux» с командой под пакетный менеджер сервера, а не
+    /// с `apt` для всех: на Маке или Fedora она бы только запутала.
+    public func noTmux(_ profile: HostProfile?) -> String {
+        guard let command = profile?.installCommand(for: "tmux") else { return self("term.noTmuxNoCommand") }
+        return format("term.noTmux", command)
+    }
+
     public func stepSkip(_ skip: RecipeStep.Skip) -> String {
         switch skip {
         case .alreadyInstalled(let tool): format("recipe.installed", tool)
         case .needsApt: self("recipe.needsApt")
+        case .needsLinux: self("recipe.needsLinux")
         case .noKeys: self("recipe.noKeys")
         }
     }

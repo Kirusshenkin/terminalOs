@@ -88,6 +88,7 @@ public struct ServerHost: Codable, Identifiable, Hashable, Sendable {
     public var osBadge: String {
         guard let osName else { return "SRV" }
         let lower = osName.lowercased()
+        if lower.contains("macos") { return "MAC" }
         if lower.contains("ubuntu") { return "UBU" }
         if lower.contains("debian") { return "DEB" }
         if lower.contains("alpine") { return "ALP" }

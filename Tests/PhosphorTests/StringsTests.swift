@@ -106,7 +106,8 @@ struct PackageStringsTests {
         let recipe = BuiltInRecipe.base(RecipeInputs(domain: "a.example.com", email: "k@example.com"))
         // Без домена: в нём самом есть точка, и проверка ключей споткнулась бы.
         var texts = recipe.steps.map { strings.stepTitle(id: $0.id, detail: nil) }
-        texts += [RecipeStep.Skip.alreadyInstalled("docker"), .needsApt, .noKeys].map(strings.stepSkip)
+        let skips: [RecipeStep.Skip] = [.alreadyInstalled("docker"), .needsApt, .needsLinux, .noKeys]
+        texts += skips.map(strings.stepSkip)
         texts += [StepFailure.keyNotProven, .stopped, .exitCode(2)].map(strings.stepFailure)
         for text in texts {
             #expect(text.range(of: #"\b[a-z]+\.[a-zA-Z]+\b"#, options: .regularExpression) == nil, "\(text)")

@@ -161,7 +161,8 @@ public actor HostSession {
                 throw TransportError.commandFailed(status: result.status, stderr: result.stderr)
             }
             state.profile = HostProbe.parse(result.stdout)
-            if let once = try? await transport.run(ProcProbe.once, timeout: .seconds(15)),
+            let hasMetrics = state.profile?.hasProcMetrics ?? true
+            if hasMetrics, let once = try? await transport.run(ProcProbe.once, timeout: .seconds(15)),
                 once.succeeded
             {
                 let parsed = SnapshotParser.parse(once.stdout + "\n---")
@@ -172,7 +173,9 @@ public actor HostSession {
             for point in await archive.load(host: host.id) { state.history.append(point) }
             set(phase: .ready)
             startPolling()
-            startMetrics()
+            // Без /proc сбор напечатал бы пустоту, а панель выглядела бы
+            // отключённой. Monitor говорит об этом сам, по профилю.
+            if hasMetrics { startMetrics() }
         } catch {
             set(phase: .failed(Self.explain(error, host: host)))
         }

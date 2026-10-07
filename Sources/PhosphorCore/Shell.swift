@@ -10,6 +10,14 @@ public enum Shell {
         "'" + value.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
     }
 
+    /// PATH prefix for commands run over `ssh host command`.
+    ///
+    /// Such a shell is not a login shell, and on a Mac that means no Homebrew:
+    /// `/opt/homebrew/bin` is added by `~/.zprofile`, which it never reads. tmux
+    /// or Docker Desktop installed there would look absent. On Linux the extra
+    /// directories simply do not exist, so the prefix changes nothing.
+    public static let withPackagePaths = "PATH=\"$PATH:/opt/homebrew/bin:/usr/local/bin\"; "
+
     /// Joins pre-quoted arguments into one command line.
     public static func line(_ parts: [String]) -> String {
         parts.joined(separator: " ")

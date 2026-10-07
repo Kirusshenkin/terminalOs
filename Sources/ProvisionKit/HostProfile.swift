@@ -20,6 +20,43 @@ public struct HostProfile: Sendable, Equatable, Codable {
     public var containerCount: Int
     public var authorizedKeyCount: Int
     public var packageManager: String?
+    /// `uname -s`: Linux, Darwin and so on. nil in profiles cached before the
+    /// probe asked — those were all collected the Linux way.
+    public var kernelName: String?
+
+    public enum OSFamily: Sendable, Equatable {
+        case linux, darwin, other
+    }
+
+    public var osFamily: OSFamily {
+        switch kernelName?.lowercased() {
+        case nil, "linux": .linux
+        case "darwin": .darwin
+        default: .other
+        }
+    }
+
+    /// Metrics are read from `/proc`, which only Linux has. Elsewhere the
+    /// collector would print nothing and the panel would look disconnected.
+    public var hasProcMetrics: Bool { osFamily == .linux }
+
+    /// Name for people: `macOS 15.1` rather than the probe's `macos 15.1`.
+    public var displayName: String {
+        osFamily == .darwin ? "macOS \(osVersion)" : "\(osName) \(osVersion)"
+    }
+
+    /// How a person installs `package` here — for hints and the install button.
+    /// nil when the package manager is unknown: a guessed command is worse than
+    /// none, because it fails in a way that looks like our bug.
+    public func installCommand(for package: String) -> String? {
+        let sudo = isRoot ? "" : "sudo "
+        switch packageManager {
+        case "apt": return "\(sudo)apt install -y \(package)"
+        case "dnf": return "\(sudo)dnf install -y \(package)"
+        case "brew": return "brew install \(package)"
+        default: return nil
+        }
+    }
 
     /// A server nobody has moved into yet.
     ///
@@ -51,9 +88,15 @@ public struct HostProfile: Sendable, Equatable, Codable {
 /// One command that collects the whole profile, and its parser.
 public enum HostProbe {
     /// Everything in a single exec: one round trip, one channel.
-    public static let command = """
-        echo "OS $(. /etc/os-release 2>/dev/null && echo "$ID ${VERSION_ID:-?}" || echo unknown ?)"; \
-        echo "UP $(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)"; \
+    public static let command = Shell.withPackagePaths + script
+
+    private static let script = """
+        echo "KERNEL $(uname -s)"; \
+        echo "OS $(if [ -r /etc/os-release ]; then . /etc/os-release && echo "$ID ${VERSION_ID:-?}"; \
+            elif command -v sw_vers >/dev/null; then echo "macos $(sw_vers -productVersion)"; \
+            else echo unknown ?; fi)"; \
+        echo "UP $(cut -d. -f1 /proc/uptime 2>/dev/null || sysctl -n kern.boottime 2>/dev/null \
+            | awk -v now="$(date +%s)" '{gsub(",", "", $4); print now - $4}' || echo 0)"; \
         echo "ID $(id -u)"; \
         echo "SUDO $(sudo -n true 2>/dev/null && echo yes || echo no)"; \
         echo "DOCKER $(command -v docker || echo -)"; \
@@ -62,7 +105,10 @@ public enum HostProbe {
         echo "NGINX $(command -v nginx || echo -)"; \
         echo "CERTBOT $(command -v certbot || echo -)"; \
         echo "UFW $(command -v ufw || echo -)"; \
-        echo "PKG $(command -v apt-get >/dev/null && echo apt || (command -v dnf >/dev/null && echo dnf) || echo -)"; \
+        echo "PKG $(if command -v apt-get >/dev/null; then echo apt; \
+            elif command -v dnf >/dev/null; then echo dnf; \
+            elif command -v brew >/dev/null || [ -x /opt/homebrew/bin/brew ] || [ -x /usr/local/bin/brew ]; \
+            then echo brew; else echo -; fi)"; \
         echo "CONTAINERS $( (docker ps -aq 2>/dev/null || sudo -n docker ps -aq 2>/dev/null) | wc -l | tr -d ' ')"; \
         echo "KEYS $(grep -cvE '^\\s*(#|$)' ~/.ssh/authorized_keys 2>/dev/null || echo 0)"
         """
@@ -96,7 +142,8 @@ public enum HostProbe {
             hasUFW: values["UFW"].map { $0 != "-" } ?? false,
             containerCount: Int(values["CONTAINERS"] ?? "0") ?? 0,
             authorizedKeyCount: Int(values["KEYS"] ?? "0") ?? 0,
-            packageManager: values["PKG"].flatMap { $0 == "-" ? nil : $0 }
+            packageManager: values["PKG"].flatMap { $0 == "-" ? nil : $0 },
+            kernelName: values["KERNEL"].flatMap { $0.isEmpty ? nil : $0 }
         )
     }
 }

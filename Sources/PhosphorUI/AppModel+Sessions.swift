@@ -19,7 +19,7 @@ extension AppModel {
             hasTmux = true
             return
         }
-        let result = try? await session.run(Self.pollCommand())
+        let result = try? await session.run(Shell.withPackagePaths + Self.pollCommand())
         let output = result?.stdout ?? ""
         // Команда не дошла — это про связь, а не про tmux: прежний ответ не
         // опровергнут, и пугать отсутствием tmux не за что.
@@ -505,7 +505,8 @@ extension AppModel {
         // Поверхность гасим до убийства сессии: за ней стоит ssh, который иначе
         // остался бы висеть с мёртвым tmux на той стороне.
         if let destination = destination(session: name) { surfaces.discard(destination) }
-        _ = try? await session.run("tmux kill-session -t \(Shell.quote(name)) 2>/dev/null || true")
+        _ = try? await session.run(
+            Shell.withPackagePaths + "tmux kill-session -t \(Shell.quote(name)) 2>/dev/null || true")
         if terminalSession == name { terminalSession = nil }
         extraSessions.removeAll { $0 == name }
         saveLayout()

@@ -96,7 +96,7 @@ extension AppModel {
             spaceTransport(for: id).map { (id, $0) }
         }
         guard !targets.isEmpty else { return }
-        let command = Self.pollCommand()
+        let command = Shell.withPackagePaths + Self.pollCommand()
         let results = await withTaskGroup(of: (ServerHost.ID, String?).self) { group in
             for (id, transport) in targets {
                 group.addTask {

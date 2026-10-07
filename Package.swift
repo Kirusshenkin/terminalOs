@@ -61,6 +61,10 @@ let package = Package(
         // it is tested without a window.
         .target(name: "PetKit", swiftSettings: strict),
 
+        // Sync between the person's own machines: records, merge, machine keys.
+        // No network and no files here — the transport comes separately.
+        .target(name: "SyncKit", swiftSettings: strict),
+
         // Terminal emulator wiring: local PTY and remote channels.
         .target(
             name: "TerminalCore",
@@ -108,7 +112,7 @@ let package = Package(
             dependencies: [
                 "PhosphorCore", "VaultKit", "AuthKit", "HostsKit", "SSHKit",
                 "DockerKit", "MetricsKit", "KeysKit", "ThemeKit",
-                "ProvisionKit", "SessionKit", "MCPBridge", "PhosphorUI", "PetKit",
+                "ProvisionKit", "SessionKit", "MCPBridge", "PhosphorUI", "PetKit", "SyncKit",
             ],
             swiftSettings: strict
         ),

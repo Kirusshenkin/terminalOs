@@ -174,7 +174,7 @@ public struct RecipeInputs: Sendable, Equatable {
 public enum BuiltInRecipe {
     /// Every built-in recipe, in the order the interface offers them.
     public static func all(_ inputs: RecipeInputs) -> [Recipe] {
-        [base(inputs), dockerOnly(), keys(inputs)]
+        [base(inputs), dockerOnly(), mac(), keys(inputs)]
     }
 
     /// The recipe that gets run on every new server.
@@ -205,6 +205,29 @@ public enum BuiltInRecipe {
             requirement: RecipeRequirement(families: [.linux, .darwin]))
     }
 
+
+    /// A Mac in the role of a server: tmux, Docker through Colima, and
+    /// password login closed.
+    ///
+    /// Homebrew is required, not installed: its installer asks for a password
+    /// through sudo, and there is nobody to answer it mid-run. Brew refuses to
+    /// run as root, so its steps run as the connecting user.
+    public static func mac() -> Recipe {
+        Recipe(
+            id: "mac", name: "mac",
+            steps: [
+                RecipeStep(
+                    id: "mac.tmux", commands: ["brew install tmux"], check: "command -v tmux", asUser: true),
+                // Docker Desktop без окна не ставится и не запускается; Colima —
+                // тот же docker, но поднимается из командной строки.
+                RecipeStep(
+                    id: "mac.docker", commands: ["brew install colima docker", "colima start"],
+                    check: "docker info >/dev/null 2>&1", asUser: true),
+                closeMacPasswords(),
+            ],
+            requirement: RecipeRequirement(families: [.darwin], packageManagers: ["brew"]),
+            mustSucceed: [])
+    }
     private static let aptLinux = RecipeRequirement(families: [.linux], packageManagers: ["apt"])
 
     /// Steps that require an independent key-based login before they run:
@@ -380,14 +403,18 @@ public enum BuiltInRecipe {
         )
     }
 
+    /// The drop-in that closes password login; Linux and macOS both read it.
+    private static let passwordsOff = [
+        "mkdir -p /etc/ssh/sshd_config.d",
+        "printf 'PasswordAuthentication no\\nKbdInteractiveAuthentication no\\n"
+            + "PermitRootLogin prohibit-password\\n'"
+            + " > /etc/ssh/sshd_config.d/10-phosphor.conf",
+    ]
+
     private static func closePasswords() -> RecipeStep {
         RecipeStep(
             id: "passwords",
-            commands: [
-                "mkdir -p /etc/ssh/sshd_config.d",
-                "printf 'PasswordAuthentication no\\nKbdInteractiveAuthentication no\\n"
-                    + "PermitRootLogin prohibit-password\\n'"
-                    + " > /etc/ssh/sshd_config.d/10-phosphor.conf",
+            commands: passwordsOff + [
                 "sshd -t",
                 "systemctl reload ssh 2>/dev/null || systemctl reload sshd",
             ],
@@ -395,6 +422,18 @@ public enum BuiltInRecipe {
                 guard profile.osFamily == .linux else { return .needsLinux }
                 return profile.authorizedKeyCount > 0 ? nil : .noKeys
             }
+        )
+    }
+
+    /// The same door closed the macOS way. sshd here starts per connection from
+    /// launchd and reads `sshd_config.d` each time, so nothing is reloaded: the
+    /// next login already sees the file. Same id as on Linux — same meaning, and
+    /// the same proof by a second key login before it runs.
+    private static func closeMacPasswords() -> RecipeStep {
+        RecipeStep(
+            id: "passwords",
+            commands: passwordsOff + ["/usr/sbin/sshd -t"],
+            skipReason: { profile in profile.authorizedKeyCount > 0 ? nil : .noKeys }
         )
     }
 }

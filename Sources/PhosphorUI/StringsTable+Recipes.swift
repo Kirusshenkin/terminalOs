@@ -7,6 +7,11 @@ extension Strings {
         "recipe.name.base": [.russian: "база", .english: "base"],
         "recipe.name.docker": [.russian: "только Docker", .english: "Docker only"],
         "recipe.name.keys": [.russian: "мои ключи", .english: "my keys"],
+        "recipe.name.mac": [.russian: "Мак-сервер", .english: "Mac server"],
+        "recipe.mac.tmux": [.russian: "tmux через Homebrew", .english: "tmux via Homebrew"],
+        "recipe.mac.docker": [
+            .russian: "Docker через Colima (без Docker Desktop)", .english: "Docker via Colima (no Docker Desktop)",
+        ],
         "recipe.keys.add": [.russian: "добавить выбранные ключи", .english: "add the chosen keys"],
         "recipe.keys.prune": [.russian: "убрать все остальные ключи", .english: "remove every other key"],
         "recipe.alreadyDone": [.russian: "уже сделано", .english: "already done"],

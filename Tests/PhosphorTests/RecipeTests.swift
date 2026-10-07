@@ -134,6 +134,33 @@ struct RecipeStoreTests {
 struct BuiltInRecipeTests {
     private let key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh you@mac"
 
+    @Test("Мак-сервер: только для мака с Homebrew, brew — не от root")
+    func macRecipe() {
+        let recipe = BuiltInRecipe.mac()
+        #expect(recipe.steps.map(\.id) == ["mac.tmux", "mac.docker", "passwords"])
+        #expect(recipe.applies(to: profile(family: "Darwin", manager: "brew")))
+        #expect(!recipe.applies(to: profile(family: "Darwin", manager: nil)), "без Homebrew ставить нечем")
+        #expect(!recipe.applies(to: profile()))
+        // Homebrew отказывается работать от root: его шаги — от пользователя,
+        // и обычный пользователь без sudo их тоже выполнит.
+        let plain = profile(family: "Darwin", manager: "brew", root: false, sudo: false)
+        let plan = recipe.plan(for: plain)
+        #expect(plan.filter { $0.step.id.hasPrefix("mac.") }.allSatisfy { $0.step.asUser && $0.skip == nil })
+        #expect(plan.last?.skip == .needsRoot)
+    }
+
+    @Test("пароли на маке закрываются без systemctl, а ключ проверяется заранее")
+    func macPasswords() throws {
+        let step = try #require(BuiltInRecipe.mac().steps.last)
+        #expect(BuiltInRecipe.needsKeyProof.contains(step.id))
+        #expect(!step.commands.contains { $0.contains("systemctl") })
+        #expect(step.commands.contains { $0.contains("10-phosphor.conf") })
+        #expect(step.skipReason(profile(family: "Darwin", manager: "brew")) == nil)
+        var keyless = profile(family: "Darwin", manager: "brew")
+        keyless.authorizedKeyCount = 0
+        #expect(step.skipReason(keyless) == .noKeys)
+    }
+
     @Test("только Docker — пакеты и Docker, для apt")
     func dockerOnly() {
         let recipe = BuiltInRecipe.dockerOnly()

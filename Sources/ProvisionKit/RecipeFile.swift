@@ -50,7 +50,7 @@ public struct RecipeFile: Codable, Sendable, Equatable {
     static let maxTitleLength = 80
     static let maxFileSize = 256 * 1024
     static let packageManagers: Set = ["apt", "dnf", "brew"]
-    static let reservedIDs: Set = ["base", "docker", "keys"]
+    static let reservedIDs: Set = ["base", "docker", "keys", "mac"]
 
     /// Reads and validates a recipe file. The message of each error names the
     /// field, so a person can fix the file without reading this code.

@@ -6,7 +6,8 @@
 
 Рецепт — это список шагов, которые Phosphor выполняет на сервере по одной
 кнопке. Встроенные: **база** (пакеты, Docker, nginx, certbot, UFW, закрытие
-паролей), **только Docker** и **мои ключи** (добавить выбранные ключи и, по
+паролей), **только Docker**, **Мак-сервер** (tmux и Docker через Colima из
+Homebrew, закрытие паролей) и **мои ключи** (добавить выбранные ключи и, по
 желанию, убрать все остальные).
 
 Свой рецепт — это файл `.json`. Импорт: экран «Настройка» → **импорт…**.
@@ -31,7 +32,7 @@
 | Поле | Что значит |
 |---|---|
 | `format` | Всегда `1`. Файл другого формата отклоняется. |
-| `id` | Строчные латинские буквы, цифры, дефис; до 40 знаков. `base`, `docker`, `keys` заняты. |
+| `id` | Строчные латинские буквы, цифры, дефис; до 40 знаков. `base`, `docker`, `keys`, `mac` заняты. |
 | `name` | Как рецепт называется на экране, до 80 знаков. |
 | `requires.os` | `linux`, `darwin`. Пусто — любая система. |
 | `requires.packageManager` | `apt`, `dnf`, `brew`. Пусто — любой. |
@@ -50,7 +51,8 @@
 
 A recipe is a list of steps Phosphor runs on a server with one button.
 Built in: **base** (packages, Docker, nginx, certbot, UFW, closing password
-login), **Docker only** and **my keys** (add the chosen keys and, optionally,
+login), **Docker only**, **Mac server** (tmux and Docker via Colima from
+Homebrew, closing password login) and **my keys** (add the chosen keys and, optionally,
 remove every other one).
 
 Your own recipe is a `.json` file. Import it from Setup → **import…**. Files
@@ -63,7 +65,7 @@ The format is the one shown above:
 | Field | Meaning |
 |---|---|
 | `format` | Always `1`. Any other format is refused. |
-| `id` | Lowercase letters, digits, hyphens; up to 40. `base`, `docker`, `keys` are taken. |
+| `id` | Lowercase letters, digits, hyphens; up to 40. `base`, `docker`, `keys`, `mac` are taken. |
 | `name` | The name on screen, up to 80 characters. |
 | `requires.os` | `linux`, `darwin`. Empty means any system. |
 | `requires.packageManager` | `apt`, `dnf`, `brew`. Empty means any. |

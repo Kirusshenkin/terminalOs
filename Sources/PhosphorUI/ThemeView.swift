@@ -20,9 +20,6 @@ public struct ThemeView: View {
             page
             preview.frame(width: 320)
         }
-        .sheet(item: $model.profilePrompt) { prompt in
-            PassphraseSheet(model: model, prompt: prompt)
-        }
     }
 
     @ViewBuilder private var page: some View {

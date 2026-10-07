@@ -5,11 +5,11 @@ public import SwiftUI
 /// а не диалог с вкладками.
 public struct GroupEditor: View {
     @Environment(\.style) private var style
-    @Environment(\.dismiss) private var dismiss
     @Bindable var model: AppModel
     private var strings: Strings { model.strings }
     private let editing: HostGroup?
     @State private var name: String
+    @FocusState private var nameFocused: Bool
 
     public init(model: AppModel, editing: HostGroup? = nil) {
         self.model = model
@@ -30,9 +30,10 @@ public struct GroupEditor: View {
                 .padding(.horizontal, 10).padding(.vertical, 7)
                 .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))
                 .onSubmit(save)
+                .focused($nameFocused)
             HStack(spacing: 8) {
                 Spacer()
-                PhButton(strings("common.cancel")) { dismiss() }
+                PhButton(strings("common.cancel")) { close() }
                 PhButton(strings("common.save"), kind: .primary, action: save)
                     .disabled(trimmed.isEmpty)
                     .opacity(trimmed.isEmpty ? 0.4 : 1)
@@ -41,6 +42,13 @@ public struct GroupEditor: View {
         .padding(18)
         .frame(width: 360)
         .background(style.surface)
+        .unsavedInput(trimmed != (editing?.name ?? ""))
+        .onAppear { nameFocused = true }
+    }
+
+    private func close() {
+        model.isAddingGroup = false
+        model.editingGroup = nil
     }
 
     private func save() {
@@ -50,6 +58,6 @@ public struct GroupEditor: View {
         } else {
             model.addGroup(named: trimmed)
         }
-        dismiss()
+        close()
     }
 }

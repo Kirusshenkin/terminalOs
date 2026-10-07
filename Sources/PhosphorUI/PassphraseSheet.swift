@@ -7,12 +7,12 @@ public import SwiftUI
 /// опечатка здесь означает файл, который потом не открыть.
 struct PassphraseSheet: View {
     @Environment(\.style) private var style
-    @Environment(\.dismiss) private var dismiss
     @Bindable var model: AppModel
     let prompt: AppModel.ProfilePrompt
 
     @State private var passphrase = ""
     @State private var confirm = ""
+    @FocusState private var phraseFocused: Bool
 
     private var isExport: Bool {
         if case .export = prompt { return true }
@@ -31,6 +31,7 @@ struct PassphraseSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             field(model.strings("profile.passphrase"), text: $passphrase)
+                .focused($phraseFocused)
             if isExport {
                 field(model.strings("profile.passphraseAgain"), text: $confirm)
                 if !confirm.isEmpty, passphrase != confirm {
@@ -41,7 +42,7 @@ struct PassphraseSheet: View {
 
             HStack(spacing: 8) {
                 Spacer()
-                PhButton(model.strings("common.cancel")) { dismiss() }
+                PhButton(model.strings("common.cancel")) { model.profilePrompt = nil }
                 PhButton(
                     model.strings(isExport ? "profile.export" : "profile.import"),
                     kind: .primary
@@ -55,6 +56,8 @@ struct PassphraseSheet: View {
         .padding(18)
         .frame(width: 380)
         .background(style.surface)
+        .unsavedInput(!passphrase.isEmpty || !confirm.isEmpty)
+        .onAppear { phraseFocused = true }
     }
 
     private func field(_ title: String, text: Binding<String>) -> some View {
@@ -68,7 +71,7 @@ struct PassphraseSheet: View {
 
     private func run() {
         let phrase = passphrase
-        dismiss()
+        model.profilePrompt = nil
         switch prompt {
         case .export:
             Task { await model.performExport(passphrase: phrase) }

@@ -167,6 +167,10 @@ extension Strings {
         "prov.log": [.russian: "лог", .english: "log"],
         "common.whatGoes": [.russian: "что уйдёт на сервер", .english: "what goes to the server"],
         "common.close": [.russian: "закрыть", .english: "close"],
+        "modal.unsaved": [
+            .russian: "Есть несохранённый ввод: «сохранить» или «отмена» (Esc).",
+            .english: "There is unsaved input: save, or cancel (Esc).",
+        ],
         "act.tools": [.russian: "инструменты", .english: "tools"],
         "act.toolsNote": [
             .russian:

@@ -22,7 +22,7 @@ public struct RootView: View {
             // Меню живёт вне окна; модель ему отдаётся только пока окно открыто
             // и разблокировано — за замком клавиши ничего делать не должны.
             .focusedSceneValue(\.appModel, model.isUnlocked ? model : nil)
-            .modifier(Sheets(model: model))
+            .modifier(WindowModals(model: model))
             .modifier(Alerts(model: model))
             .task { await model.startBridge() }
             // Релизы проверяются и до входа: обновление не требует профиля.
@@ -33,7 +33,9 @@ public struct RootView: View {
                 }
                 Button(model.strings("common.cancel"), role: .cancel) {}
             } message: {
-                Text("\(model.updateWouldInterrupt.joined(separator: ", ")) · \(model.strings("upd.interruptBody"))")
+                Text(
+                    "\(model.updateWouldInterrupt.joined(separator: ", ")) · \(model.strings("upd.interruptBody"))"
+                )
             }
             // Опрос замирает, когда на окно никто не смотрит: терминал открыт
             // весь день, и фоновому окну незачем будить процессор.
@@ -53,26 +55,6 @@ public struct RootView: View {
                 await model.unlock()
                 return model.isUnlocked
             }
-        }
-    }
-
-    /// Формы поверх окна.
-    private struct Sheets: ViewModifier {
-        @Bindable var model: AppModel
-
-        func body(content: Content) -> some View {
-            content
-                .sheet(isPresented: $model.isAddingHost) { HostEditor(model: model) }
-                .sheet(isPresented: $model.isQuickConnectOpen) { QuickConnect(model: model) }
-                .sheet(item: $model.editingHost) { host in
-                    HostEditor(model: model, editing: host)
-                }
-                .sheet(isPresented: $model.isAddingGroup) {
-                    GroupEditor(model: model)
-                }
-                .sheet(item: $model.editingGroup) { group in
-                    GroupEditor(model: model, editing: group)
-                }
         }
     }
 

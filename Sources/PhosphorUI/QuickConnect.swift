@@ -8,7 +8,6 @@ public import SwiftUI
 /// поле быстрого подключения там же.
 struct QuickConnect: View {
     @Environment(\.style) private var style
-    @Environment(\.dismiss) private var dismiss
     @Bindable var model: AppModel
     @State private var query = ""
     @State private var highlighted = 0
@@ -41,7 +40,7 @@ struct QuickConnect: View {
                 .onKeyPress(.downArrow) { move(1) }
                 .onKeyPress(.upArrow) { move(-1) }
                 .onKeyPress(.escape) {
-                    dismiss()
+                    model.isQuickConnectOpen = false
                     return .handled
                 }
                 .onChange(of: query) { highlighted = 0 }
@@ -98,7 +97,7 @@ struct QuickConnect: View {
 
     private func connect() {
         guard let host = target else { return }
-        dismiss()
+        model.isQuickConnectOpen = false
         model.screen = .terminal
         Task { await model.connect(to: host) }
     }

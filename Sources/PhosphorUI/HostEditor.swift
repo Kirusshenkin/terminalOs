@@ -22,6 +22,10 @@ public struct HostEditor: View {
     @State private var bastionID: ServerHost.ID?
     /// Путь к ключу. nil — ключ выбирает ssh: ключи по умолчанию и агент.
     @State private var identityFile: String?
+    /// Поля в момент открытия: отличие от них — несохранённый ввод, и клик
+    /// мимо окна его не выбрасывает (#27).
+    @State private var initial: [String]?
+    @FocusState private var addressFocused: Bool
 
     private enum ReachKind: String, CaseIterable {
         case direct, socks, jump
@@ -95,6 +99,7 @@ public struct HostEditor: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 field(strings("host.address"), text: $address, placeholder: strings("host.addressHint"))
+                    .focused($addressFocused)
                 HStack(spacing: 10) {
                     field(strings("host.user"), text: $user)
                     field(strings("host.port"), text: $port).frame(width: 110)
@@ -133,6 +138,21 @@ public struct HostEditor: View {
         // минуту назад в терминале, должен уже быть в списке.
         .task { model.loadLocalKeys() }
         .background(style.background)
+        .onAppear {
+            initial = initial ?? current
+            // Окно — не системный лист и само поле не выбирает: без этого ввод
+            // ушёл бы в терминал под ним.
+            addressFocused = true
+        }
+        .unsavedInput(initial.map { $0 != current } ?? false)
+    }
+
+    private var current: [String] {
+        [
+            name, address, user, port, tags, groupID?.uuidString ?? "", reachKind.rawValue, proxyHost,
+            proxyPort,
+            bastionID?.uuidString ?? "", identityFile ?? "",
+        ]
     }
 
     private func field(

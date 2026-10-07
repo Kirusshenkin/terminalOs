@@ -30,7 +30,6 @@ public struct ProvisionView: View {
                 output
             }
         }
-        .sheet(isPresented: $model.showsPlannedCommands) { plannedSheet }
         .task {
             model.loadLocalKeys()
             await model.loadRecipes()
@@ -132,8 +131,46 @@ public struct ProvisionView: View {
         }
     }
 
-    /// Точный список команд до запуска: согласиться вслепую здесь нельзя.
-    private var plannedSheet: some View {
+    private func mark(_ status: StepProgress.Status) -> String {
+        switch status {
+        case .waiting: "·"
+        case .running: "▸"
+        case .done: "✓"
+        case .skipped: "="
+        case .failed: "✗"
+        }
+    }
+
+    private func colour(_ status: StepProgress.Status) -> Color {
+        switch status {
+        case .waiting: style.muted
+        case .running: style.bright
+        case .done: style.text
+        case .skipped: style.muted
+        case .failed: style.warning
+        }
+    }
+
+    private func note(_ status: StepProgress.Status) -> String {
+        switch status {
+        case .waiting: strings("provision.waiting")
+        case .running: strings("provision.running")
+        case .done: strings("provision.done")
+        case .skipped(let skip): strings.stepSkip(skip)
+        case .failed(let failure): strings.stepFailure(failure)
+        }
+    }
+}
+
+/// Точный список команд до запуска: согласиться вслепую здесь нельзя.
+///
+/// Лёгкое окно (#27): терять здесь нечего, поэтому закрывается кликом мимо.
+struct PlannedCommands: View {
+    @Environment(\.style) private var style
+    @Bindable var model: AppModel
+    private var strings: Strings { model.strings }
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(strings("common.whatGoes")).font(style.font(15)).foregroundStyle(style.bright)
             ScrollView {
@@ -175,35 +212,5 @@ public struct ProvisionView: View {
         .padding(22)
         .frame(width: 760, height: 520)
         .background(style.background)
-    }
-
-    private func mark(_ status: StepProgress.Status) -> String {
-        switch status {
-        case .waiting: "·"
-        case .running: "▸"
-        case .done: "✓"
-        case .skipped: "="
-        case .failed: "✗"
-        }
-    }
-
-    private func colour(_ status: StepProgress.Status) -> Color {
-        switch status {
-        case .waiting: style.muted
-        case .running: style.bright
-        case .done: style.text
-        case .skipped: style.muted
-        case .failed: style.warning
-        }
-    }
-
-    private func note(_ status: StepProgress.Status) -> String {
-        switch status {
-        case .waiting: strings("provision.waiting")
-        case .running: strings("provision.running")
-        case .done: strings("provision.done")
-        case .skipped(let skip): strings.stepSkip(skip)
-        case .failed(let failure): strings.stepFailure(failure)
-        }
     }
 }

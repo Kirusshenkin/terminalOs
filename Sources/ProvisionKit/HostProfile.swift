@@ -48,9 +48,16 @@ public struct HostProfile: Sendable, Equatable, Codable {
     /// How a person installs `package` here — for hints and the install button.
     /// nil when the package manager is unknown: a guessed command is worse than
     /// none, because it fails in a way that looks like our bug.
-    public func installCommand(for package: String) -> String? {
-        let sudo = isRoot ? "" : "sudo "
+    /// `interactive: false` — for running it ourselves: `sudo -n` refuses at
+    /// once instead of waiting for a password nobody can type.
+    public func installCommand(for package: String, interactive: Bool = true) -> String? {
+        let sudo = isRoot ? "" : interactive ? "sudo " : "sudo -n "
         switch packageManager {
+        case "apt" where !interactive:
+            // Без человека у терминала: свежий сервер ещё без списков пакетов,
+            // а debconf не должен ничего спрашивать.
+            return "\(sudo)apt-get update -qq && "
+                + "\(sudo)env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \(package)"
         case "apt": return "\(sudo)apt install -y \(package)"
         case "dnf": return "\(sudo)dnf install -y \(package)"
         case "brew": return "brew install \(package)"

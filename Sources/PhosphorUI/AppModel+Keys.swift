@@ -37,8 +37,15 @@ extension AppModel {
         let manager = KeyManager(
             transport: SystemSSHTransport(host: host, route: book.route(for: host)))
         do {
+            let before = Set(serverKeys.map(\.fingerprint))
             serverKeys = try await manager.add(
                 line: newKeyLine, to: serverKeys, currentFingerprint: myFingerprint)
+            // Дата добавления есть только у ключей, прошедших через нас: файл
+            // её не хранит. Новые — те, которых не было до записи.
+            for key in serverKeys where !before.contains(key.fingerprint) {
+                book.recordKeyAdded(fingerprint: key.fingerprint, host: host.id)
+            }
+            scheduleSave()
             newKeyLine = ""
             isAddingKey = false
             keysError = nil
@@ -72,6 +79,8 @@ extension AppModel {
                 ids: [key.id], from: serverKeys,
                 currentFingerprint: force ? nil : myFingerprint
             )
+            book.forgetKey(fingerprint: key.fingerprint, host: host.id)
+            scheduleSave()
             keysError = nil
         } catch KeyManager.KeyError.wouldLockOut {
             keysError = strings("keys.lastKey")

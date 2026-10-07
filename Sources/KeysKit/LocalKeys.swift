@@ -18,10 +18,13 @@ public struct LocalKey: Identifiable, Hashable, Sendable {
     public var bits: Int?
     /// Whether the private half is present next to the `.pub`.
     public var hasPrivate: Bool
+    /// When the pair appeared: the creation date of the `.pub`. nil when the
+    /// file system does not say.
+    public var created: Date?
 
     public init(
         id: String, name: String, algorithm: String, comment: String?,
-        fingerprint: String, bits: Int?, hasPrivate: Bool
+        fingerprint: String, bits: Int?, hasPrivate: Bool, created: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -30,6 +33,7 @@ public struct LocalKey: Identifiable, Hashable, Sendable {
         self.fingerprint = fingerprint
         self.bits = bits
         self.hasPrivate = hasPrivate
+        self.created = created
     }
 
     /// Keys we would rather you replaced.
@@ -42,7 +46,7 @@ public enum LocalKeys {
     /// Turns one `.pub` file into a key. Pure: takes the contents, not a path,
     /// so it can be tested without touching disk.
     public static func parse(
-        privatePath: String, publicText: String, hasPrivate: Bool
+        privatePath: String, publicText: String, hasPrivate: Bool, created: Date? = nil
     ) -> LocalKey? {
         // A `.pub` file is a single authorized_keys line, so reuse that parser.
         guard let parsed = AuthorizedKeysFile.parse(publicText).first else { return nil }
@@ -54,7 +58,8 @@ public enum LocalKeys {
             comment: parsed.comment,
             fingerprint: parsed.fingerprint,
             bits: parsed.bits,
-            hasPrivate: hasPrivate
+            hasPrivate: hasPrivate,
+            created: created
         )
     }
 
@@ -74,7 +79,10 @@ public enum LocalKeys {
             return parse(
                 privatePath: privatePath,
                 publicText: text,
-                hasPrivate: manager.fileExists(atPath: privatePath)
+                hasPrivate: manager.fileExists(atPath: privatePath),
+                // The date is a detail, not a condition for showing the key, so a
+                // missing one is not an error.
+                created: (try? manager.attributesOfItem(atPath: pubPath))?[.creationDate] as? Date
             )
         }
     }

@@ -7,6 +7,8 @@ public import SwiftUI
 public struct LocalKeysView: View {
     @Environment(\.style) private var style
     @Bindable var model: AppModel
+    /// Новые сверху — чтобы найти только что созданную пару; иначе по имени.
+    @State private var newestFirst = false
 
     public init(model: AppModel) { self.model = model }
     private var strings: Strings { model.strings }
@@ -26,12 +28,16 @@ public struct LocalKeysView: View {
             HStack {
                 Text(strings("keys.local")).font(style.font(15)).foregroundStyle(style.bright)
                 Text("~/.ssh").font(style.font(11.5)).foregroundStyle(style.muted)
+                Spacer()
+                Button(strings(newestFirst ? "keys.sortNewest" : "keys.sortName")) { newestFirst.toggle() }
+                    .buttonStyle(PressFeedback())
+                    .font(style.font(11)).foregroundStyle(style.muted)
             }
             if model.localKeys.isEmpty {
                 Text(strings("keys.noPairs"))
                     .font(style.font(12)).foregroundStyle(style.muted)
             }
-            ForEach(model.localKeys) { key in
+            ForEach(sortedKeys) { key in
                 HStack(spacing: 10) {
                     Text(key.name)
                         .font(style.font(12.5)).foregroundStyle(style.text)
@@ -39,6 +45,9 @@ public struct LocalKeysView: View {
                     Text(key.algorithm + (key.bits.map { " · \($0)b" } ?? ""))
                         .font(style.font(11)).foregroundStyle(style.muted)
                         .frame(width: 150, alignment: .leading)
+                    Text(key.created.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "—")
+                        .font(style.font(11)).foregroundStyle(style.muted)
+                        .frame(width: 110, alignment: .leading)
                     Text(key.comment ?? "—")
                         .font(style.font(11.5)).foregroundStyle(style.muted)
                         .frame(maxWidth: .infinity, alignment: .leading).lineLimit(1)
@@ -62,5 +71,13 @@ public struct LocalKeysView: View {
                 }
             }
         }
+    }
+}
+
+extension LocalKeysView {
+    /// Ключи без даты уходят в конец: про них известно меньше всего.
+    fileprivate var sortedKeys: [LocalKey] {
+        guard newestFirst else { return model.localKeys }
+        return model.localKeys.sorted { ($0.created ?? .distantPast) > ($1.created ?? .distantPast) }
     }
 }

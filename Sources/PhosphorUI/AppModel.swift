@@ -309,6 +309,12 @@ public final class AppModel {
     /// Путь к tmux на этом Маке. nil — его тут нет, и локальные сессии
     /// перезапуск не переживут. Ищется фактом при запуске.
     public internal(set) var localTmuxPath: String?
+    /// Установка tmux, ждущая согласия: команда показана, ещё не запущена.
+    public var pendingTmuxInstall: TmuxInstall?
+    /// Где tmux ставится прямо сейчас. Пока он ставится, кнопка не жмётся дважды.
+    public internal(set) var tmuxInstalling: TmuxInstall.Target?
+    /// Чем кончилась последняя установка — словами для рейла. nil — нечего сказать.
+    public internal(set) var tmuxInstallNote: TmuxInstall.Outcome?
     /// Живые локальные сессии — те же, что у сервера, только здесь. У herdr
     /// локальные рабочие пространства стоят в одном списке с серверными.
     public internal(set) var localSessions: [TmuxSession] = []

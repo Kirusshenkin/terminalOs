@@ -350,6 +350,11 @@ public actor HostSession {
         return result.stdout
     }
 
+    /// Долгие команды — установка пакета — со своим потолком ожидания.
+    public func run(_ command: String, timeout: Duration) async throws -> CommandResult {
+        try await transport.run(command, timeout: timeout)
+    }
+
     public func run(_ command: String) async throws -> CommandResult {
         try await transport.run(command)
     }

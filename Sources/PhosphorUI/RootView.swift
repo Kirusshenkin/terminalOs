@@ -123,6 +123,21 @@ public struct RootView: View {
                         secondaryButton: .cancel(Text(model.strings("common.cancel")))
                     )
                 }
+                // Команда видна целиком до запуска: скрытых действий нет.
+                .alert(item: $model.pendingTmuxInstall) { install in
+                    Alert(
+                        title: Text(model.strings("tmux.confirmTitle")),
+                        message: Text(
+                            model.strings(install.needsPassword ? "tmux.confirmCopy" : "tmux.confirmRun")
+                                + "\n\n" + install.command),
+                        primaryButton: .default(
+                            Text(model.strings(install.needsPassword ? "tmux.copy" : "tmux.run"))
+                        ) {
+                            Task { await model.confirmTmuxInstall(install) }
+                        },
+                        secondaryButton: .cancel(Text(model.strings("common.cancel")))
+                    )
+                }
                 .alert(item: $model.pendingAction) { pending in
                     Alert(
                         title: Text(

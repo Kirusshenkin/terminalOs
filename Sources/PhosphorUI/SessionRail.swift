@@ -117,6 +117,8 @@ struct SessionRail: View {
                 .padding(.horizontal, 12)
         }
 
+        tmuxInstallRow(.local, available: model.localTmuxPath == nil)
+            .padding(.horizontal, 12)
         if addingLocal { editor(create: createLocal) }
 
         VStack(alignment: .leading, spacing: 2) {
@@ -223,6 +225,38 @@ struct SessionRail: View {
         }
     }
 
+    /// Ставить tmux на сервер есть смысл, только если его нет и известно чем.
+    private var canInstallRemoteTmux: Bool {
+        !model.hasTmux && model.profile?.installCommand(for: "tmux") != nil
+    }
+
+    /// Кнопка «поставить tmux» под подсказкой и итог установки. Итог живёт и
+    /// после успеха, когда подсказка уже исчезла: иначе непонятно, что случилось.
+    @ViewBuilder private func tmuxInstallRow(_ target: TmuxInstall.Target, available: Bool) -> some View {
+        if model.tmuxInstalling == target {
+            Text(model.strings("tmux.installing"))
+                .font(style.font(11)).foregroundStyle(style.muted)
+        } else if available {
+            Button {
+                model.offerTmuxInstall(target)
+            } label: {
+                Text(model.strings("tmux.install"))
+                    .font(style.font(11)).foregroundStyle(style.accent)
+                    .padding(.horizontal, 8).padding(.vertical, 2)
+                    .overlay(Rectangle().stroke(style.accent.opacity(0.5), lineWidth: 1))
+            }
+            .buttonStyle(PressFeedback())
+            .disabled(model.tmuxInstalling != nil)
+        }
+        if let outcome = model.tmuxInstallNote, outcome.target == target {
+            Text(model.strings.tmuxInstallNote(outcome.note))
+                .font(style.font(11))
+                .foregroundStyle(outcome.note == .installed ? style.muted : style.warning)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        }
+    }
+
     /// Сессии спейса под его строкой: у живого — свежий список и поле новой
     /// сессии, у остальных — снимок фонового опроса.
     @ViewBuilder private func spaceSessions(_ host: ServerHost) -> some View {
@@ -236,6 +270,8 @@ struct SessionRail: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.leading, 22).padding(.trailing, 4)
             }
+            tmuxInstallRow(.remote(host.id), available: canInstallRemoteTmux)
+                .padding(.leading, 22).padding(.trailing, 4)
             if adding { editor(create: create) }
             ForEach(rows) { session in
                 row(session, host: host.id, active: session.name == current && !model.localFocused)

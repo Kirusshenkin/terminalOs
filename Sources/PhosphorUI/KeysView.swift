@@ -88,6 +88,14 @@ public struct KeysView: View {
                 } else if key.fingerprint == currentFingerprint {
                     Text(strings("keys.current")).font(style.font(10.5)).foregroundStyle(style.muted)
                 }
+                // Дата есть только у ключей, добавленных из Phosphor: в самом
+                // authorized_keys её нет, и выдумывать её нельзя.
+                if let host = model.selectedHost,
+                    let added = model.book.keyAddedDate(fingerprint: key.fingerprint, host: host)
+                {
+                    Text("\(strings("keys.addedOn")) \(added.formatted(date: .abbreviated, time: .omitted))")
+                        .font(style.font(10.5)).foregroundStyle(style.muted)
+                }
             }
             .frame(width: 240, alignment: .leading)
 

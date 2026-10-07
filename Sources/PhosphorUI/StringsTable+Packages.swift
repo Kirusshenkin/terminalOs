@@ -241,6 +241,41 @@ extension Strings {
         "recipe.needsApt": [
             .russian: "нужен apt: Ubuntu или Debian", .english: "needs apt: Ubuntu or Debian",
         ],
+        "keys.addedOn": [.russian: "добавлен", .english: "added"],
+        "keys.sortName": [.russian: "по имени", .english: "by name"],
+        "keys.sortNewest": [.russian: "новые сверху", .english: "newest first"],
+        "tmux.install": [.russian: "поставить tmux", .english: "install tmux"],
+        "tmux.installing": [.russian: "ставлю tmux…", .english: "installing tmux…"],
+        "tmux.confirmTitle": [.russian: "поставить tmux?", .english: "install tmux?"],
+        "tmux.confirmRun": [
+            .russian: "будет выполнено ровно это:", .english: "exactly this will run:",
+        ],
+        "tmux.confirmCopy": [
+            .russian: "sudo спросит пароль, поэтому команду запустишь ты: "
+                + "она скопируется, вставь её в терминал",
+            .english: "sudo will ask for a password, so you run it: "
+                + "the command is copied, paste it into the terminal",
+        ],
+        "tmux.run": [.russian: "поставить", .english: "install"],
+        "tmux.copy": [.russian: "скопировать", .english: "copy"],
+        "tmux.installed": [
+            .russian: "tmux на месте — новые сессии переживут перезапуск",
+            .english: "tmux is in place — new sessions will survive a restart",
+        ],
+        "tmux.copied": [
+            .russian: "команда в буфере обмена — вставь её в терминал и введи пароль sudo",
+            .english: "the command is on the clipboard — "
+                + "paste it into the terminal and enter the sudo password",
+        ],
+        "tmux.failed": [.russian: "tmux не поставился: ", .english: "tmux was not installed: "],
+        "tmux.stillMissing": [
+            .russian: "установка прошла, но tmux не находится — проверь, куда его поставил пакетный менеджер",
+            .english: "the install finished but tmux is not found — check where the package manager put it",
+        ],
+        "tmux.noHomebrew": [
+            .russian: "на этом Маке нет Homebrew — поставь его с brew.sh, затем tmux",
+            .english: "there is no Homebrew on this Mac — install it from brew.sh, then tmux",
+        ],
         "term.noTmuxNoCommand": [
             .russian: "на сервере нет tmux — шелл начнётся с нуля при каждом заходе. "
                 + "поставьте tmux пакетным менеджером этой системы",

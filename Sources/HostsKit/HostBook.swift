@@ -9,15 +9,32 @@ public struct HostBook: Codable, Sendable {
     /// Сохранённые пробросы. Хранятся здесь, потому что привязаны к хосту и
     /// должны переживать перезапуск вместе с ним.
     public var forwards: [ForwardSpec]
+    /// Ключи, которые добавил сам Phosphor, — ради даты: в `authorized_keys` её нет.
+    public var addedKeys: [AddedKey]
 
     public init(
         groups: [HostGroup] = [], hosts: [ServerHost] = [],
-        snippets: [Snippet] = [], forwards: [ForwardSpec] = []
+        snippets: [Snippet] = [], forwards: [ForwardSpec] = [], addedKeys: [AddedKey] = []
     ) {
         self.groups = groups
         self.hosts = hosts
         self.snippets = snippets
         self.forwards = forwards
+        self.addedKeys = addedKeys
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case groups, hosts, snippets, forwards, addedKeys
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        groups = try container.decode([HostGroup].self, forKey: .groups)
+        hosts = try container.decode([ServerHost].self, forKey: .hosts)
+        snippets = try container.decode([Snippet].self, forKey: .snippets)
+        forwards = try container.decode([ForwardSpec].self, forKey: .forwards)
+        // Поле появилось 07.10.2026: профили, записанные раньше, его не знают.
+        addedKeys = try container.decodeIfPresent([AddedKey].self, forKey: .addedKeys) ?? []
     }
 
     public func group(for host: ServerHost) -> HostGroup? {

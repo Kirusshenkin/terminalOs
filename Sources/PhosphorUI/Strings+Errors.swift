@@ -162,6 +162,16 @@ extension Strings {
         return format("term.noTmux", command)
     }
 
+    public func tmuxInstallNote(_ note: TmuxInstall.Note) -> String {
+        switch note {
+        case .installed: self("tmux.installed")
+        case .copied: self("tmux.copied")
+        case .failed(let reason): self("tmux.failed") + reason
+        case .stillMissing: self("tmux.stillMissing")
+        case .noHomebrew: self("tmux.noHomebrew")
+        }
+    }
+
     public func stepSkip(_ skip: RecipeStep.Skip) -> String {
         switch skip {
         case .alreadyInstalled(let tool): format("recipe.installed", tool)

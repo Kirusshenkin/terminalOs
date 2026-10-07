@@ -10,6 +10,10 @@ public import SessionKit
 /// Настройка сервера по рецепту: выбор, план до запуска, сам прогон.
 @MainActor
 extension AppModel {
+    /// Сколько событий настройки может ждать главного потока: как и сам лог,
+    /// очередь ограничена — при переполнении теряются самые старые строки.
+    static let provisionEventBuffer = 4_000
+
     private var provisionHost: ServerHost? { book.hosts.first { $0.id == selectedHost } }
 
     /// Встроенные рецепты и свои — в порядке, в котором их предлагает экран.
@@ -149,15 +153,26 @@ extension AppModel {
         isProvisioning = true
         plannedCommands = await fresh.plannedCommands()
 
-        await fresh.observe(
-            onLine: { [weak self] line in
-                Task { @MainActor in self?.provisionLog.append(line) }
-            },
-            onProgress: { [weak self] steps in
-                Task { @MainActor in self?.provisionSteps = steps }
+        // Строки и шаги идут одной очередью к одному читателю: отдельный Task
+        // на каждую строку не гарантирует порядка, и лог мог перемешаться,
+        // а старое состояние шагов — перетереть новое (#29).
+        let (events, sink) = AsyncStream<ProvisionEvent>.makeStream(
+            bufferingPolicy: .bufferingNewest(Self.provisionEventBuffer))
+        let reader = Task { @MainActor [weak self] in
+            for await event in events {
+                switch event {
+                case .line(let line): self?.provisionLog.append(line)
+                case .steps(let steps): self?.provisionSteps = steps
+                }
             }
+        }
+        await fresh.observe(
+            onLine: { sink.yield(.line($0)) },
+            onProgress: { sink.yield(.steps($0)) }
         )
         await fresh.run()
+        sink.finish()
+        await reader.value
         isProvisioning = false
         // После настройки профиль устарел: перечитываем, иначе панель будет
         // считать сервер пустым.
@@ -167,4 +182,10 @@ extension AppModel {
     public func stopProvisioning() {
         Task { await runner?.stop() }
     }
+}
+
+/// Что сообщает настройка сервера по ходу дела, в порядке, в котором случилось.
+enum ProvisionEvent: Sendable {
+    case line(String)
+    case steps([StepProgress])
 }

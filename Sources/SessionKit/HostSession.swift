@@ -161,8 +161,9 @@ public actor HostSession {
                 throw TransportError.commandFailed(status: result.status, stderr: result.stderr)
             }
             state.profile = HostProbe.parse(result.stdout)
-            let hasMetrics = state.profile?.hasProcMetrics ?? true
-            if hasMetrics, let once = try? await transport.run(ProcProbe.once, timeout: .seconds(15)),
+            let hasMetrics = state.profile?.hasMetrics ?? true
+            let probe = MetricsProbe(darwin: state.profile?.osFamily == .darwin)
+            if hasMetrics, let once = try? await transport.run(probe.once, timeout: .seconds(15)),
                 once.succeeded
             {
                 let parsed = SnapshotParser.parse(once.stdout + "\n---")
@@ -173,9 +174,9 @@ public actor HostSession {
             for point in await archive.load(host: host.id) { state.history.append(point) }
             set(phase: .ready)
             startPolling()
-            // Без /proc сбор напечатал бы пустоту, а панель выглядела бы
-            // отключённой. Monitor говорит об этом сам, по профилю.
-            if hasMetrics { startMetrics() }
+            // Где сбор не умеет (не Linux и не macOS), он напечатал бы пустоту,
+            // а панель выглядела бы отключённой. Monitor говорит об этом сам.
+            if hasMetrics { startMetrics(probe) }
         } catch {
             set(phase: .failed(Self.explain(error, host: host)))
         }
@@ -234,7 +235,7 @@ public actor HostSession {
     /// Строки проходят через поток с единственным потребителем: порядок здесь
     /// не роскошь, а условие правильности — снимок, собранный из перемешанных
     /// строк, даёт неверные дельты.
-    private func startMetrics() {
+    private func startMetrics(_ probe: MetricsProbe) {
         metricsTask?.cancel()
         metricsTask = Task { [weak self] in
             guard let self else { return }
@@ -242,7 +243,7 @@ public actor HostSession {
                 bufferingPolicy: .bufferingNewest(4096))
 
             let reader = Task {
-                try? await self.stream(ProcProbe.loop()) { line in
+                try? await self.stream(probe.loop) { line in
                     continuation.yield(line)
                 }
                 continuation.finish()

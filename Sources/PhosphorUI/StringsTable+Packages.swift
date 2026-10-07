@@ -289,11 +289,15 @@ extension Strings {
             .english: "provisioning does not support %@ yet: the recipe is written for Ubuntu and Debian. "
                 + "Nothing will run — the recipe commands would not work on this system",
         ],
+        "mon.totalOnly": [
+            .russian: "загрузка · общая: на macOS по ядрам не разбить",
+            .english: "load · total: macOS does not split it by core",
+        ],
         "mon.unsupportedOS": [
-            .russian: "метрики для %@ пока не собираются — они читаются из /proc, а он есть только в Linux. "
+            .russian: "метрики для %@ пока не собираются — сбор умеет только Linux и macOS. "
                 + "Соединение живо: терминал, Docker и файлы работают",
-            .english: "metrics for %@ are not collected yet — they are read from /proc, "
-                + "which only Linux has. "
+            .english: "metrics for %@ are not collected yet — "
+                + "collection only knows Linux and macOS. "
                 + "The connection is alive: terminal, Docker and files work",
         ],
         "recipe.noKeys": [

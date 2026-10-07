@@ -16,7 +16,7 @@ public struct MonitorView: View {
     private var isLive: Bool { snapshot != nil }
     /// Профиль хоста, метрики которого не собираются: не Linux, нет /proc.
     private var withoutMetrics: HostProfile? {
-        guard model.session != nil, let profile = model.profile, !profile.hasProcMetrics else { return nil }
+        guard model.session != nil, let profile = model.profile, !profile.hasMetrics else { return nil }
         return profile
     }
 
@@ -171,7 +171,13 @@ public struct MonitorView: View {
 
     private var cores: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label2("\(strings("monitor.cores")) · \(usage.count)")
+            if model.profile?.osFamily == .darwin {
+                // Одна полоса вместо сетки — не поломка: на macOS из шелла
+                // доступна только общая загрузка. Говорим это, а не молчим.
+                Label2(strings("mon.totalOnly"))
+            } else {
+                Label2("\(strings("monitor.cores")) · \(usage.count)")
+            }
             ForEach(Array(usage.enumerated()), id: \.offset) { index, value in
                 HStack(spacing: 8) {
                     Text("\(index)")

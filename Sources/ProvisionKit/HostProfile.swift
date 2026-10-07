@@ -36,9 +36,10 @@ public struct HostProfile: Sendable, Equatable, Codable {
         }
     }
 
-    /// Metrics are read from `/proc`, which only Linux has. Elsewhere the
-    /// collector would print nothing and the panel would look disconnected.
-    public var hasProcMetrics: Bool { osFamily == .linux }
+    /// Metrics come from `/proc` on Linux and from sysctl and friends on macOS.
+    /// Elsewhere the collector would print nothing and the panel would look
+    /// disconnected.
+    public var hasMetrics: Bool { osFamily != .other }
 
     /// Name for people: `macOS 15.1` rather than the probe's `macos 15.1`.
     public var displayName: String {

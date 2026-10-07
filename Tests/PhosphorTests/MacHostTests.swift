@@ -31,7 +31,7 @@ struct MacHostTests {
         let profile = HostProbe.parse(macOutput)
         #expect(profile.osFamily == .darwin)
         #expect(profile.displayName == "macOS 15.1")
-        #expect(!profile.hasProcMetrics, "метрики читаются из /proc, на маке его нет")
+        #expect(profile.hasMetrics, "на маке метрики собираются через sysctl")
         #expect(!profile.isProvisionable)
     }
 
@@ -45,7 +45,7 @@ struct MacHostTests {
         let profile = try JSONDecoder().decode(HostProfile.self, from: Data(old.utf8))
         #expect(profile.kernelName == nil)
         #expect(profile.osFamily == .linux)
-        #expect(profile.hasProcMetrics)
+        #expect(profile.hasMetrics)
     }
 
     @Test("на маке не закрываем пароли: команды шага — для Linux")

@@ -77,6 +77,7 @@ extension AppModel {
         book.sync = nil
         syncRequests = []
         syncFailures = [:]
+        syncClockWarnings = []
         syncPhase = .off
         await writeProfile(startingSync: false)
     }
@@ -183,6 +184,12 @@ extension AppModel {
             syncPhase = .confirm(signer: signer)
         case .synced(let records, var next, let waiting, let failures):
             syncFailures = failures.mapValues { strings.syncError($0) }
+            let now = Int64(Date().timeIntervalSince1970 * 1_000)
+            syncClockWarnings = SyncMerge.ahead(records, now: now).sorted { $0.key < $1.key }.map {
+                id, lead in
+                let name = next.machines.first { $0.id == id }?.name ?? id
+                return strings.ordered("sync.ahead", [name, "\(max(1, lead / 86_400_000))"])
+            }
             for id in next.storages where remotes[id] == nil { syncFailures[id] = strings("sync.noStorage") }
             book.applySync(records)
             next.rebase(book.syncItems(), merged: records)

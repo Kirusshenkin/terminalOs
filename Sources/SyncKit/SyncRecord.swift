@@ -45,9 +45,16 @@ public struct HybridClock: Sendable {
         return last
     }
 
+    /// How far ahead of this machine's clock a stamp may be and still move it.
+    /// A Mac whose clock ran years ahead would otherwise drag every other
+    /// machine's clock along, and its edits would win until then (#28).
+    public static let maxSkew: Int64 = 24 * 3_600 * 1_000
+
     /// Moves past a stamp that came from another machine, so the next local
-    /// change is ordered after it.
+    /// change is ordered after it. A stamp more than `maxSkew` ahead is not
+    /// followed: it is reported instead, see `SyncMerge.ahead`.
     public mutating func observe(_ remote: Stamp, now: Int64) {
+        guard remote.millis <= now + Self.maxSkew else { return }
         let millis = max(now, last.millis, remote.millis)
         let counter: UInt32 =
             switch (millis == last.millis, millis == remote.millis) {
@@ -95,6 +102,16 @@ public enum SyncMerge {
     /// this can bring a deleted item back — the price of not keeping marks
     /// forever.
     public static let tombstoneLifetime: Int64 = 90 * 24 * 3_600 * 1_000
+
+    /// Machines whose stamps are more than a day ahead of `now`: their clock is
+    /// wrong, and their edits beat everyone else's until it is fixed.
+    public static func ahead(_ records: [SyncRecord], now: Int64) -> [String: Int64] {
+        var result: [String: Int64] = [:]
+        for record in records where record.stamp.millis > now + HybridClock.maxSkew {
+            result[record.stamp.machine] = max(result[record.stamp.machine] ?? 0, record.stamp.millis - now)
+        }
+        return result
+    }
 
     /// The later change wins, item by item. Deletion marks older than
     /// `tombstoneLifetime` are dropped.

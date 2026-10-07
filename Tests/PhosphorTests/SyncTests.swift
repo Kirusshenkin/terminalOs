@@ -40,6 +40,18 @@ struct SyncMergeTests {
         #expect(third > Stamp(millis: 5_000, counter: 3, machine: "b"))
     }
 
+    @Test("штамп из будущего дальше суток не тащит часы за собой, а машина с ним видна (#28)")
+    func clockFromTheFuture() {
+        let day = HybridClock.maxSkew
+        var clock = HybridClock(machine: "a")
+        clock.observe(Stamp(millis: 1_000 + 400 * day, counter: 0, machine: "broken"), now: 1_000)
+        #expect(clock.tick(now: 2_000).millis == 2_000)
+        clock.observe(Stamp(millis: 1_000 + day / 2, counter: 0, machine: "b"), now: 1_000)
+        #expect(clock.tick(now: 2_000).millis == 1_000 + day / 2)
+        let records = [record("web", "x", at: 1_000 + 400 * day, by: "broken"), record("db", "y", at: 900)]
+        #expect(SyncMerge.ahead(records, now: 1_000) == ["broken": 400 * day])
+    }
+
     @Test("правки разных записей с двух машин сохраняются обе")
     func differentItemsBothKept() {
         let merged = SyncMerge.merge(

@@ -246,6 +246,9 @@ public final class AppModel {
     public internal(set) var syncRequests: [SyncMachine] = []
     /// Хранилища, не прошедшие последний круг, и почему. Остальные прошли.
     public internal(set) var syncFailures: [UUID: String] = [:]
+    /// Машины, чьи часы ушли вперёд больше чем на сутки (#28): их правки
+    /// побеждают все остальные, пока часы не поправят.
+    public internal(set) var syncClockWarnings: [String] = []
     var syncTask: Task<Void, Never>?
     var syncRunning = false
     var syncAgain = false

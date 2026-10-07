@@ -64,6 +64,7 @@ struct SyncSection: View {
             PhButton(strings("sync.disable")) { Task { await model.disableSync() } }
         }
         status
+        ForEach(model.syncClockWarnings, id: \.self) { note($0, color: style.warning) }
         if state.isJoined {
             machines(state)
             requests

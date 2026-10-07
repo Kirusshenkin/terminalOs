@@ -27,6 +27,12 @@ extension Strings {
         "sync.addStorage": [.russian: "+ добавить хранилище", .english: "+ add storage"],
         "sync.removeStorage": [.russian: "убрать", .english: "remove"],
         "sync.hostGone": [.russian: "хост удалён из списка", .english: "host removed from the list"],
+        "sync.ahead": [
+            .russian: "Часы машины «%@» впереди на %@ дн.: её правки побеждают правки остальных. Поправь на "
+                + "ней дату и время (Системные настройки → Основные → Дата и время).",
+            .english: "The clock of «%@» is %@ day(s) ahead: its edits beat everyone else's. Fix the date "
+                + "and time there (System Settings → General → Date & Time).",
+        ],
         "sync.enable": [.russian: "включить", .english: "turn on"],
         "sync.now": [.russian: "синхронизировать", .english: "sync now"],
         "sync.disable": [.russian: "выключить на этой машине", .english: "turn off on this machine"],

@@ -17,6 +17,7 @@ extension Strings {
         case .unknownInk(let place, _): format("pf.unknownInk", place)
         case .badDuration(let state): format("pf.badDuration", state)
         case .exists(let id): format("pf.exists", id)
+        case .misnamed(let id): format("pf.misnamed", id)
         case .notFound(let id): format("pf.notFound", id)
         case .cannotRead(let detail): format("pf.cannotRead", detail)
         case .cannotWrite(let detail): format("pf.cannotWrite", detail)

@@ -33,8 +33,17 @@ public actor PetStore {
         var pets: [PetDefinition] = []
         var problems: [String: PetFileError] = [:]
         for name in names.sorted() where name.hasSuffix(".json") {
+            let url = directory.appendingPathComponent(name)
             do {
-                pets.append(try PetFile.decode(Data(contentsOf: directory.appendingPathComponent(name))))
+                // Размер — до чтения: брошенный в папку большой файл не должен
+                // целиком ложиться в память на каждой загрузке.
+                let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                guard size <= PetFile.maxFileSize else { throw PetFileError.tooLarge }
+                let pet = try PetFile.decode(Data(contentsOf: url))
+                // Файл ищется по id: под чужим именем питомца нельзя было бы
+                // удалить, а два файла с одним id задвоили бы список.
+                guard name == "\(pet.id).json" else { throw PetFileError.misnamed(pet.id) }
+                pets.append(pet)
             } catch let error as PetFileError {
                 problems[name] = error
             } catch {

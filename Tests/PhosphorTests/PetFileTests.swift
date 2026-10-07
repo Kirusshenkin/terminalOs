@@ -100,6 +100,16 @@ struct PetFileTests {
         #expect(loaded.pets.map(\.id) == ["fox"])
         #expect(loaded.problems.keys.sorted() == ["broken.json"])
 
+        // Под чужим именем не грузится: удалить такой было бы нельзя.
+        try Self.fox.write(to: directory.appendingPathComponent("myfox.json"))
+        try Data(count: PetFile.maxFileSize + 1).write(to: directory.appendingPathComponent("huge.json"))
+        let strict = await store.load()
+        #expect(strict.pets.map(\.id) == ["fox"])
+        #expect(strict.problems["myfox.json"] == .misnamed("fox"))
+        #expect(strict.problems["huge.json"] == .tooLarge)
+        try FileManager.default.removeItem(at: directory.appendingPathComponent("myfox.json"))
+        try FileManager.default.removeItem(at: directory.appendingPathComponent("huge.json"))
+
         await #expect(throws: PetFileError.badID("../fox")) { try await store.delete(id: "../fox") }
         await #expect(throws: PetFileError.notFound("wolf")) { try await store.delete(id: "wolf") }
         try await store.delete(id: "fox")

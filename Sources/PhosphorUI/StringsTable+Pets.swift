@@ -64,6 +64,10 @@ extension Strings {
             .russian: "у состояния «%@» frameMs должен быть от 60 до 2000",
             .english: "state «%@»: frameMs must be 60 to 2000",
         ],
+        "pf.misnamed": [
+            .russian: "файл должен называться %@.json — переименуй его в папке питомцев",
+            .english: "the file must be named %@.json — rename it in the pets folder",
+        ],
         "pf.exists": [
             .russian: "питомец «%@» уже есть — сначала удали его",
             .english: "pet «%@» already exists — delete it first",

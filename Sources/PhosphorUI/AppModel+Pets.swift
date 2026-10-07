@@ -41,11 +41,12 @@ extension AppModel {
         do {
             try await petStore.delete(id: id)
             petMessage = nil
+            // Выбранный питомец ушёл — в угол возвращается котёнок, а не пустота.
+            // Не удалился — остаётся и выбор: питомец по-прежнему в списке.
+            if pet == .custom(id) { choosePet(.cat) }
         } catch {
             petMessage = strings.petFileError(error)
         }
-        // Выбранный питомец ушёл — в угол возвращается котёнок, а не пустота.
-        if pet == .custom(id) { choosePet(.cat) }
         await loadPets()
     }
 

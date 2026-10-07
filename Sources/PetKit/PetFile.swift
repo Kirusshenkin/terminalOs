@@ -147,6 +147,8 @@ public enum PetFileError: Error, Sendable, Equatable {
     case badDuration(String)
     /// A pet with this id is already in the library.
     case exists(String)
+    /// A file in the folder whose name is not `<id>.json`.
+    case misnamed(String)
     case notFound(String)
     case cannotRead(String)
     case cannotWrite(String)
@@ -170,6 +172,7 @@ public enum PetFileError: Error, Sendable, Equatable {
             "frame «\(place)»: unknown character «\(ink)», use . b r e s n"
         case .badDuration(let state): "state «\(state)»: frameMs must be 60–2000"
         case .exists(let id): "pet «\(id)» already exists"
+        case .misnamed(let id): "file must be named \(id).json"
         case .notFound(let id): "no custom pet «\(id)»"
         case .cannotRead(let detail): "cannot read: \(detail)"
         case .cannotWrite(let detail): "cannot write: \(detail)"

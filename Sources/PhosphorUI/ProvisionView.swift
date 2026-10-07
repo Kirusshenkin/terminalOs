@@ -31,6 +31,12 @@ public struct ProvisionView: View {
             }
         }
         .sheet(isPresented: $model.showsPlannedCommands) { plannedSheet }
+        .task {
+            model.loadLocalKeys()
+            await model.loadRecipes()
+        }
+        // Новый сервер — свой выбор по умолчанию и свой план.
+        .onChange(of: model.profile) { model.chooseDefaultRecipe() }
     }
 
     private var steps: some View {
@@ -42,7 +48,8 @@ public struct ProvisionView: View {
                         .font(style.font(12)).foregroundStyle(style.muted)
                 }
             }
-            if let profile = model.profile, profile.osFamily != .linux {
+            RecipePicker(model: model)
+            if let profile = model.profile, let recipe = model.selectedRecipe, !recipe.applies(to: profile) {
                 // Шесть строк «нужен apt» не объясняют главного: рецепт не для
                 // этой системы целиком.
                 Text(strings.provisionUnsupported(profile))
@@ -57,7 +64,7 @@ public struct ProvisionView: View {
                     Text(mark(step.status))
                         .foregroundStyle(colour(step.status))
                         .frame(width: 14, alignment: .leading)
-                    Text(strings.stepTitle(id: step.id, detail: step.detail))
+                    Text(strings.stepTitle(id: step.id, title: step.title, detail: step.detail))
                         .foregroundStyle(colour(step.status))
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Text(note(step.status))
@@ -73,9 +80,9 @@ public struct ProvisionView: View {
             HStack(spacing: 8) {
                 if model.isProvisioning {
                     PhButton(strings("prov.stopAfter"), kind: .danger) { model.stopProvisioning() }
-                } else if model.profile?.osFamily ?? .linux == .linux {
+                } else if let profile = model.profile, model.selectedRecipe?.applies(to: profile) == true {
                     PhButton(strings("provision.run"), kind: .primary) {
-                        Task { await model.startProvisioning() }
+                        Task { await model.requestProvisioning() }
                     }
                 }
                 PhButton(strings("provision.show")) { model.showsPlannedCommands = true }
@@ -133,7 +140,16 @@ public struct ProvisionView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(model.plannedCommands, id: \.id) { entry in
                         VStack(alignment: .leading, spacing: 4) {
-                            Label2(strings.stepTitle(id: entry.id, detail: entry.detail))
+                            Label2(strings.stepTitle(id: entry.id, title: entry.title, detail: entry.detail))
+                            if let check = entry.check {
+                                Text("\(strings("prov.check")): \(check)")
+                                    .font(style.font(11)).foregroundStyle(style.muted)
+                                    .textSelection(.enabled)
+                            }
+                            if entry.asUser {
+                                Text(strings("prov.asUser"))
+                                    .font(style.font(10.5)).foregroundStyle(style.muted)
+                            }
                             ForEach(entry.commands, id: \.self) { command in
                                 Text(command)
                                     .font(style.font(11.5))
@@ -148,6 +164,12 @@ public struct ProvisionView: View {
             HStack {
                 Spacer()
                 PhButton(strings("common.close")) { model.showsPlannedCommands = false }
+                // Чужой рецепт запускается только отсюда — прочитав его целиком.
+                if model.selectedRecipe?.origin == .file, !model.isProvisioning {
+                    PhButton(strings("prov.runAfterReading"), kind: .primary) {
+                        Task { await model.startProvisioning() }
+                    }
+                }
             }
         }
         .padding(22)

@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "id": "node",
+  "name": "Node.js 22 + pm2",
+  "requires": { "os": ["linux"], "packageManager": ["apt"] },
+  "steps": [
+    {
+      "title": "Node.js 22",
+      "check": "command -v node && node --version | grep -q '^v22'",
+      "commands": [
+        "curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh",
+        "bash /tmp/nodesource_setup.sh",
+        "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs"
+      ]
+    },
+    {
+      "title": "pm2",
+      "check": "command -v pm2",
+      "commands": ["npm install -g pm2"]
+    }
+  ]
+}

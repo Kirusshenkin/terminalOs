@@ -111,10 +111,8 @@ public struct HostGroup: Codable, Identifiable, Hashable, Sendable {
     public var reach: Reach?
     public var guardLevel: GuardLevel
     public var mcpMode: MCPMode
-    // Рецепт группы убран, а не удалён: рецепт в приложении ровно один
-    // (`BuiltInRecipe.base`), выбирать не из чего, и поле только обещало
-    // настройку, которой нет. Вернуть его стоит вместе со вторым рецептом.
-    // public var recipeID: String?
+    /// Рецепт, которым предлагается настроить каждый сервер группы. nil — базовый.
+    public var recipeID: String?
 
     public init(
         id: ID = UUID(),

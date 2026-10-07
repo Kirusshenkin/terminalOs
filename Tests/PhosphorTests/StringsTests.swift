@@ -63,10 +63,13 @@ struct PackageStringsTests {
         #expect(strings.reach(.socks(host: "127.0.0.1", port: 10808)) == "proxy 127.0.0.1:10808")
     }
 
-    @Test("ключи двух таблиц не пересекаются и переведены на оба языка")
+    @Test("ключи трёх таблиц не пересекаются и переведены на оба языка")
     func tablesDisjointAndComplete() {
         #expect(Set(Strings.table.keys).isDisjoint(with: Strings.packageTable.keys))
-        for (key, values) in Strings.packageTable {
+        #expect(Set(Strings.table.keys).isDisjoint(with: Strings.recipeTable.keys))
+        #expect(Set(Strings.packageTable.keys).isDisjoint(with: Strings.recipeTable.keys))
+        let extra = Strings.packageTable.merging(Strings.recipeTable) { old, _ in old }
+        for (key, values) in extra {
             #expect(Set(values.keys) == Set(Language.allCases), "\(key)")
         }
     }
@@ -106,7 +109,10 @@ struct PackageStringsTests {
         let recipe = BuiltInRecipe.base(RecipeInputs(domain: "a.example.com", email: "k@example.com"))
         // Без домена: в нём самом есть точка, и проверка ключей споткнулась бы.
         var texts = recipe.steps.map { strings.stepTitle(id: $0.id, detail: nil) }
-        let skips: [RecipeStep.Skip] = [.alreadyInstalled("docker"), .needsApt, .needsLinux, .noKeys]
+        let skips: [RecipeStep.Skip] = [
+            .alreadyInstalled("docker"), .alreadyDone, .needsApt, .needsLinux, .noKeys, .noKeysChosen,
+            .wouldLockOut, .needsRoot,
+        ]
         texts += skips.map(strings.stepSkip)
         texts += [StepFailure.keyNotProven, .stopped, .exitCode(2)].map(strings.stepFailure)
         for text in texts {

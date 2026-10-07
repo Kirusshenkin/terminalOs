@@ -395,6 +395,17 @@ public final class AppModel {
     public internal(set) var plannedCommands: [RecipeStep] = []
     public var showsPlannedCommands = false
     var runner: ProvisionRunner?
+    /// Какой рецепт выбран. Меняется — план и список команд пересчитываются.
+    public var selectedRecipeID = "base" { didSet { refreshProvisionPlan() } }
+    /// Свои рецепты из папки и файлы, которые не прошли проверку.
+    public internal(set) var userRecipes: [Recipe] = []
+    public internal(set) var recipeProblems: [String: RecipeFileError] = [:]
+    /// Что сказать про импорт или удаление рецепта. nil — нечего.
+    public internal(set) var recipeMessage: String?
+    /// Ключи для рецепта «мои ключи» (пути из `~/.ssh`) и убирать ли остальные.
+    public var provisionKeyIDs: Set<String> = [] { didSet { refreshProvisionPlan() } }
+    public var removeOtherKeys = false { didSet { refreshProvisionPlan() } }
+    let recipeStore = RecipeStore(directory: RecipeStore.defaultDirectory())
 
     /// Разрушающее действие, ожидающее подтверждения.
     public var pendingAction: PendingAction?

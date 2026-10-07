@@ -24,7 +24,7 @@ public struct HostProfile: Sendable, Equatable, Codable {
     /// probe asked — those were all collected the Linux way.
     public var kernelName: String?
 
-    public enum OSFamily: Sendable, Equatable {
+    public enum OSFamily: String, Sendable, Equatable, Codable {
         case linux, darwin, other
     }
 

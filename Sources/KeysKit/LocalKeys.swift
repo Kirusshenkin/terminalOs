@@ -18,13 +18,15 @@ public struct LocalKey: Identifiable, Hashable, Sendable {
     public var bits: Int?
     /// Whether the private half is present next to the `.pub`.
     public var hasPrivate: Bool
+    /// The public key line itself, ready for `authorized_keys`.
+    public var publicLine: String
     /// When the pair appeared: the creation date of the `.pub`. nil when the
     /// file system does not say.
     public var created: Date?
 
     public init(
         id: String, name: String, algorithm: String, comment: String?,
-        fingerprint: String, bits: Int?, hasPrivate: Bool, created: Date? = nil
+        fingerprint: String, bits: Int?, hasPrivate: Bool, publicLine: String = "", created: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -33,6 +35,7 @@ public struct LocalKey: Identifiable, Hashable, Sendable {
         self.fingerprint = fingerprint
         self.bits = bits
         self.hasPrivate = hasPrivate
+        self.publicLine = publicLine
         self.created = created
     }
 
@@ -59,6 +62,7 @@ public enum LocalKeys {
             fingerprint: parsed.fingerprint,
             bits: parsed.bits,
             hasPrivate: hasPrivate,
+            publicLine: publicText.trimmingCharacters(in: .whitespacesAndNewlines),
             created: created
         )
     }

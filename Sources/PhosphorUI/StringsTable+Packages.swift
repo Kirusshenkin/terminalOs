@@ -284,10 +284,10 @@ extension Strings {
         ],
         "recipe.needsLinux": [.russian: "только для Linux", .english: "Linux only"],
         "prov.unsupportedOS": [
-            .russian: "автонастройка пока не поддерживает %@: рецепт написан для Ubuntu и Debian. "
-                + "Ничего не запускаю — на этой системе команды рецепта не сработают",
-            .english: "provisioning does not support %@ yet: the recipe is written for Ubuntu and Debian. "
-                + "Nothing will run — the recipe commands would not work on this system",
+            .russian: "этот рецепт не для %@ — его команды здесь не сработают. "
+                + "Выбери другой или импортируй свой рецепт для этой системы",
+            .english: "this recipe is not for %@ — its commands would not work here. "
+                + "Pick another or import your own recipe for this system",
         ],
         "mon.totalOnly": [
             .russian: "загрузка · общая: на macOS по ядрам не разбить",

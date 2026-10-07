@@ -22,6 +22,7 @@ extension Strings {
         case let failure as SecretError: secretError(failure)
         case let failure as ProfileStoreError: profileError(failure)
         case let failure as GateError: gateError(failure)
+        case let failure as RecipeFileError: recipeFileError(failure)
         default: error.localizedDescription
         }
     }
@@ -141,7 +142,9 @@ extension Strings {
     // MARK: Автонастройка
 
     /// Название шага по его `id`; отличие (домен certbot) — через точку.
-    public func stepTitle(id: String, detail: String?) -> String {
+    /// У шагов из чужих рецептов название дал автор — оно и показывается.
+    public func stepTitle(id: String, title: String? = nil, detail: String?) -> String {
+        if let title { return detail.map { "\(title) · \($0)" } ?? title }
         let title = self("recipe.\(id)")
         return detail.map { "\(title) · \($0)" } ?? title
     }
@@ -172,12 +175,42 @@ extension Strings {
         }
     }
 
+    /// Название рецепта: встроенные — на языке интерфейса, чужие — как их
+    /// назвал автор.
+    public func recipeName(_ recipe: Recipe) -> String {
+        recipe.origin == .builtIn ? self("recipe.name.\(recipe.id)") : recipe.name
+    }
+
+    public func recipeFileError(_ error: RecipeFileError) -> String {
+        switch error {
+        case .tooLarge: self("rf.tooLarge")
+        case .notJSON(let detail): format("rf.notJSON", detail)
+        case .unsupportedFormat(let version): format("rf.format", "\(version)")
+        case .badID(let id): format("rf.badID", id)
+        case .reservedID(let id): format("rf.reservedID", id)
+        case .badName: self("rf.badName")
+        case .stepCount(let count): format("rf.stepCount", "\(count)")
+        case .unknownOS(let os): format("rf.unknownOS", os)
+        case .unknownPackageManager(let manager): format("rf.unknownPM", manager)
+        case .badStepTitle(let step): format("rf.badStepTitle", "\(step)")
+        case .commandCount(let step): format("rf.commandCount", "\(step)")
+        case .badCommand(let step): format("rf.badCommand", "\(step)")
+        case .exists(let id): format("rf.exists", id)
+        case .cannotRead(let detail): format("rf.cannotRead", detail)
+        case .cannotWrite(let detail): format("rf.cannotWrite", detail)
+        }
+    }
+
     public func stepSkip(_ skip: RecipeStep.Skip) -> String {
         switch skip {
         case .alreadyInstalled(let tool): format("recipe.installed", tool)
         case .needsApt: self("recipe.needsApt")
         case .needsLinux: self("recipe.needsLinux")
         case .noKeys: self("recipe.noKeys")
+        case .alreadyDone: self("recipe.alreadyDone")
+        case .noKeysChosen: self("recipe.noKeysChosen")
+        case .wouldLockOut: self("recipe.wouldLockOut")
+        case .needsRoot: self("recipe.needsRoot")
         }
     }
 

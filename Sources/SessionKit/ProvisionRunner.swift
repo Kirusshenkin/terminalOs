@@ -15,9 +15,19 @@ public struct StepProgress: Identifiable, Sendable, Equatable {
     }
 
     public var id: String
+    /// Название, данное автором рецепта; у встроенных шагов его нет — их
+    /// называет интерфейс по `id`.
+    public var title: String?
     /// Отличие этого шага, например домен certbot; название — по `id`.
     public var detail: String?
     public var status: Status = .waiting
+
+    public init(id: String, title: String? = nil, detail: String? = nil, status: Status = .waiting) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.status = status
+    }
 
     public var isFinished: Bool {
         switch status {
@@ -56,7 +66,7 @@ public actor ProvisionRunner {
         self.recipe = recipe
         self.profile = profile
         self.proveKeyAccess = proveKeyAccess
-        self.progress = recipe.steps.map { StepProgress(id: $0.id, detail: $0.detail) }
+        self.progress = recipe.steps.map { StepProgress(id: $0.id, title: $0.title, detail: $0.detail) }
     }
 
     public var steps: [StepProgress] { progress }
@@ -94,17 +104,38 @@ public actor ProvisionRunner {
                 mark(index, .skipped(skip))
                 continue
             }
-            if entry.step.id == BuiltInRecipe.needsKeyProof, await !proveKeyAccess() {
+            if BuiltInRecipe.needsKeyProof.contains(entry.step.id), await !proveKeyAccess() {
                 mark(index, .failed(.keyNotProven))
                 continue
             }
             mark(index, .running)
+            if await alreadyDone(entry.step) {
+                mark(index, .skipped(.alreadyDone))
+                continue
+            }
             let failure = await execute(entry.step)
             mark(index, failure.map { .failed($0) } ?? .done)
             // Шаги из обязательных валят весь прогон: ставить nginx поверх
             // неустановленных пакетов бессмысленно.
-            if failure != nil, BuiltInRecipe.mustSucceed.contains(entry.step.id) { break }
+            if failure != nil, recipe.mustSucceed.contains(entry.step.id) { break }
         }
+    }
+
+    /// Проверка шага прошла — значит, его работа уже сделана. Не дошла или
+    /// упала — шаг выполняется: лишний повтор идемпотентного шага дешевле,
+    /// чем пропущенная установка.
+    private func alreadyDone(_ step: RecipeStep) async -> Bool {
+        guard let check = step.check else { return false }
+        onLine?("? \(check)")
+        let result = try? await transport.run(privileged(check, for: step), timeout: .seconds(60))
+        return result?.succeeded == true
+    }
+
+    /// Системные команды не от root идут через `sudo -n`: пароль спросить
+    /// некому, и без него sudo должен отказать сразу, а не ждать. Шаги
+    /// «от пользователя» работают с его `~/.ssh` и sudo не получают.
+    func privileged(_ command: String, for step: RecipeStep) -> String {
+        step.asUser || profile.isRoot ? command : "sudo -n sh -c \(Shell.quote(command))"
     }
 
     /// Выполняет команды шага, возвращая причину остановки или nil.
@@ -112,7 +143,7 @@ public actor ProvisionRunner {
         for command in step.commands {
             onLine?("$ \(command)")
             do {
-                let result = try await transport.run(command, timeout: .seconds(600))
+                let result = try await transport.run(privileged(command, for: step), timeout: .seconds(600))
                 for line in result.stdout.split(separator: "\n") { onLine?(String(line)) }
                 for line in result.stderr.split(separator: "\n") { onLine?(String(line)) }
                 if !result.succeeded {

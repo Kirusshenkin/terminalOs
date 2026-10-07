@@ -150,27 +150,4 @@ struct SyncCryptoTests {
             try SyncCrypto.accept(impostor, trusted: [laptop.entry], lastRevision: 0)
         }
     }
-
-    @Test("отозванная машина не читает новое, оставшиеся читают всё")
-    func revocation() throws {
-        let laptop = TestMachine("laptop")
-        let lost = TestMachine("lost")
-        let records = [record("web", "host", at: 10)]
-        let snapshot = SyncSnapshot(
-            machines: [laptop.entry, lost.entry],
-            keys: [try SyncCrypto.wrap(key, for: laptop.entry), try SyncCrypto.wrap(key, for: lost.entry)],
-            records: try SyncCrypto.seal(records, key: key, generation: 0))
-
-        let (next, fresh) = try SyncCrypto.revoke("lost", from: snapshot, key: key)
-        #expect(next.machines.map(\.id) == ["laptop"])
-        #expect(next.keyGeneration == 1)
-        #expect(fresh != key)
-        #expect(throws: SyncError.notForThisMachine) {
-            try SyncCrypto.unwrap(next, machine: "lost", with: lost.agreement)
-        }
-        let reopened = try SyncCrypto.unwrap(next, machine: "laptop", with: laptop.agreement)
-        #expect(try SyncCrypto.open(next.records, key: reopened, generation: 1) == records)
-        // Старым ключом, который остался у потерянной машины, новое не открыть.
-        #expect(throws: SyncError.self) { try SyncCrypto.open(next.records, key: key, generation: 1) }
-    }
 }

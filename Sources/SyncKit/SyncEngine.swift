@@ -21,10 +21,13 @@ public enum SyncEngine {
     public struct Changes: Sendable, Equatable {
         public var approve: [String] = []
         public var revoke: [String] = []
-        /// The machine whose code the person confirmed on first joining.
-        public var trust: String?
+        /// The machine whose code the person confirmed on first joining — the
+        /// whole entry with its keys, not just the id: storage could otherwise
+        /// swap in a machine of its own under the same id between the check and
+        /// the next round.
+        public var trust: SyncMachine?
 
-        public init(approve: [String] = [], revoke: [String] = [], trust: String? = nil) {
+        public init(approve: [String] = [], revoke: [String] = [], trust: SyncMachine? = nil) {
             self.approve = approve
             self.revoke = revoke
             self.trust = trust
@@ -67,8 +70,8 @@ public enum SyncEngine {
             if !view.requests.contains(where: { $0.id == me.id }) { try await remote.request(me) }
             return .awaitingApproval(state: state, code: me.code)
         }
-        if state.machines.isEmpty, let signer = view.snapshot?.signer, signer != changes.trust,
-            let machine = base.snapshot.machines.first(where: { $0.id == signer })
+        if state.machines.isEmpty, let signer = view.snapshot?.signer,
+            let machine = base.snapshot.machines.first(where: { $0.id == signer }), machine != changes.trust
         {
             return .confirmSigner(state: state, signer: machine)
         }

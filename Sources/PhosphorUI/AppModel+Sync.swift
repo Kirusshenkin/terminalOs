@@ -64,7 +64,9 @@ extension AppModel {
     public func revokeMachine(_ id: String) async { await syncNow(SyncEngine.Changes(revoke: [id])) }
 
     /// Код машины, которая пустила эту, совпал: можно доверять её подписи.
-    public func trustSigner(_ id: String) async { await syncNow(SyncEngine.Changes(trust: id)) }
+    public func trustSigner(_ machine: SyncMachine) async {
+        await syncNow(SyncEngine.Changes(trust: machine))
+    }
 
     /// Убирает просьбу, не пуская машину.
     public func dismissMachine(_ id: String) async {

@@ -91,7 +91,7 @@ private struct SyncFlowPairing {
         let signer = try #require(b.signer)
         #expect(try signer.code == a.state.identity.machine().code)
         #expect(!b.state.isJoined)
-        try await b.sync(folder.remote, .init(trust: signer.id), at: 3_000)
+        try await b.sync(folder.remote, .init(trust: signer), at: 3_000)
         #expect(b.state.isJoined)
         return (a, b)
     }
@@ -158,6 +158,14 @@ struct SyncFlowTests {
         try await a.sync(folder.remote, at: 6_000)
         try await a.sync(folder.remote, at: 7_000)
         #expect(a.book.hosts.count == 2)
+        // Ключом, который остался у отозванной машины, новое не открыть.
+        let oldKey = SymmetricKey(data: try #require(b.state.profileKey))
+        let stored = try JSONDecoder().decode(
+            SignedSnapshot.self, from: Data(contentsOf: URL(fileURLWithPath: folder.path + "/snapshot.json")))
+        let snapshot = try JSONDecoder().decode(SyncSnapshot.self, from: stored.body)
+        #expect(throws: SyncError.self) {
+            try SyncCrypto.open(snapshot.records, key: oldKey, generation: snapshot.keyGeneration)
+        }
     }
 
     @Test("подсунутая старая версия отвергается")
@@ -250,6 +258,33 @@ struct SyncHostileStorageTests {
         #expect(try signer.code != a.state.identity.machine().code)
         #expect(!b.state.isJoined)
         #expect(try Data(contentsOf: URL(fileURLWithPath: folder.path + "/snapshot.json")) == planted)
+    }
+
+    @Test("подтверждённую машину нельзя подменить под тем же id до следующего круга")
+    func swappedAfterConfirmation() async throws {
+        let folder = try Folder()
+        var a = try Mac("a", storage: storage)
+        try await a.sync(folder.remote)
+        var b = try Mac("b", storage: storage)
+        try await b.sync(folder.remote)
+        try await a.sync(folder.remote, .init(approve: [b.state.identity.id]), at: 2_000)
+        try await b.sync(folder.remote, at: 3_000)
+        let genuine = try #require(b.signer)
+
+        // Хранилище подменяет снимок: тот же id подписанта, свои ключи.
+        var impostor = try SyncIdentity.create(name: genuine.name, useEnclave: false)
+        impostor.id = genuine.id
+        let key = SymmetricKey(size: .bits256)
+        let me = try b.state.identity.machine(), fake = try impostor.machine()
+        let forged = SyncSnapshot(
+            revision: 9, machines: [fake, me],
+            keys: [try SyncCrypto.wrap(key, for: fake), try SyncCrypto.wrap(key, for: me)])
+        try JSONEncoder().encode(try impostor.sign(forged))
+            .write(to: URL(fileURLWithPath: folder.path + "/snapshot.json"))
+
+        try await b.sync(folder.remote, .init(trust: genuine), at: 4_000)
+        #expect(!b.state.isJoined)
+        #expect(b.signer == fake)
     }
 
     @Test("папку стёрли, отстающая машина её пересоздала — ушедшая вперёд не застревает на «откате»")

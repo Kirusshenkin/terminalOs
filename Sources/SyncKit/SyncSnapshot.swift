@@ -48,6 +48,11 @@ public struct SyncSnapshot: Codable, Sendable, Equatable {
     /// over in a new epoch, so a machine that had seen a higher revision in
     /// the old one accepts the rebuilt snapshot instead of calling it a
     /// rollback. Signed like the rest: storage cannot raise it on its own.
+    ///
+    /// One case it does not cover: storage wiped twice, and a machine that
+    /// missed the first rebuild does the second. It writes the epoch the
+    /// others already have, with a lower revision, and they report a rollback.
+    /// The way out is in that message: turn sync off and on on that machine.
     public var epoch: UInt32 = 0
 
     public init(
@@ -234,26 +239,5 @@ public enum SyncCrypto {
             throw .rollback(seen: lastRevision, got: snapshot.revision)
         }
         return snapshot
-    }
-
-    // MARK: Отзыв машины
-
-    /// Removes a machine and replaces the profile key, so it cannot read
-    /// anything written from now on. What it already downloaded stays with it
-    /// — no system can take that back.
-    public static func revoke(
-        _ machineID: String, from snapshot: SyncSnapshot, key: SymmetricKey
-    ) throws(SyncError) -> (snapshot: SyncSnapshot, key: SymmetricKey) {
-        let records = try open(snapshot.records, key: key, generation: snapshot.keyGeneration)
-        let fresh = SymmetricKey(size: .bits256)
-        var next = snapshot
-        next.keyGeneration += 1
-        next.machines.removeAll { $0.id == machineID }
-        next.keys = []
-        for machine in next.machines {
-            next.keys.append(try wrap(fresh, for: machine))
-        }
-        next.records = try seal(records, key: fresh, generation: next.keyGeneration)
-        return (next, fresh)
     }
 }

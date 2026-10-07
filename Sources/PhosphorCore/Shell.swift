@@ -22,6 +22,25 @@ public enum Shell {
     public static func line(_ parts: [String]) -> String {
         parts.joined(separator: " ")
     }
+
+    private static let dropSafe: Set<Character> = Set("/._-+,@%:=~")
+
+    /// Пути файлов, брошенных в терминал, — как их вставляет Terminal.app:
+    /// через пробел, каждый символ вне безопасного набора экранирован обратной
+    /// чертой, и пробел в конце, чтобы можно было бросить ещё. Именно в таком
+    /// виде агенты вроде Claude Code узнают путь к картинке.
+    public static func droppedPaths(_ paths: [String]) -> String {
+        paths.map { path in
+            var escaped = ""
+            for character in path {
+                let safe = character.isLetter || character.isNumber || dropSafe.contains(character)
+                if !safe { escaped.append("\\") }
+                escaped.append(character)
+            }
+            return escaped
+        }
+        .joined(separator: " ") + " "
+    }
 }
 
 /// Validation for values used to build remote commands.

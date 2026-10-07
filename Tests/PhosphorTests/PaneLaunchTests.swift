@@ -1,4 +1,5 @@
 import Foundation
+import PhosphorCore
 import Testing
 
 @testable import PhosphorUI
@@ -55,5 +56,27 @@ struct PaneLaunchStringsTests {
             #expect(values[.english]?.isEmpty == false, "\(key) en")
         }
         #expect(Strings(language: .english)("term.shell") == "shell")
+    }
+}
+
+@Suite("Файлы, брошенные в терминал")
+struct DroppedPathsTests {
+    @Test("путь экранируется, как в Terminal.app, и шелл читает его обратно как есть")
+    func escaping() throws {
+        #expect(Shell.droppedPaths(["/tmp/a.png"]) == "/tmp/a.png ")
+        #expect(Shell.droppedPaths(["/Users/k/My Shot (1).png"]) == #"/Users/k/My\ Shot\ \(1\).png "#)
+        #expect(Shell.droppedPaths(["/a b", "/c'd"]) == #"/a\ b /c\'d "#)
+        // Кириллица не экранируется: агент должен узнать путь, а не мусор.
+        #expect(Shell.droppedPaths(["/Снимок экрана.png"]) == #"/Снимок\ экрана.png "#)
+
+        let tricky = "/tmp/x $(touch pwned) `y` \"q\" & ; | * ? [z] {w} ! # ~"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "printf '%s' " + Shell.droppedPaths([tricky])]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        try process.run()
+        process.waitUntilExit()
+        #expect(String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self) == tricky)
     }
 }

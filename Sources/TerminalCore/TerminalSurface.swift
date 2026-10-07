@@ -35,6 +35,34 @@ public final class TerminalSurface: LocalProcessTerminalView {
         super.send(source: source, data: data)
     }
 
+    // MARK: Файлы, брошенные в терминал
+
+    public override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        registerForDraggedTypes([.fileURL])
+    }
+
+    public override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        Self.droppedFiles(sender).isEmpty ? [] : .copy
+    }
+
+    /// Вставляет пути, как Terminal.app: экранированные, через пробел, без
+    /// Enter. Так картинку можно бросить прямо в агента: путь он узнает сам.
+    public override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        let paths = Self.droppedFiles(sender)
+        guard !paths.isEmpty else { return false }
+        send(txt: Shell.droppedPaths(paths))
+        window?.makeFirstResponder(self)
+        return true
+    }
+
+    private static func droppedFiles(_ sender: any NSDraggingInfo) -> [String] {
+        let urls =
+            sender.draggingPasteboard.readObjects(
+                forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]
+        return (urls ?? []).map(\.path)
+    }
+
     /// Процесс шелла, если он запущен.
     public var shellPid: pid_t? {
         guard let pid = process?.shellPid, pid > 0, isRunning else { return nil }

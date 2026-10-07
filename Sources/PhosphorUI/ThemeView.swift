@@ -3,11 +3,11 @@ public import ThemeKit
 
 /// Theme picker with a live preview.
 public struct ThemeView: View {
-    @Environment(\.style) private var style
+    @Environment(\.style) var style
     @Bindable var model: AppModel
 
     public init(model: AppModel) { self.model = model }
-    private var strings: Strings { model.strings }
+    var strings: Strings { model.strings }
     private var current: Theme { model.theme(id: model.themeID) }
 
     public var body: some View {
@@ -99,19 +99,7 @@ public struct ThemeView: View {
         case .behaviour:
             VStack(alignment: .leading, spacing: 14) {
                 Label2(strings("set.pet"))
-                HStack(spacing: 8) {
-                    ForEach(Pet.allCases, id: \.self) { pet in
-                        toggleChip(pet.title.lowercased(), on: model.petVisible && model.pet == pet) {
-                            model.pet = pet
-                            model.petVisible = true
-                            model.saveAppearance()
-                        }
-                    }
-                    toggleChip(strings("set.off"), on: !model.petVisible) {
-                        model.petVisible.toggle()
-                        model.saveAppearance()
-                    }
-                }
+                petChooser
                 Text(strings("set.petNote"))
                     .font(style.font(11)).foregroundStyle(style.muted)
 
@@ -300,7 +288,7 @@ public struct ThemeView: View {
         .background(style.surface)
     }
 
-    private func toggleChip(
+    func toggleChip(
         _ title: String, on: Bool, toggle: @escaping () -> Void
     ) -> some View {
         Button(action: toggle) {

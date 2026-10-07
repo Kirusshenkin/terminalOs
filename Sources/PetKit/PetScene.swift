@@ -90,15 +90,23 @@ public enum PetScene {
 
     /// Туда и обратно ровно за шесть секунд — и снова на своём месте.
     static func catWalking(_ elapsed: Double) -> PetFrame {
-        let length = catWalkRange.to - catWalkRange.from
-        let speed = 2 * length / 6
-        let travelled = (catHome - catWalkRange.from + elapsed * speed)
-            .truncatingRemainder(dividingBy: 2 * length)
-        let forward = travelled < length
-        let x = catWalkRange.from + (forward ? travelled : 2 * length - travelled)
+        let (x, forward) = pingPong(elapsed, home: catHome, from: catWalkRange.from, to: catWalkRange.to)
         let sprite = PetFrames.catWalk[Int(elapsed / 0.125) % 2]
         let y = floorY - Double(sprite.height) * pixel
         return PetFrame(sprite: sprite, x: x, y: y, flipped: forward, action: .walk)
+    }
+
+    /// Из дома вправо до края, влево до другого края и обратно домой — ровно
+    /// за `seconds`, чтобы прогулка кончалась там же, где началась.
+    static func pingPong(
+        _ elapsed: Double, home: Double, from: Double, to: Double, seconds: Double = 6
+    ) -> (x: Double, forward: Bool) {
+        let length = to - from
+        guard length > 0 else { return (home, true) }
+        let travelled = (home - from + elapsed * 2 * length / seconds)
+            .truncatingRemainder(dividingBy: 2 * length)
+        let forward = travelled < length
+        return (from + (forward ? travelled : 2 * length - travelled), forward)
     }
 
     /// Дуга на коробку и обратно: `progress` от 0 до 1.
@@ -191,5 +199,46 @@ public enum PetScene {
         let height = Double(sprite.height) * pixel
         return PetFrame(
             sprite: sprite, x: hollow.x - width / 2, y: hollow.y - height / 2, flipped: false, action: .sleep)
+    }
+
+    // MARK: Свой питомец — пол, и больше ничего
+
+    public static let customFloorY = 92.0
+    static let customCycle = 16.0
+    static let customMargin = 12.0
+
+    /// The same day as the built-in ones: stand, walk there and back, stand;
+    /// asleep while the terminal is busy. Pets are drawn facing right.
+    public static func frame(_ pet: PetDefinition, time: Double, sinceActivity: Double?) -> PetFrame {
+        if sinceActivity.map({ $0 < wakeAfter }) ?? false {
+            return standing(pet.sleep.frame(at: time), action: .sleep)
+        }
+        let t = time.truncatingRemainder(dividingBy: customCycle)
+        if (6..<12).contains(t) { return customWalking(pet, elapsed: t - 6) }
+        let sinceBlink = t.truncatingRemainder(dividingBy: 3)
+        if let blink = pet.blink, sinceBlink < blink.duration {
+            return standing(blink.frame(at: sinceBlink), action: .idle)
+        }
+        return standing(pet.idle.frame(at: t), action: .idle)
+    }
+
+    static func standing(_ sprite: PetSprite, action: PetAction) -> PetFrame {
+        let width = Double(sprite.width) * pixel
+        return PetFrame(
+            sprite: sprite, x: (PetScene.width - width) / 2,
+            y: customFloorY - Double(sprite.height) * pixel, flipped: false, action: action)
+    }
+
+    /// Гуляет центром: кадры могут быть разной ширины, а шаг — нет.
+    static func customWalking(_ pet: PetDefinition, elapsed: Double) -> PetFrame {
+        let sprite = pet.walk.frame(at: elapsed)
+        let half = Double(pet.walk.maxWidth) * pixel / 2
+        let (center, forward) = pingPong(
+            elapsed, home: PetScene.width / 2, from: customMargin + half,
+            to: PetScene.width - customMargin - half)
+        let width = Double(sprite.width) * pixel
+        return PetFrame(
+            sprite: sprite, x: center - width / 2, y: customFloorY - Double(sprite.height) * pixel,
+            flipped: !forward, action: .walk)
     }
 }

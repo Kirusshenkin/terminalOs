@@ -609,8 +609,6 @@ extension Strings {
         "theme.glass": [.russian: "Стекло", .english: "Glass"],
         "foot.hosts": [.russian: "хостов", .english: "hosts"],
         "foot.groups": [.russian: "групп", .english: "groups"],
-        "foot.catAsleep": [.russian: "котёнок спит", .english: "the cat is asleep"],
-        "foot.gliderAsleep": [.russian: "поссум спит", .english: "the glider is asleep"],
         "common.cancel": [.russian: "отмена", .english: "cancel"],
         "common.delete": [.russian: "удалить", .english: "delete"],
         "common.allow": [.russian: "разрешить", .english: "allow"],

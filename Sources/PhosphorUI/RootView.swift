@@ -525,7 +525,7 @@ public struct RootView: View {
             Spacer()
             Text(
                 model.petVisible
-                    ? model.strings(model.pet == .cat ? "foot.catAsleep" : "foot.gliderAsleep")
+                    ? model.strings.format("foot.petAsleep", model.petName(model.pet))
                     : ""
             )
         }

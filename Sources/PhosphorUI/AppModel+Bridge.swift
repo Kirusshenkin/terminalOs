@@ -21,6 +21,7 @@ extension AppModel {
             edit: { [weak self] change in
                 await self?.apply(change)
             },
+            pets: { [weak self] in await self?.customPets ?? [] },
             confirm: { [weak self] host, what in
                 await self?.askConfirmation(host: host, what: what) ?? false
             }
@@ -122,7 +123,7 @@ extension AppModel {
     /// Тем же путём, что и правка руками: та же проверка, та же запись
     /// профиля. Второго способа менять список нет — иначе он однажды
     /// разойдётся с первым.
-    func apply(_ change: HostEdit) {
+    func apply(_ change: HostEdit) async {
         switch change {
         case .add(let host): addHost(host)
         case .update(let host): update(host)
@@ -133,6 +134,10 @@ extension AppModel {
         case .keyRemoved(let fingerprint, let host):
             book.forgetKey(fingerprint: fingerprint, host: host)
             scheduleSave()
+        case .addPet(let data):
+            await addPetFromBridge(data)
+        case .removePet(let id):
+            await deletePet(id)
         }
     }
 }

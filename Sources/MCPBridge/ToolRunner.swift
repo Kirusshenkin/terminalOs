@@ -2,6 +2,7 @@ public import DockerKit
 public import Foundation
 public import HostsKit
 public import KeysKit
+public import PetKit
 public import PhosphorCore
 public import SessionKit
 
@@ -39,11 +40,13 @@ public actor ToolRunner {
 
     private let policy: AccessPolicy
     private let audit: AuditLog
-    private let confirm: Confirm
+    let confirm: Confirm
     private let sessions: @Sendable (ServerHost.ID) async -> HostSession?
     private let book: @Sendable () async -> HostBook
     /// Применяет правку списка хостов. Живёт в приложении: там запись на диск.
-    private let edit: @Sendable (HostEdit) async -> Void
+    let edit: @Sendable (HostEdit) async -> Void
+    /// Питомцы уголка — свои из папки; встроенные мост знает сам.
+    let pets: @Sendable () async -> [PetDefinition]
 
     public init(
         policy: AccessPolicy,
@@ -51,6 +54,7 @@ public actor ToolRunner {
         book: @escaping @Sendable () async -> HostBook,
         sessions: @escaping @Sendable (ServerHost.ID) async -> HostSession?,
         edit: @escaping @Sendable (HostEdit) async -> Void = { _ in },
+        pets: @escaping @Sendable () async -> [PetDefinition] = { [] },
         confirm: @escaping Confirm
     ) {
         self.policy = policy
@@ -58,6 +62,7 @@ public actor ToolRunner {
         self.book = book
         self.sessions = sessions
         self.edit = edit
+        self.pets = pets
         self.confirm = confirm
     }
 
@@ -80,6 +85,10 @@ public actor ToolRunner {
 
         if name == "add_host" || name == "update_host" || name == "remove_host" {
             return await editHosts(tool: tool, arguments: arguments, mode: mode)
+        }
+
+        if name == "list_pets" || name == "add_pet" || name == "remove_pet" {
+            return await managePets(tool: tool, arguments: arguments, mode: mode)
         }
 
         guard let hostID = arguments["host"].flatMap(UUID.init(uuidString:)),
@@ -455,7 +464,7 @@ public actor ToolRunner {
         }
     }
 
-    private func log(
+    func log(
         tool: Tool, host: String, arguments: [String: String],
         decision: String, result: ToolResult
     ) async {

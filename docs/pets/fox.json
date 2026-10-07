@@ -1,0 +1,120 @@
+{
+  "format": 1,
+  "id": "fox",
+  "name": "Лиса",
+  "states": {
+    "idle": {
+      "frameMs": 600,
+      "frames": [
+        [
+          "....r...r.........",
+          "...rbr.rbr........",
+          "...rbbrbbr........",
+          "..rbbbbbbbr.......",
+          "..rbebbbebr.......",
+          "..rbbbnbbbr.......",
+          "...rbbbbbr........",
+          "...rbbbbbr....rr..",
+          "..rbbbbbbbr..rbbr.",
+          "..rbbsbsbbr.rbbbr.",
+          "..rbbbbbbbrrbbbr..",
+          "..rbbbbbbbbbbbr...",
+          "...rbbrrrbbrr.....",
+          "...rr.....rr......"
+        ],
+        [
+          "....r...r.........",
+          "...rbr.rbr........",
+          "...rbbrbbr........",
+          "..rbbbbbbbr.......",
+          "..rbebbbebr.......",
+          "..rbbbnbbbr.......",
+          "...rbbbbbr........",
+          "...rbbbbbr........",
+          "..rbbbbbbbr...rr..",
+          "..rbbsbsbbr..rbbr.",
+          "..rbbbbbbbr.rbbbr.",
+          "..rbbbbbbbrrbbbr..",
+          "...rbbrrrbbrrr....",
+          "...rr.....rr......"
+        ]
+      ]
+    },
+    "blink": {
+      "frames": [
+        [
+          "....r...r.........",
+          "...rbr.rbr........",
+          "...rbbrbbr........",
+          "..rbbbbbbbr.......",
+          "..rbbbbbbbr.......",
+          "..rbbbnbbbr.......",
+          "...rbbbbbr........",
+          "...rbbbbbr....rr..",
+          "..rbbbbbbbr..rbbr.",
+          "..rbbsbsbbr.rbbbr.",
+          "..rbbbbbbbrrbbbr..",
+          "..rbbbbbbbbbbbr...",
+          "...rbbrrrbbrr.....",
+          "...rr.....rr......"
+        ]
+      ]
+    },
+    "walk": {
+      "frameMs": 125,
+      "frames": [
+        [
+          "..................r...r.",
+          ".................rbr.rbr",
+          "rrr..............rbbrbbr",
+          "rbbrr...........rbbbbebr",
+          ".rbbbrrrrrrrrrrrbbbbbbn.",
+          "..rrbbbbbbbbbbbbbbbbbr..",
+          "....rbbbbsbsbsbbbbbr....",
+          "....rbbbbbbbbbbbbbr.....",
+          "....rbbr.rrrrr.rbbr.....",
+          "...rbr..........rbr.....",
+          "...rr............rr....."
+        ],
+        [
+          "..................r...r.",
+          ".................rbr.rbr",
+          "..rr.............rbbrbbr",
+          ".rbbrr..........rbbbbebr",
+          "rbbbbbrrrrrrrrrrbbbbbbn.",
+          ".rrrbbbbbbbbbbbbbbbbbr..",
+          "....rbbbbsbsbsbbbbbr....",
+          "....rbbbbbbbbbbbbbr.....",
+          ".....rbbrrrrrrrbbr......",
+          ".....rbr.......rbr......",
+          "......rr.......rr......."
+        ]
+      ]
+    },
+    "sleep": {
+      "frameMs": 1200,
+      "frames": [
+        [
+          "......rrrrrrr.......",
+          "....rrbbbbbbbrr.....",
+          "..rrbbbbsbsbbbbr....",
+          ".rbbbbbbbbbbbbbbr...",
+          "rbbrrbbbbbbbbbbbbr..",
+          "rbbbbrrbbbbbbbbbbr..",
+          "rrbbbbbbbbbbbbbbr...",
+          "..rrrrrrrrrrrrrr...."
+        ],
+        [
+          "......rrrrrrr.......",
+          "....rrbbbbbbbrr.....",
+          "..rrbbbbsbsbbbbr....",
+          ".rbbbbbbbbbbbbbbr...",
+          "rbbrrbbbbbbbbbbbbr..",
+          "rbbbbrrbbbbbbbbbbr..",
+          "rrbbbbbbbbbbbbbbbr..",
+          "..rrrrrrrrrrrrrrr..."
+        ]
+      ]
+    }
+  }
+}

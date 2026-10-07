@@ -54,6 +54,12 @@ public enum ToolCatalog {
         Tool(name: "add_host", summary: "add server to list", kind: .write),
         Tool(name: "update_host", summary: "update server in list", kind: .write),
         Tool(name: "remove_host", summary: "remove server from list", kind: .write),
+        Tool(name: "list_pets", summary: "pets for the corner: built-in and custom", kind: .read),
+        Tool(
+            name: "add_pet",
+            summary: "add a custom pet drawn as character grids; the user confirms",
+            kind: .write),
+        Tool(name: "remove_pet", summary: "remove a custom pet; the user confirms", kind: .write),
     ]
 
     public static func tool(named name: String) -> Tool? {

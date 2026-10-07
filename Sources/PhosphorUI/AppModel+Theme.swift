@@ -50,7 +50,7 @@ extension AppModel {
             Appearance(
                 themeID: themeID,
                 language: language.rawValue,
-                pet: pet.rawValue,
+                pet: pet.storage,
                 eggsEnabled: eggs.enabled,
                 fontSize: fontSize,
                 ligatures: ligatures,

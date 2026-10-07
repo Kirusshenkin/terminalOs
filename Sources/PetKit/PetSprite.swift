@@ -30,22 +30,37 @@ public struct PetSprite: Sendable, Equatable, Identifiable {
     /// `.` is empty; every other character must be an `Ink`. The rows are
     /// literals in this package, so a bad one is a programmer's mistake.
     init(_ id: String, _ rows: [String]) {
-        guard let width = rows.first?.count, rows.allSatisfy({ $0.count == width }) else {
-            fatalError("sprite \(id): every row must have the same width")
+        switch Self.parse(id, rows) {
+        case .success(let sprite): self = sprite
+        case .failure(let error): fatalError("built-in sprite \(id) is malformed: \(error)")
+        }
+    }
+
+    private init(id: String, width: Int, height: Int, pixels: [Pixel]) {
+        self.id = id
+        self.width = width
+        self.height = height
+        self.pixels = pixels
+    }
+
+    /// Reads a frame someone else drew. `place` names it in the error, so a
+    /// person can find the broken frame without reading this code.
+    static func parse(
+        _ id: String, _ rows: [String], place: String = ""
+    ) -> Result<PetSprite, PetFileError> {
+        guard let width = rows.first?.count, width > 0, rows.allSatisfy({ $0.count == width }) else {
+            return .failure(.ragged(place))
         }
         var pixels: [Pixel] = []
         for (y, row) in rows.enumerated() {
             for (x, character) in row.enumerated() where character != "." {
                 guard let ink = Ink(rawValue: character) else {
-                    fatalError("sprite \(id): unknown ink \(character) at \(x),\(y)")
+                    return .failure(.unknownInk(place, String(character)))
                 }
                 pixels.append(Pixel(x: x, y: y, ink: ink))
             }
         }
-        self.id = id
-        self.width = width
-        self.height = rows.count
-        self.pixels = pixels
+        return .success(PetSprite(id: id, width: width, height: rows.count, pixels: pixels))
     }
 }
 

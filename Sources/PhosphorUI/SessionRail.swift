@@ -65,9 +65,11 @@ struct SessionRail: View {
             // там он закрывал строки. Выбрать или выключить — в настройках.
             if model.petVisible {
                 PetCorner(
-                    pet: $model.pet, showsPicker: false, lastActivity: { model.lastTerminalActivity })
-                    .frame(maxWidth: .infinity)
-                    .clipped()
+                    pet: model.pet, custom: model.customPet, lastActivity: { model.lastTerminalActivity }
+                )
+                .task { await model.loadPets() }
+                .frame(maxWidth: .infinity)
+                .clipped()
             }
 
             // Тумблер постоянства — рядом с сессиями, где он и осмыслен.

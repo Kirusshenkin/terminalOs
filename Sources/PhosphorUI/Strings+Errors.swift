@@ -225,7 +225,7 @@ extension Strings {
     }
 
     /// Строка таблицы с подстановкой на место `%@`.
-    private func format(_ key: String, _ value: String) -> String {
+    func format(_ key: String, _ value: String) -> String {
         self(key).replacingOccurrences(of: "%@", with: value)
     }
 }

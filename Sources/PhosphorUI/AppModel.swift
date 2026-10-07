@@ -6,6 +6,7 @@ public import HostsKit
 public import KeysKit
 public import MCPBridge
 public import MetricsKit
+public import PetKit
 public import PhosphorCore
 public import ProvisionKit
 public import SSHKit
@@ -17,13 +18,27 @@ public enum Section: String, CaseIterable, Sendable {
     case hosts, terminal, files, docker, monitor, server, keys, activity, theme
 }
 
-/// Кто живёт в углу.
-public enum Pet: String, CaseIterable, Sendable {
+/// Кто живёт в углу: один из встроенных или свой, по id из папки питомцев.
+public enum Pet: Hashable, Sendable {
     case cat, glider
-    public var title: String {
+    case custom(String)
+
+    public static let builtIn: [Pet] = [.cat, .glider]
+
+    /// Как питомец хранится в настройках: `cat`, `glider` или `pet:<id>`.
+    public init(storage: String) {
+        switch storage {
+        case "glider": self = .glider
+        case let value where value.hasPrefix("pet:"): self = .custom(String(value.dropFirst(4)))
+        default: self = .cat
+        }
+    }
+
+    public var storage: String {
         switch self {
-        case .cat: "CAT"
-        case .glider: "GLIDER"
+        case .cat: "cat"
+        case .glider: "glider"
+        case .custom(let id): "pet:\(id)"
         }
     }
 }
@@ -406,6 +421,11 @@ public final class AppModel {
     public var provisionKeyIDs: Set<String> = [] { didSet { refreshProvisionPlan() } }
     public var removeOtherKeys = false { didSet { refreshProvisionPlan() } }
     let recipeStore = RecipeStore(directory: RecipeStore.defaultDirectory())
+    /// Свои питомцы из папки и файлы, которые не прошли проверку.
+    public internal(set) var customPets: [PetDefinition] = []
+    public internal(set) var petProblems: [String: PetFileError] = [:]
+    public internal(set) var petMessage: String?
+    let petStore = PetStore(directory: PetStore.defaultDirectory())
 
     /// Разрушающее действие, ожидающее подтверждения.
     public var pendingAction: PendingAction?
@@ -508,7 +528,7 @@ public final class AppModel {
         self.gate.reuseDuration = self.biometricReuseSeconds
         themeID = saved.themeID
         language = Language(rawValue: saved.language) ?? .system
-        pet = Pet(rawValue: saved.pet) ?? .cat
+        pet = Pet(storage: saved.pet)
         eggs = EasterEggs(enabled: saved.eggsEnabled)
         fontSize = saved.fontSize
         ligatures = saved.ligatures

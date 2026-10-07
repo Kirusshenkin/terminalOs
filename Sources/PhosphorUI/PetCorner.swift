@@ -1,4 +1,4 @@
-import PetKit
+public import PetKit
 public import SwiftUI
 
 /// The pet's corner: a bounded scene the animals never leave.
@@ -12,80 +12,69 @@ public import SwiftUI
 public struct PetCorner: View {
     @Environment(\.style) private var style
     @Environment(\.controlActiveState) private var activeState
-    @Binding var pet: Pet
-    private let onChange: () -> Void
-    private let showsPicker: Bool
+    private let pet: Pet
+    /// The drawn pet when `pet` is a custom one that is still in the folder.
+    private let custom: PetDefinition?
     /// When the terminal on screen last took input or printed output.
     private let lastActivity: () -> ContinuousClock.Instant?
 
     public init(
-        pet: Binding<Pet>, showsPicker: Bool = true,
-        lastActivity: @escaping () -> ContinuousClock.Instant? = { nil },
-        onChange: @escaping () -> Void = {}
+        pet: Pet, custom: PetDefinition?,
+        lastActivity: @escaping () -> ContinuousClock.Instant? = { nil }
     ) {
-        self._pet = pet
-        self.showsPicker = showsPicker
+        self.pet = pet
+        self.custom = custom
         self.lastActivity = lastActivity
-        self.onChange = onChange
     }
 
     public var body: some View {
-        VStack(alignment: .trailing, spacing: 6) {
-            if showsPicker { picker }
-            // Восемь кадров в секунду хватает пиксельному зверю; в фоне — ни одного.
-            TimelineView(.animation(minimumInterval: 1.0 / 8, paused: activeState == .inactive)) { timeline in
-                scene(at: timeline.date.timeIntervalSinceReferenceDate)
-            }
-            .frame(width: PetScene.width, height: PetScene.height)
-            .allowsHitTesting(false)
-            .opacity(0.55)
+        // Восемь кадров в секунду хватает пиксельному зверю; в фоне — ни одного.
+        TimelineView(.animation(minimumInterval: 1.0 / 8, paused: activeState == .inactive)) { timeline in
+            scene(at: timeline.date.timeIntervalSinceReferenceDate)
         }
+        .frame(width: PetScene.width, height: PetScene.height)
+        .allowsHitTesting(false)
+        .opacity(0.55)
         .padding(.trailing, 4)
         .padding(.bottom, 8)
     }
 
-    private var picker: some View {
-        HStack(spacing: 6) {
-            ForEach(Pet.allCases, id: \.self) { option in
-                Button {
-                    pet = option
-                    onChange()
-                } label: {
-                    Text(option.title)
-                        .font(style.font(10))
-                        .tracking(1.6)
-                        .padding(.horizontal, 9).padding(.vertical, 2)
-                        .foregroundStyle(pet == option ? style.background : style.muted)
-                        .background(pet == option ? style.accent : .clear)
-                        .overlay(
-                            Rectangle().stroke(
-                                pet == option ? style.accent : style.text.opacity(0.3), lineWidth: 1
-                            ))
-                }
-                .buttonStyle(PressFeedback())
-            }
-        }
-    }
+    private enum World { case room, tree, floor }
 
     private func scene(at time: Double) -> some View {
-        let kind: PetKind = pet == .cat ? .cat : .glider
         let quiet = lastActivity().map { (ContinuousClock.now - $0).seconds }
-        let frame = PetScene.frame(kind, time: time, sinceActivity: quiet)
+        let frame: PetFrame
+        let world: World
+        switch (pet, custom) {
+        case (_, let custom?):
+            frame = PetScene.frame(custom, time: time, sinceActivity: quiet)
+            world = .floor
+        case (.glider, nil):
+            frame = PetScene.frame(.glider, time: time, sinceActivity: quiet)
+            world = .tree
+        default:
+            // Свой питомец пропал из папки — в углу снова котёнок, а не пустота.
+            frame = PetScene.frame(.cat, time: time, sinceActivity: quiet)
+            world = .room
+        }
+        let paths = PetPaths.paths(for: frame.sprite)
         let inks = PetInks(style: style)
         return Canvas { context, _ in
-            switch kind {
-            case .cat: drawRoom(&context)
-            case .glider: drawTree(&context)
+            switch world {
+            case .room: drawRoom(&context)
+            case .tree: drawTree(&context)
+            case .floor: drawFloor(&context)
             }
-            draw(frame, inks: inks, into: &context)
+            draw(frame, paths: paths, inks: inks, into: &context)
             if frame.snoring { drawSnore(&context, above: frame, time: time) }
         }
     }
 
     // MARK: - Зверь
 
-    private func draw(_ frame: PetFrame, inks: PetInks, into context: inout GraphicsContext) {
-        guard let paths = PetPaths.byID[frame.sprite.id] else { return }
+    private func draw(
+        _ frame: PetFrame, paths: [(PetSprite.Ink, Path)], inks: PetInks, into context: inout GraphicsContext
+    ) {
         var local = context
         local.translateBy(x: frame.x, y: frame.y)
         if frame.flipped {
@@ -95,6 +84,17 @@ public struct PetCorner: View {
         for (ink, path) in paths {
             local.fill(path, with: .color(inks[ink]))
         }
+    }
+
+    /// Мир своего питомца: только пол — предметы встроенных под него не подходят.
+    private func drawFloor(_ context: inout GraphicsContext) {
+        let floor = PetScene.customFloorY
+        context.stroke(
+            Path {
+                $0.move(to: CGPoint(x: 6, y: floor))
+                $0.addLine(to: CGPoint(x: PetScene.width - 6, y: floor))
+            },
+            with: .color(style.text.opacity(0.2)), lineWidth: 1)
     }
 
     /// «z» поднимается и тает над спящим — три буквы со сдвигом по фазе.
@@ -206,25 +206,35 @@ private struct PetInks {
     }
 }
 
-/// Пиксели каждого кадра, собранные в один `Path` на чернило. Строятся один
-/// раз при первом обращении: в отрисовке кадра нет ни одной аллокации пути.
-private enum PetPaths {
-    static let byID: [String: [(PetSprite.Ink, Path)]] = Dictionary(
-        uniqueKeysWithValues: PetFrames.all.map { sprite in
-            let grouped = Dictionary(grouping: sprite.pixels, by: \.ink)
-            let paths = PetSprite.Ink.allCases.compactMap { ink -> (PetSprite.Ink, Path)? in
-                guard let pixels = grouped[ink] else { return nil }
-                var path = Path()
-                for pixel in pixels {
-                    path.addRect(
-                        CGRect(
-                            x: Double(pixel.x) * PetScene.pixel, y: Double(pixel.y) * PetScene.pixel,
-                            width: PetScene.pixel, height: PetScene.pixel))
-                }
-                return (ink, path)
+/// Пиксели каждого кадра, собранные в один `Path` на чернило. Строятся при
+/// первом показе кадра и дальше берутся готовыми: в отрисовке кадра нет ни
+/// одной аллокации пути.
+@MainActor
+enum PetPaths {
+    private static var cache: [String: [(PetSprite.Ink, Path)]] = [:]
+
+    static func paths(for sprite: PetSprite) -> [(PetSprite.Ink, Path)] {
+        if let ready = cache[sprite.id] { return ready }
+        let grouped = Dictionary(grouping: sprite.pixels, by: \.ink)
+        let built = PetSprite.Ink.allCases.compactMap { ink -> (PetSprite.Ink, Path)? in
+            guard let pixels = grouped[ink] else { return nil }
+            var path = Path()
+            for pixel in pixels {
+                path.addRect(
+                    CGRect(
+                        x: Double(pixel.x) * PetScene.pixel, y: Double(pixel.y) * PetScene.pixel,
+                        width: PetScene.pixel, height: PetScene.pixel))
             }
-            return (sprite.id, paths)
-        })
+            return (ink, path)
+        }
+        cache[sprite.id] = built
+        return built
+    }
+
+    /// Свои питомцы перечитаны: кадр с тем же id мог стать другим рисунком.
+    static func forgetCustom() {
+        cache = cache.filter { !$0.key.hasPrefix("pet.") }
+    }
 }
 
 extension Duration {

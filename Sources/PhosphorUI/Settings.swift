@@ -42,7 +42,7 @@ public struct Appearance: Codable, Sendable, Equatable {
     public init(
         themeID: String = BuiltInThemes.phosphor.id,
         language: String = Language.system.rawValue,
-        pet: String = Pet.cat.rawValue,
+        pet: String = Pet.cat.storage,
         eggsEnabled: Bool = true,
         fontSize: Double = 13,
         ligatures: Bool = true,

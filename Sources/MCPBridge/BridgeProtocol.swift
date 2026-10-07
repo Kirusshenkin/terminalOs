@@ -161,7 +161,7 @@ public enum BridgeLocation {
             ToolArgument(name: "tags", hint: "tags comma-separated"),
         ]
         switch tool {
-        case "list_hosts":
+        case "list_hosts", "list_pets":
             return []
         case "add_host":
             return fields.map {
@@ -170,6 +170,19 @@ public enum BridgeLocation {
             }
         case "update_host":
             return [host] + fields
+        case "add_pet":
+            return [
+                ToolArgument(
+                    name: "pet",
+                    hint: #"pet JSON: {"format":1,"id":"fox","name":"Fox","states":{"idle":{"frames":[[rows]]},"#
+                        + #""walk":{"frameMs":125,"frames":[[rows],[rows]]},"sleep":{"frames":[[rows]]}}}. "#
+                        + "Optional state blink. Rows are strings of . (empty) b (body) r (rim) e (eye) "
+                        + "s (stripe) n (nose); colours come from the theme. Up to 32x32 pixels, "
+                        + "1-8 frames per state, draw facing right, bottom row is the ground.",
+                    isRequired: true)
+            ]
+        case "remove_pet":
+            return [ToolArgument(name: "pet", hint: "custom pet id from list_pets", isRequired: true)]
         default:
             // Остальное — чтение состояния хоста: кроме самого хоста, ничего.
             return [host]

@@ -34,7 +34,7 @@ public struct PhosphorCommands: Commands {
             }
             item("cmd.quickConnect", "o", [.command, .shift]) { $0.isQuickConnectOpen = true }
             Divider()
-            item("cmd.closePane", "w", enabled: model?.extraSessions.isEmpty == false) {
+            item("cmd.closePane", "w", enabled: model?.extraPanes.isEmpty == false) {
                 $0.closeFocusedPane()
             }
         }

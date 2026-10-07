@@ -11,10 +11,11 @@ extension AppModel {
         book.hosts.first { $0.id == selectedHost }
     }
 
-    /// Сплит есть только у сессий на сервере: каждая панель — своя tmux-сессия
-    /// на том же хосте, а у этого Мака одна лента.
+    /// Сплит — у сессий на сервере и у постоянных сессий этого Мака: каждая
+    /// панель — своя tmux-сессия. У одноразового шелла лента одна.
     public var canSplit: Bool {
-        session != nil && !localFocused && extraSessions.count + 1 < Self.paneLimit
+        let available = localFocused ? persistentSessions && localTmuxPath != nil : session != nil
+        return available && currentExtraSessions.count + 1 < Self.paneLimit
     }
 
     /// ⌘T: новая сессия без вопросов об имени — там же, где сейчас смотрим.
@@ -65,7 +66,7 @@ extension AppModel {
     func closeFocusedPane() {
         let focused = focusedSurface
         let pane = extraPanes.first { surfaces.existing($0.destination) === focused }
-        closePane(pane?.name ?? extraSessions.last ?? "")
+        closePane(pane?.name ?? currentExtraSessions.last ?? "")
     }
 
     /// ⌥⌘→ / ⌥⌘←: курсор в соседнюю панель по кругу.

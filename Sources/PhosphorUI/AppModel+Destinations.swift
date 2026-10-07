@@ -20,13 +20,21 @@ extension AppModel {
 
     /// Дополнительные панели с их адресами. Пусто — панель одна.
     ///
-    /// Сплит принадлежит серверному спейсу: смотрим на этот Мак — показываем
-    /// одну панель, а остальные ждут возвращения на хост вместе со своими
-    /// лентами.
+    /// У сервера и у этого Мака сплит свой: переключился — видишь панели того,
+    /// на что смотришь, а остальные ждут возвращения вместе со своими лентами.
+    /// На Маке панели — постоянные сессии здешнего tmux; без tmux у
+    /// одноразового шелла одна лента, и делить нечего.
     public var extraPanes: [Pane] {
-        guard !localFocused else { return [] }
-        return extraSessions.compactMap { name in
-            destination(session: name).map { Pane(name: name, destination: $0) }
+        guard localFocused else {
+            return extraSessions.compactMap { name in
+                destination(session: name).map { Pane(name: name, destination: $0) }
+            }
+        }
+        guard persistentSessions, let tmux = localTmuxPath else { return [] }
+        return localExtraSessions.compactMap { name in
+            SSHInvocation.tmuxSessionName(name).map {
+                Pane(name: name, destination: .localSession(name: $0, tmux: tmux))
+            }
         }
     }
 

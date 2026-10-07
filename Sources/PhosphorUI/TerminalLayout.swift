@@ -35,6 +35,8 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
     public var localFocused: Bool?
     /// Доля главной панели, если её двигали мышью.
     public var splitRatio: Double?
+    /// Дополнительные панели на этом Маке.
+    public var localPanes: [String]?
 
     public init(
         spaces: [UUID] = [],
@@ -46,7 +48,8 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
         panes: [String]? = nil,
         localSession: String? = nil,
         localFocused: Bool? = nil,
-        splitRatio: Double? = nil
+        splitRatio: Double? = nil,
+        localPanes: [String]? = nil
     ) {
         self.spaces = spaces
         self.spaceSessions = spaceSessions
@@ -58,6 +61,7 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
         self.localSession = localSession
         self.localFocused = localFocused
         self.splitRatio = splitRatio
+        self.localPanes = localPanes
     }
 
     /// Та же раскладка, но без хостов, которых больше нет в списке.

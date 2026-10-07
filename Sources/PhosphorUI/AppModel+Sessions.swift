@@ -350,6 +350,7 @@ extension AppModel {
         terminalSession = saved.session
         localSession = saved.localSession
         localFocused = saved.localFocused ?? false
+        localExtraSessions = saved.localPanes ?? []
     }
 
     /// Пишет раскладку на диск. Вызывается из действий, меняющих вид раздела:
@@ -369,7 +370,8 @@ extension AppModel {
                 panes: extraSessions,
                 localSession: localSession,
                 localFocused: localFocused,
-                splitRatio: splitRatio
+                splitRatio: splitRatio,
+                localPanes: localExtraSessions
             ))
     }
 
@@ -404,12 +406,27 @@ extension AppModel {
     /// Добавляет ещё одну живую панель. Каждая садится в свою сессию на том же
     /// хосте (не в ту же, что соседняя, — иначе это одна и та же лента).
     public func splitTerminal() {
-        guard extraSessions.count + 1 < Self.paneLimit else { return }
-        var taken = Set(extraSessions)
-        taken.insert(terminalSession ?? "main")
-        extraSessions.append(Self.nextPaneName(taken: taken))
+        guard canSplit else { return }
+        var taken = Set(currentExtraSessions)
+        taken.insert((localFocused ? localSession : terminalSession) ?? "main")
+        if localFocused { taken.formUnion(localSessions.map(\.name)) }
+        let name = Self.nextPaneName(taken: taken)
+        currentExtraSessions.append(name)
+        // Новая панель сперва спрашивает, что в ней запустить: шелл или агента.
+        if let pane = extraPanes.first(where: { $0.name == name }) {
+            pendingLaunch.insert(pane.destination)
+            Task { await loadInstalledAgents() }
+        }
         screen = .terminal
         saveLayout()
+    }
+
+    /// Панели того, на что смотрит терминал: этого Мака или сервера.
+    var currentExtraSessions: [String] {
+        get { localFocused ? localExtraSessions : extraSessions }
+        set {
+            if localFocused { localExtraSessions = newValue } else { extraSessions = newValue }
+        }
     }
 
     /// Имя для новой панели: первое свободное из `side`, `side2`, `side3`…
@@ -427,15 +444,18 @@ extension AppModel {
     /// Убирает последнюю панель. tmux-сессия за ней остаётся жить на сервере —
     /// гаснет только наш `ssh`, смотреть в который стало некому.
     public func closeSplit() {
-        guard let last = extraSessions.last else { return }
+        guard let last = currentExtraSessions.last else { return }
         closePane(last)
     }
 
     /// Убирает названную панель.
     public func closePane(_ name: String) {
-        guard let index = extraSessions.firstIndex(of: name) else { return }
-        if let destination = destination(session: name) { surfaces.discard(destination) }
-        extraSessions.remove(at: index)
+        guard let index = currentExtraSessions.firstIndex(of: name) else { return }
+        if let pane = extraPanes.first(where: { $0.name == name }) {
+            surfaces.discard(pane.destination)
+            pendingLaunch.remove(pane.destination)
+        }
+        currentExtraSessions.remove(at: index)
         saveLayout()
     }
 

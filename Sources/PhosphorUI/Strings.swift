@@ -31,7 +31,7 @@ public struct Strings: Sendable {
 
     public func callAsFunction(_ key: String) -> String {
         (Self.table[key] ?? Self.packageTable[key] ?? Self.recipeTable[key] ?? Self.petTable[key]
-            ?? Self.syncTable[key])?[language] ?? key
+            ?? Self.syncTable[key] ?? Self.agentTable[key])?[language] ?? key
     }
 
     /// Имя встроенной темы на языке интерфейса.

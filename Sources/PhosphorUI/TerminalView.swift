@@ -49,7 +49,7 @@ public struct TerminalPane: View {
                     .foregroundStyle(isFailure ? style.warning : style.muted)
                     .padding(.bottom, 8)
             }
-            if model.session != nil, !model.localFocused { splitBar }
+            if model.canSplit || !model.extraPanes.isEmpty { splitBar }
             panes
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -84,6 +84,12 @@ public struct TerminalPane: View {
                     if index > 0 { divider }
                     ZStack(alignment: .topTrailing) {
                         hostSurface(pane.destination)
+                        // Новая панель сперва спрашивает, что запустить (§23).
+                        if model.pendingLaunch.contains(pane.destination) {
+                            AgentPicker(strings: strings, installed: model.installedHere) { choice in
+                                model.launch(choice, in: pane.destination)
+                            }
+                        }
                         // Закрыть панель — сессия за ней остаётся на сервере.
                         Button {
                             model.closePane(pane.name)
@@ -149,7 +155,7 @@ public struct TerminalPane: View {
             Spacer()
             // Добавить панель можно, пока их меньше потолка: за каждой стоит
             // живой ssh, и «ещё одна» без края — это утечка на экране.
-            if model.extraSessions.count + 1 < AppModel.paneLimit {
+            if model.canSplit {
                 Button {
                     model.splitTerminal()
                 } label: {
@@ -158,7 +164,7 @@ public struct TerminalPane: View {
                 .buttonStyle(PressFeedback())
                 .help("\(model.strings("cmd.splitSide")) ⌘D · \(model.strings("cmd.splitBelow")) ⇧⌘D")
             }
-            if !model.extraSessions.isEmpty {
+            if !model.extraPanes.isEmpty {
                 Button {
                     model.flipSplit()
                 } label: {

@@ -52,6 +52,14 @@ struct SyncMergeTests {
         #expect(SyncMerge.ahead(records, now: 1_000) == ["broken": 400 * day])
     }
 
+    @Test("свои часы ушли вперёд и вернулись — следующая правка штампуется около настоящего времени")
+    func ownClockBack() {
+        let year = 365 * HybridClock.maxSkew
+        var clock = HybridClock(machine: "a")
+        _ = clock.tick(now: 1_000 + year)
+        #expect(clock.tick(now: 2_000).millis == 2_000)
+    }
+
     @Test("правки разных записей с двух машин сохраняются обе")
     func differentItemsBothKept() {
         let merged = SyncMerge.merge(

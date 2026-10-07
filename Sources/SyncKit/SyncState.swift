@@ -48,6 +48,8 @@ public struct SyncState: Codable, Sendable, Equatable {
     /// protects: the local profile is encrypted under the Keychain key anyway.
     var profileKey: Data?
     public var keyGeneration: UInt32 = 0
+    /// Machines ever revoked, as storage last showed them; see `SyncSnapshot.revoked`.
+    public var revoked: [String] = []
     var lastStamp: Stamp?
     var baseline: [String: SyncBaseline] = [:]
     public var lastSync: Date?
@@ -125,7 +127,8 @@ public struct SyncState: Codable, Sendable, Equatable {
 
 extension SyncState {
     private enum CodingKeys: String, CodingKey {
-        case identity, storages, marks, machines, profileKey, keyGeneration, lastStamp, baseline, lastSync
+        case identity, storages, marks, machines, revoked, profileKey, keyGeneration, lastStamp, baseline,
+            lastSync
         // Сборка 168 знала одно хранилище: читаем его как список из одного.
         case storage, lastRevision, epoch
     }
@@ -146,6 +149,7 @@ extension SyncState {
             ]
         }
         machines = try container.decodeIfPresent([SyncMachine].self, forKey: .machines) ?? []
+        revoked = try container.decodeIfPresent([String].self, forKey: .revoked) ?? []
         profileKey = try container.decodeIfPresent(Data.self, forKey: .profileKey)
         keyGeneration = try container.decodeIfPresent(UInt32.self, forKey: .keyGeneration) ?? 0
         lastStamp = try container.decodeIfPresent(Stamp.self, forKey: .lastStamp)
@@ -159,6 +163,7 @@ extension SyncState {
         try container.encode(storages, forKey: .storages)
         try container.encode(marks, forKey: .marks)
         try container.encode(machines, forKey: .machines)
+        try container.encode(revoked, forKey: .revoked)
         try container.encodeIfPresent(profileKey, forKey: .profileKey)
         try container.encode(keyGeneration, forKey: .keyGeneration)
         try container.encodeIfPresent(lastStamp, forKey: .lastStamp)

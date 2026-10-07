@@ -38,6 +38,7 @@ public struct HybridClock: Sendable {
 
     /// A stamp for a change made here, now.
     public mutating func tick(now: Int64) -> Stamp {
+        forgetFuture(now: now)
         last =
             now > last.millis
             ? Stamp(millis: now, counter: 0, machine: machine)
@@ -55,6 +56,7 @@ public struct HybridClock: Sendable {
     /// followed: it is reported instead, see `SyncMerge.ahead`.
     public mutating func observe(_ remote: Stamp, now: Int64) {
         guard remote.millis <= now + Self.maxSkew else { return }
+        forgetFuture(now: now)
         let millis = max(now, last.millis, remote.millis)
         let counter: UInt32 =
             switch (millis == last.millis, millis == remote.millis) {
@@ -64,6 +66,14 @@ public struct HybridClock: Sendable {
             case (false, false): 0
             }
         last = Stamp(millis: millis, counter: counter, machine: machine)
+    }
+
+    /// Свои часы этой машины ушли вперёд, а потом дату поправили: без этого
+    /// она штамповала бы из будущего, пока оно не наступит, и предупреждение
+    /// называло бы машину, у которой дата уже верная. Своя правка из будущего
+    /// при этом проигрывает следующей — это честно.
+    private mutating func forgetFuture(now: Int64) {
+        if last.millis > now + Self.maxSkew { last = Stamp(millis: now, counter: 0, machine: machine) }
     }
 }
 

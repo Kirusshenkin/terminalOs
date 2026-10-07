@@ -54,6 +54,14 @@ public struct SyncSnapshot: Codable, Sendable, Equatable {
     /// others already have, with a lower revision, and they report a rollback.
     /// The way out is in that message: turn sync off and on on that machine.
     public var epoch: UInt32 = 0
+    /// Machines ever revoked. Only grows, and is merged across storages: two
+    /// revocations made while different storages were down must both hold,
+    /// so a machine on this list never comes back into `machines`.
+    public var revoked: [String] = []
+
+    enum CodingKeys: String, CodingKey {
+        case revision, keyGeneration, machines, keys, records, epoch, revoked
+    }
 
     public init(
         revision: UInt64 = 0, keyGeneration: UInt32 = 0, machines: [SyncMachine] = [],
@@ -64,6 +72,21 @@ public struct SyncSnapshot: Codable, Sendable, Equatable {
         self.machines = machines
         self.keys = keys
         self.records = records
+    }
+}
+
+extension SyncSnapshot {
+    /// Snapshots written before `revoked` existed (build 168) have no such key.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            revision: try container.decode(UInt64.self, forKey: .revision),
+            keyGeneration: try container.decode(UInt32.self, forKey: .keyGeneration),
+            machines: try container.decode([SyncMachine].self, forKey: .machines),
+            keys: try container.decode([WrappedKey].self, forKey: .keys),
+            records: try container.decode([SealedRecord].self, forKey: .records))
+        epoch = try container.decodeIfPresent(UInt32.self, forKey: .epoch) ?? 0
+        revoked = try container.decodeIfPresent([String].self, forKey: .revoked) ?? []
     }
 }
 

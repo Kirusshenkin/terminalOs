@@ -16,7 +16,7 @@ public enum SyncEngine {
         /// machine that let it in with what that machine shows for itself:
         /// otherwise storage could build a snapshot of its own around this
         /// machine's public keys and collect its hosts.
-        case confirmSigner(state: SyncState, signer: SyncMachine)
+        case confirmSigner(state: SyncState, signers: [SyncMachine])
     }
 
     /// What the person asked for on this round, besides syncing.
@@ -138,6 +138,7 @@ private struct Round {
 
         state.machines = shared.machines
         state.keyGeneration = shared.generation
+        state.revoked = shared.revoked
         state.profileKey = shared.key.withUnsafeBytes { Data($0) }
         state.lastSync = Date(timeIntervalSince1970: Double(now) / 1_000)
         let members = Set(shared.machines.map(\.id))
@@ -149,6 +150,9 @@ private struct Round {
     /// A machine that trusts nobody yet. nil: it was let in and the person
     /// confirmed who did it — carry on with a normal round.
     private mutating func firstContact(_ me: SyncMachine) async throws -> SyncEngine.Outcome? {
+        // Подписанты со всех хранилищ: подменённое хранилище, стоящее первым,
+        // не должно заслонять честное — человек выбирает тот код, что совпал.
+        var signers: [SyncMachine] = []
         for (id, copy) in copies.sorted(by: { $0.key.uuidString < $1.key.uuidString }) {
             guard let signed = copy.view.snapshot else { continue }
             let first: SyncSnapshot?
@@ -162,10 +166,13 @@ private struct Round {
             guard let first, let signer = first.machines.first(where: { $0.id == signed.signer }) else {
                 continue
             }
-            guard signer == changes.trust else { return .confirmSigner(state: state, signer: signer) }
-            state.machines = first.machines
-            return nil
+            if signer == changes.trust {
+                state.machines = first.machines
+                return nil
+            }
+            if !signers.contains(signer) { signers.append(signer) }
         }
+        if !signers.isEmpty { return .confirmSigner(state: state, signers: signers) }
         for (id, copy) in copies where !copy.view.requests.contains(where: { $0.id == me.id }) {
             guard let remote = remotes[id] else { continue }
             do { try await remote.request(me) } catch { failures[id] = error }
@@ -207,6 +214,7 @@ private struct Round {
         var generation: UInt32
         var key: SymmetricKey
         var records: [SyncRecord]
+        var revoked: [String]
     }
 
     private func sharedBase(_ me: SyncMachine) throws -> Shared {
@@ -217,24 +225,39 @@ private struct Round {
             if let stored = state.profileKey {
                 return Shared(
                     machines: state.machines.isEmpty ? [me] : state.machines, generation: state.keyGeneration,
-                    key: SymmetricKey(data: stored), records: [])
+                    key: SymmetricKey(data: stored), records: [], revoked: state.revoked)
             }
-            return Shared(machines: [me], generation: 0, key: SymmetricKey(size: .bits256), records: [])
+            return Shared(
+                machines: [me], generation: 0, key: SymmetricKey(size: .bits256), records: [], revoked: [])
         }
+        // Отозванные — объединение отовсюду: два отзыва, сделанные, пока лежали
+        // разные хранилища, держатся оба.
+        let revoked = Set(state.revoked + accepted.flatMap(\.revoked))
+        let newest = accepted.filter { $0.keyGeneration == top }
         var machines: [SyncMachine] = []
-        for snapshot in accepted where snapshot.keyGeneration == top {
-            for machine in snapshot.machines where !machines.contains(where: { $0.id == machine.id }) {
+        for snapshot in newest {
+            for machine in snapshot.machines
+            where !revoked.contains(machine.id) && !machines.contains(where: { $0.id == machine.id }) {
                 machines.append(machine)
             }
         }
-        guard machines.contains(where: { $0.id == me.id }),
-            let newest = accepted.first(where: { $0.keyGeneration == top && $0.machines.contains(me) })
-        else { throw SyncError.notForThisMachine }
+        guard machines.contains(where: { $0.id == me.id }) else { throw SyncError.notForThisMachine }
+        let keys = newest.filter { $0.machines.contains(me) }.compactMap { snapshot in
+            // Ключ снимка без этой машины не открыть — он и не нужен.
+            try? state.identity.unwrap(snapshot).withUnsafeBytes { Data($0) }
+        }
+        guard let key = keys.first else { throw SyncError.notForThisMachine }
         let records = copies.values.compactMap(\.records).reduce([SyncRecord]()) {
             SyncMerge.merge($0, $1, now: now)
         }
+        // Ключ меняется, если его знает отозванная машина или если хранилища
+        // разошлись в ключе одного поколения (два отзыва порознь).
+        let leaked = newest.contains { $0.machines.contains { revoked.contains($0.id) } }
+        let split = Set(keys).count > 1
         return Shared(
-            machines: machines, generation: top, key: try state.identity.unwrap(newest), records: records)
+            machines: machines, generation: leaked || split ? top + 1 : top,
+            key: leaked || split ? SymmetricKey(size: .bits256) : SymmetricKey(data: key), records: records,
+            revoked: revoked.sorted())
     }
 
     /// Lets approved machines in and removes revoked ones. Returns the ids of
@@ -249,6 +272,7 @@ private struct Round {
         if !revoked.isEmpty {
             // Отзыв меняет ключ: записи всё равно запечатываются заново.
             shared.machines.removeAll { revoked.contains($0.id) }
+            shared.revoked = Array(Set(shared.revoked + revoked)).sorted()
             shared.key = SymmetricKey(size: .bits256)
             shared.generation += 1
         }
@@ -266,6 +290,7 @@ private struct Round {
             held.map { snapshot in
                 snapshot.keyGeneration == shared.generation
                     && Set(snapshot.machines.map(\.id)) == Set(shared.machines.map(\.id))
+                    && Set(snapshot.revoked) == Set(shared.revoked)
                     && copy.records.map { $0.sorted { $0.key < $1.key } } == merged
             } ?? false
         let consumes = copy.view.requests.contains { approved.contains($0.id) }
@@ -276,6 +301,7 @@ private struct Round {
         var next = SyncSnapshot(
             revision: max(held?.revision ?? 0, copy.view.revision, mark.revision) + 1,
             keyGeneration: shared.generation, machines: shared.machines)
+        next.revoked = shared.revoked
         // Пустое хранилище, где эта машина уже бывала, — папку стёрли:
         // новая эпоха, чтобы ушедшие вперёд машины не приняли её за откат.
         next.epoch = held?.epoch ?? (mark == StorageMark() ? 0 : mark.epoch + 1)

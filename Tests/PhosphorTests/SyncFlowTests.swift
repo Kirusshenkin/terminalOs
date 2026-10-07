@@ -73,9 +73,9 @@ private struct Mac {
         case .awaitingApproval(let next, let code):
             state = next
             return code
-        case .confirmSigner(let next, let machine):
+        case .confirmSigner(let next, let machines):
             state = next
-            signer = machine
+            signer = machines.first
             return nil
         case .synced(let records, let next, let waiting, let failed):
             state = next
@@ -423,5 +423,79 @@ struct SyncManyStoragesTests {
             SyncState.self, from: JSONSerialization.data(withJSONObject: legacy))
         #expect(decoded.storages == [first])
         #expect(decoded.marks[first] == StorageMark(revision: 7, epoch: 2))
+    }
+}
+
+@Suite("Синхронизация: ревью несколько хранилищ")
+struct SyncManyStoragesReviewTests {
+    let first = UUID(), second = UUID()
+
+    /// Пускает новую машину через оба хранилища: просьба, одобрение, сверка кода.
+    private func join(
+        _ name: String, via host: inout Mac, remotes: [UUID: SyncRemote], at now: Int64
+    ) async throws
+        -> Mac
+    {
+        var guest = try Mac(name, storages: [first, second])
+        try await guest.sync(remotes: remotes, at: now)
+        try await host.sync(remotes: remotes, .init(approve: [guest.state.identity.id]), at: now + 1)
+        try await guest.sync(remotes: remotes, at: now + 2)
+        try await guest.sync(remotes: remotes, .init(trust: try #require(guest.signer)), at: now + 2)
+        #expect(guest.state.isJoined)
+        return guest
+    }
+
+    @Test("два отзыва при поочерёдно лежащих хранилищах держатся оба")
+    func twoRevocationsApart() async throws {
+        let one = try Folder(), two = try Folder()
+        let both = [first: one.remote, second: two.remote]
+        var a = try Mac("a", storages: [first, second])
+        try await a.sync(remotes: both)
+        var b = try await join("b", via: &a, remotes: both, at: 1_000)
+        var x = try await join("x", via: &a, remotes: both, at: 2_000)
+        var y = try await join("y", via: &a, remotes: both, at: 3_000)
+        try await b.sync(remotes: both, at: 4_000)
+
+        // Второе лежит — A отзывает X через первое; первое лежит — B отзывает Y через второе.
+        try await a.sync(remotes: [first: one.remote], .init(revoke: [x.state.identity.id]), at: 5_000)
+        try await b.sync(remotes: [second: two.remote], .init(revoke: [y.state.identity.id]), at: 6_000)
+        try await a.sync(remotes: both, at: 7_000)
+        try await b.sync(remotes: both, at: 8_000)
+
+        #expect(Set(a.state.machines.map(\.name)) == ["a", "b"])
+        #expect(Set(b.state.machines.map(\.name)) == ["a", "b"])
+        #expect(a.state.keyGeneration == b.state.keyGeneration && a.state.keyGeneration >= 2)
+        await #expect(throws: SyncError.notForThisMachine) { try await x.sync(remotes: both, at: 9_000) }
+        await #expect(throws: SyncError.notForThisMachine) { try await y.sync(remotes: both, at: 9_000) }
+    }
+
+    @Test("подменённое хранилище первым не заслоняет честное: видны подписанты обоих")
+    func forgedFirstStorage() async throws {
+        let honest = try Folder(), forged = try Folder()
+        // Порядок обхода — по UUID; ставим подменённое первым.
+        let (low, high) = first.uuidString < second.uuidString ? (first, second) : (second, first)
+        let both = [low: forged.remote, high: honest.remote]
+        var a = try Mac("a", storages: [high])
+        try await a.sync(remotes: [high: honest.remote])
+        var b = try Mac("b", storages: [low, high])
+        try await b.sync(remotes: both)
+        try await a.sync(remotes: [high: honest.remote], .init(approve: [b.state.identity.id]), at: 2_000)
+
+        let attacker = try SyncIdentity.create(name: "a", useEnclave: false)
+        let key = SymmetricKey(size: .bits256)
+        let me = try b.state.identity.machine(), evil = try attacker.machine()
+        let fake = SyncSnapshot(
+            revision: 1, machines: [evil, me],
+            keys: [try SyncCrypto.wrap(key, for: evil), try SyncCrypto.wrap(key, for: me)])
+        try JSONEncoder().encode(try attacker.sign(fake))
+            .write(to: URL(fileURLWithPath: forged.path + "/snapshot.json"))
+
+        let outcome = try await SyncEngine.run(
+            items: [], state: b.state, remotes: both, now: { 3_000 })
+        guard case .confirmSigner(_, let signers) = outcome else {
+            Issue.record("ожидалась сверка кода")
+            return
+        }
+        #expect(Set(signers.map(\.code)) == [evil.code, try a.state.identity.machine().code])
     }
 }

@@ -10,7 +10,7 @@ public enum SyncPhase: Equatable, Sendable {
     /// Эта машина оставила просьбу и ждёт, пока её пустят с другой.
     case waiting(code: String)
     /// Машину пустили; перед первой записью человек сверяет код той, что пустила.
-    case confirm(signer: SyncMachine)
+    case confirm(signers: [SyncMachine])
     case synced(Date)
     case failed(String)
 }
@@ -179,9 +179,9 @@ extension AppModel {
         case .awaitingApproval(let next, let code):
             book.sync = next
             syncPhase = .waiting(code: code)
-        case .confirmSigner(let next, let signer):
+        case .confirmSigner(let next, let signers):
             book.sync = next
-            syncPhase = .confirm(signer: signer)
+            syncPhase = .confirm(signers: signers)
         case .synced(let records, var next, let waiting, let failures):
             syncFailures = failures.mapValues { strings.syncError($0) }
             let now = Int64(Date().timeIntervalSince1970 * 1_000)

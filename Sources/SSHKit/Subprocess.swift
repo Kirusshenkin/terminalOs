@@ -22,13 +22,25 @@ public enum Subprocess {
         if let inPipe { process.standardInput = inPipe }
 
         let collector = OutputCollector()
+        // Пустой кусок — конец трубы: обработчик снимает себя сам, и только
+        // после этого всё, что процесс написал, точно лежит в сборщике.
         outPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            if !data.isEmpty { collector.appendOut(data) }
+            if data.isEmpty {
+                handle.readabilityHandler = nil
+                collector.finish()
+            } else {
+                collector.appendOut(data)
+            }
         }
         errPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            if !data.isEmpty { collector.appendErr(data) }
+            if data.isEmpty {
+                handle.readabilityHandler = nil
+                collector.finish()
+            } else {
+                collector.appendErr(data)
+            }
         }
 
         try process.run()
@@ -40,14 +52,13 @@ public enum Subprocess {
         }
         await waitForExit(process)
         deadline.cancel()
+        // Выход процесса не значит, что его вывод дочитан: последний кусок
+        // мог ещё лежать в трубе, и причина ошибки приходила пустой. Ждём
+        // конца обеих труб; таймер — только верхняя граница, если трубу
+        // держит фоновый потомок (мастер-соединение ssh).
+        await collector.drained(within: .seconds(2))
         outPipe.fileHandleForReading.readabilityHandler = nil
         errPipe.fileHandleForReading.readabilityHandler = nil
-
-        // Anything buffered between the last handler call and exit.
-        let tailOut = try? outPipe.fileHandleForReading.readToEnd()
-        let tailErr = try? errPipe.fileHandleForReading.readToEnd()
-        if let tailOut, !tailOut.isEmpty { collector.appendOut(tailOut) }
-        if let tailErr, !tailErr.isEmpty { collector.appendErr(tailErr) }
 
         return CommandResult(
             status: process.terminationStatus,
@@ -145,6 +156,44 @@ private final class OutputCollector: @unchecked Sendable {
     private let lock = NSLock()
     private var out = Data()
     private var err = Data()
+    /// Сколько труб дошло до конца: их две, stdout и stderr.
+    private var finished = 0
+    private var timedOut = false
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func finish() {
+        let resume: CheckedContinuation<Void, Never>? = lock.withLock {
+            finished += 1
+            guard finished == 2 else { return nil }
+            defer { waiter = nil }
+            return waiter
+        }
+        resume?.resume()
+    }
+
+    /// Returns when both pipes reached their end, or after `limit`.
+    func drained(within limit: Duration) async {
+        let timer = Task {
+            // `try?`: сон прерывает только отмена — трубы закончились раньше.
+            try? await Task.sleep(for: limit)
+            guard !Task.isCancelled else { return }
+            let resume: CheckedContinuation<Void, Never>? = lock.withLock {
+                timedOut = true
+                defer { waiter = nil }
+                return waiter
+            }
+            resume?.resume()
+        }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let done: Bool = lock.withLock {
+                if finished == 2 || timedOut { return true }
+                waiter = continuation
+                return false
+            }
+            if done { continuation.resume() }
+        }
+        timer.cancel()
+    }
 
     func appendOut(_ data: Data) { lock.withLock { out.append(data) } }
     func appendErr(_ data: Data) { lock.withLock { err.append(data) } }

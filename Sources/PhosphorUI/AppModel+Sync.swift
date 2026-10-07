@@ -15,6 +15,15 @@ public enum SyncPhase: Equatable, Sendable {
     case failed(String)
 }
 
+/// Служебное состояние кругов синхронизации: отложенный круг, идёт ли круг
+/// сейчас, нужен ли ещё один и что человек попросил, пока шёл прошлый.
+struct SyncRun {
+    var task: Task<Void, Never>?
+    var running = false
+    var again = false
+    var pending = SyncEngine.Changes()
+}
+
 /// Синхронизация профиля между своими машинами через папку на своём сервере (#18).
 @MainActor
 extension AppModel {
@@ -73,7 +82,7 @@ extension AppModel {
     /// Выключает синхронизацию на этой машине. Хосты остаются; в списке
     /// машин на других она остаётся, пока её там не отзовут.
     public func disableSync() async {
-        syncTask?.cancel()
+        syncRun.task?.cancel()
         book.sync = nil
         syncRequests = []
         syncFailures = [:]
@@ -108,8 +117,8 @@ extension AppModel {
     /// Синхронизация после правки — с задержкой, чтобы серия правок ушла одной.
     func scheduleSync() {
         guard book.sync != nil else { return }
-        syncTask?.cancel()
-        syncTask = Task {
+        syncRun.task?.cancel()
+        syncRun.task = Task {
             // `try?`: сон прерывает только отмена — пришла правка новее,
             // и синхронизация уже запланирована заново.
             try? await Task.sleep(for: Self.syncDelay)
@@ -120,7 +129,7 @@ extension AppModel {
 
     /// Возврат в окно после долгого перерыва — повод забрать чужие правки.
     func syncIfStale() {
-        guard let state = book.sync, !syncRunning else { return }
+        guard let state = book.sync, !syncRun.running else { return }
         let last = state.lastSync ?? .distantPast
         if Date().timeIntervalSince(last) > Self.syncStaleAfter { Task { await syncNow() } }
     }
@@ -128,29 +137,29 @@ extension AppModel {
     /// Один круг: прочитать хранилище, слить, записать, применить к профилю.
     public func syncNow(_ changes: SyncEngine.Changes = .init()) async {
         guard book.sync != nil, profileWritable else { return }
-        guard !syncRunning else {
+        guard !syncRun.running else {
             // Круг уже идёт; просьбу человека (пустить, отозвать) не теряем.
-            syncPending.approve += changes.approve
-            syncPending.revoke += changes.revoke
-            syncPending.trust = changes.trust ?? syncPending.trust
-            syncAgain = true
+            syncRun.pending.approve += changes.approve
+            syncRun.pending.revoke += changes.revoke
+            syncRun.pending.trust = changes.trust ?? syncRun.pending.trust
+            syncRun.again = true
             return
         }
-        syncRunning = true
-        defer { syncRunning = false }
+        syncRun.running = true
+        defer { syncRun.running = false }
         var changes = changes
         // Правка посреди круга: результат устарел ещё до применения, и круг
         // повторяется. Три раза подряд — значит, правят непрерывно; доедет
         // со следующей записью.
         for _ in 0..<3 {
-            changes.approve += syncPending.approve
-            changes.revoke += syncPending.revoke
-            changes.trust = changes.trust ?? syncPending.trust
-            syncPending = SyncEngine.Changes()
-            syncAgain = false
+            changes.approve += syncRun.pending.approve
+            changes.revoke += syncRun.pending.revoke
+            changes.trust = changes.trust ?? syncRun.pending.trust
+            syncRun.pending = SyncEngine.Changes()
+            syncRun.again = false
             guard await syncRound(changes) else { return }
             changes = SyncEngine.Changes()
-            if !syncAgain { return }
+            if !syncRun.again { return }
         }
     }
 
@@ -172,7 +181,7 @@ extension AppModel {
         guard book.syncItems() == items, book.sync?.identity == state.identity,
             book.sync?.storages == state.storages
         else {
-            syncAgain = true
+            syncRun.again = true
             return true
         }
         switch outcome {

@@ -109,6 +109,21 @@ public struct ThemeView: View {
                     .font(style.font(11))
                     .foregroundStyle(model.summonKeyTaken ? style.danger : style.muted)
 
+                Label2(strings("set.agentWorktrees"))
+                HStack(spacing: 8) {
+                    toggleChip(strings("set.on"), on: model.agentWorktrees) {
+                        model.agentWorktrees = true
+                        model.saveAppearance()
+                    }
+                    toggleChip(strings("set.off"), on: !model.agentWorktrees) {
+                        model.agentWorktrees = false
+                        model.saveAppearance()
+                    }
+                }
+                Text(strings("set.agentWorktreesNote"))
+                    .font(style.font(11)).foregroundStyle(style.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Label2(strings("set.motion"))
                 HStack(spacing: 8) {
                     ForEach(MotionAmount.allCases, id: \.self) { amount in

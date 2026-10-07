@@ -242,8 +242,29 @@ final class AgentNotifier: NSObject, UNUserNotificationCenterDelegate {
     func attach(_ model: AppModel) {
         guard self.model == nil, available else { return }
         self.model = model
-        UNUserNotificationCenter.current().delegate = self
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        // Ответ прямо из уведомления: Enter, Esc или строка текста (план §23).
+        let strings = model.strings
+        center.setNotificationCategories([
+            UNNotificationCategory(
+                identifier: Self.category,
+                actions: [
+                    UNNotificationAction(identifier: Self.accept, title: strings("term.reply.acceptAction")),
+                    UNNotificationAction(identifier: Self.decline, title: strings("term.reply.decline")),
+                    UNTextInputNotificationAction(
+                        identifier: Self.text, title: strings("term.reply.textAction"),
+                        textInputButtonTitle: strings("term.reply.send"),
+                        textInputPlaceholder: strings("term.reply.placeholder")),
+                ],
+                intentIdentifiers: [])
+        ])
     }
+
+    nonisolated static let category = "agent.waiting"
+    nonisolated static let accept = "agent.accept"
+    nonisolated static let decline = "agent.decline"
+    nonisolated static let text = "agent.text"
 
     func post(title: String, body: String, place: AppModel.AgentPlace) {
         guard available else { return }
@@ -252,6 +273,7 @@ final class AgentNotifier: NSObject, UNUserNotificationCenterDelegate {
         content.title = title
         content.body = body
         content.sound = .default
+        content.categoryIdentifier = Self.category
         content.userInfo = [placeKey: Self.encode(place)]
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         // Разрешение спрашиваем при первом поводе, а не на запуске: так человек
@@ -270,10 +292,26 @@ final class AgentNotifier: NSObject, UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse
     ) async {
         let raw = response.notification.request.content.userInfo["place"] as? String
+        let reply: AgentReply? =
+            switch response.actionIdentifier {
+            case Self.accept: .accept
+            case Self.decline: .decline
+            case Self.text: (response as? UNTextInputNotificationResponse).map { .text($0.userText) }
+            default: nil
+            }
         await MainActor.run {
             guard let raw, let place = Self.decode(raw) else { return }
-            NSApp.activate()
-            model?.jump(to: place)
+            guard let reply else {
+                NSApp.activate()
+                model?.jump(to: place)
+                return
+            }
+            Task { [weak model] in
+                // Не дошло — открываем сессию: ответить там можно всегда.
+                guard let model, await !model.reply(reply, to: place) else { return }
+                NSApp.activate()
+                model.jump(to: place)
+            }
         }
     }
 

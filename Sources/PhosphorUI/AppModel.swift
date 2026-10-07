@@ -249,10 +249,7 @@ public final class AppModel {
     /// Машины, чьи часы ушли вперёд больше чем на сутки (#28): их правки
     /// побеждают все остальные, пока часы не поправят.
     public internal(set) var syncClockWarnings: [String] = []
-    var syncTask: Task<Void, Never>?
-    var syncRunning = false
-    var syncAgain = false
-    var syncPending = SyncEngine.Changes()
+    var syncRun = SyncRun()
     /// Окно повторного Touch ID в секундах — то же, что задаётся из настроек.
     public var biometricReuseSeconds: Double = 10
 
@@ -320,6 +317,11 @@ public final class AppModel {
     /// Агенты, которые ждали ввода на прошлом опросе. Уведомление — только о
     /// новых в этом списке, иначе оно повторялось бы каждые несколько секунд.
     var waitingAgents: Set<AgentPlace> = []
+    /// Итог «закрыть и убрать копию проекта» — одной строкой в рейле.
+    public var agentNote: String?
+    /// Заводить ли агенту свою копию проекта (git worktree) при запуске из
+    /// строки выбора. По умолчанию да: два агента в одной папке мешают друг другу.
+    public var agentWorktrees = true
     /// Мост от уведомлений macOS к модели: клик по уведомлению ведёт в сессию.
     let agentNotifier = AgentNotifier()
     /// Ключ незнакомого сервера, ждущий решения человека: отпечаток уже
@@ -561,6 +563,7 @@ public final class AppModel {
         vignette = saved.vignette
         petVisible = saved.petVisible ?? true
         summonKey = saved.summonKey ?? false
+        agentWorktrees = saved.agentWorktrees ?? true
         GlobalHotKey.shared.set(enabled: summonKey)
         pollSeconds = saved.pollSeconds ?? 4
         logLines = saved.logLines ?? 5_000

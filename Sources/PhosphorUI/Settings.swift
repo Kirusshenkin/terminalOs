@@ -38,6 +38,8 @@ public struct Appearance: Codable, Sendable, Equatable {
     public var biometricReuseSeconds: Double?
     /// ⌃` вызывает окно из любого приложения. Необязательное — как и прочие.
     public var summonKey: Bool?
+    /// Своя копия проекта для каждого агента. Необязательное — как и прочие.
+    public var agentWorktrees: Bool?
 
     public init(
         themeID: String = BuiltInThemes.phosphor.id,
@@ -57,7 +59,8 @@ public struct Appearance: Codable, Sendable, Equatable {
         connectMotion: String? = nil,
         logMotion: String? = nil,
         biometricReuseSeconds: Double? = nil,
-        summonKey: Bool? = nil
+        summonKey: Bool? = nil,
+        agentWorktrees: Bool? = nil
     ) {
         self.themeID = themeID
         self.language = language
@@ -77,6 +80,7 @@ public struct Appearance: Codable, Sendable, Equatable {
         self.logMotion = logMotion
         self.biometricReuseSeconds = biometricReuseSeconds
         self.summonKey = summonKey
+        self.agentWorktrees = agentWorktrees
     }
 }
 

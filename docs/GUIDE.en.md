@@ -147,6 +147,20 @@ yellow dot lights up next to "terminal" in the header. While the window is in
 the background, the app checks sessions every 10 seconds, and only while some
 agent is working.
 
+You can answer a waiting agent without opening its pane: under its row in the
+column and in the notification itself there are **⏎ accept** (Enter — take what
+it proposes), **esc** (decline) and **reply…** (a line of text, then Enter). The
+answer reaches a server over the channel that is already open; if there is none,
+the column says so — open the session then.
+
+An agent started from the picker in a new pane starts in the folder of the
+neighbouring pane. If that is a git repository, it gets its own project copy: a
+`git worktree` next to the project, on an `agent/…` branch, so two agents do not
+break each other's build. The command that does it is visible in the pane.
+Right-click the agent's session → **close and remove its project copy**: the copy
+goes only if it has nothing uncommitted, and the branch stays — merging it is
+your call. Turn it off in ⌘, → behaviour → "own project copy per agent".
+
 ## 7. The other tabs
 
 The header has three parts. On the left is the server list. Inside the frame are the selected server and everything done to it: until a server is picked, these tabs ask you to pick one. On the right is what all servers share. Tabs switch with the mouse or keyboard:

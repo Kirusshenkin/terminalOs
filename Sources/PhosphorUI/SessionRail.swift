@@ -16,6 +16,14 @@ struct SessionRail: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let note = model.agentNote {
+                Text(note)
+                    .font(style.font(11)).foregroundStyle(style.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 12)
+                    .onTapGesture { model.agentNote = nil }
+            }
             // Этот Мак — такое же рабочее место, как сервер, и стоит в том же
             // списке: у herdr локальные пространства не отдельная сущность.
             localGroup
@@ -148,7 +156,8 @@ struct SessionRail: View {
                 agent.map { "\($0.title) · \(statusLabel(status))" } ?? statusLabel(status)
             },
             dot: status.map(statusColour) ?? style.muted.opacity(0.5),
-            active: model.localFocused && model.localSession == name
+            active: model.localFocused && model.localSession == name,
+            waiting: name != nil && agent != nil && status == .blocked
         ) {
             model.focusLocal(name)
         }
@@ -156,6 +165,11 @@ struct SessionRail: View {
             if let name {
                 Button(model.strings("term.killSession"), role: .destructive) {
                     Task { await model.killLocalSession(name) }
+                }
+                if agent != nil {
+                    Button(model.strings("term.worktree.close"), role: .destructive) {
+                        Task { await model.closeAgentWorktree(.local(name)) }
+                    }
                 }
             }
         }
@@ -301,7 +315,8 @@ struct SessionRail: View {
     private func row(_ session: AppModel.TmuxSession, host: ServerHost.ID, active: Bool) -> some View {
         SessionLine(
             model: model, place: .remote(host, session.name), title: session.name,
-            subtitle: subtitle(session), dot: statusColour(session.status), active: active
+            subtitle: subtitle(session), dot: statusColour(session.status), active: active,
+            waiting: session.agent != nil && session.status == .blocked
         ) {
             model.jump(to: .remote(host, session.name))
         }
@@ -311,6 +326,11 @@ struct SessionRail: View {
             if host == model.selectedHost, model.session != nil {
                 Button(model.strings("term.killSession"), role: .destructive) {
                     Task { await model.killSession(session.name) }
+                }
+            }
+            if session.agent != nil {
+                Button(model.strings("term.worktree.close"), role: .destructive) {
+                    Task { await model.closeAgentWorktree(.remote(host, session.name)) }
                 }
             }
         }
@@ -379,9 +399,15 @@ private struct SessionLine: View {
     let subtitle: String?
     let dot: Color
     let active: Bool
+    /// Агент ждёт ответа: под строкой — «Enter», «Esc» и «ответить…».
+    var waiting = false
     let action: () -> Void
 
     @State private var preview: [String]?
+    @State private var replying = false
+    @State private var draft = ""
+    /// Ответ не дошёл — говорим тут же, а не молча.
+    @State private var replyFailed = false
     @State private var showing = false
     @State private var hover: Task<Void, Never>?
 
@@ -391,6 +417,13 @@ private struct SessionLine: View {
     private static let hoverDelay = Duration.milliseconds(450)
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            line
+            if waiting { replyBar }
+        }
+    }
+
+    private var line: some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Circle().fill(dot).frame(width: 7, height: 7)
@@ -438,6 +471,54 @@ private struct SessionLine: View {
             .padding(12)
             .frame(width: 460, alignment: .leading)
             .background(style.surface)
+        }
+    }
+}
+
+/// Ответ ждущему агенту прямо из рейла (план §23).
+extension SessionLine {
+    var replyBar: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                replyButton("⏎ " + model.strings("term.reply.accept"), .accept)
+                replyButton("esc", .decline)
+                Button(model.strings("term.reply.text")) { replying.toggle() }
+                    .buttonStyle(PressFeedback())
+                    .font(style.font(10.5)).foregroundStyle(style.accent)
+            }
+            if replying {
+                TextField(model.strings("term.reply.placeholder"), text: $draft)
+                    .textFieldStyle(.plain)
+                    .font(style.font(11.5)).foregroundStyle(style.text)
+                    .padding(.horizontal, 6).padding(.vertical, 4)
+                    .overlay(Rectangle().stroke(style.text.opacity(0.3), lineWidth: 1))
+                    .onSubmit { send(.text(draft)) }
+            }
+            if replyFailed {
+                Text(model.strings("term.reply.failed"))
+                    .font(style.font(10)).foregroundStyle(style.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.leading, 23)
+    }
+
+    private func replyButton(_ title: String, _ reply: AgentReply) -> some View {
+        Button(title) { send(reply) }
+            .buttonStyle(PressFeedback())
+            .font(style.font(10.5)).foregroundStyle(style.bright)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .overlay(Rectangle().stroke(style.rule, lineWidth: 1))
+    }
+
+    private func send(_ reply: AgentReply) {
+        Task {
+            let sent = await model.reply(reply, to: place)
+            replyFailed = !sent
+            if sent {
+                replying = false
+                draft = ""
+            }
         }
     }
 }

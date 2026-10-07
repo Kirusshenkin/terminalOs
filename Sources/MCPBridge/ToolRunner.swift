@@ -195,7 +195,7 @@ public actor ToolRunner {
         case "container_action":
             return await containerAction(state, session: session, arguments: arguments)
         case "manage_authorized_key":
-            return await manageKey(session: session, arguments: arguments)
+            return await manageKey(session: session, host: host.id, arguments: arguments)
         default:
             return ToolResult(text: "tool not yet implemented", isError: true)
         }
@@ -232,7 +232,7 @@ public actor ToolRunner {
     /// разрешением на запись она не должна оставить хост без единого рабочего
     /// ключа, потому что назад её никто не пустит.
     private func manageKey(
-        session: HostSession, arguments: [String: String]
+        session: HostSession, host: ServerHost.ID, arguments: [String: String]
     ) async -> ToolResult {
         guard let action = arguments["action"], action == "add" || action == "remove" else {
             return ToolResult(text: "action required: add or remove", isError: true)
@@ -242,6 +242,7 @@ public actor ToolRunner {
         let keys = AuthorizedKeysFile.parse(read.text == Self.empty ? "" : read.text)
 
         let updated: [AuthorizedKey]
+        let change: HostEdit
         switch action {
         case "add":
             guard let line = arguments["key"], !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -256,6 +257,7 @@ public actor ToolRunner {
                 return ToolResult(text: "key already exists: \(key.fingerprint)")
             }
             updated = keys + [key]
+            change = .keyAdded(fingerprint: key.fingerprint, host: host)
         default:
             guard let wanted = arguments["fingerprint"],
                 !wanted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -275,12 +277,15 @@ public actor ToolRunner {
                     isError: true)
             }
             updated = keys.filter { !doomed.contains($0.id) }
+            change = .keyRemoved(fingerprint: wanted, host: host)
         }
 
         let write = await run(
             AuthorizedKeysFile.writeCommand(content: AuthorizedKeysFile.render(updated)),
             on: session)
         guard !write.isError else { return write }
+        // Дата добавления — в профиле, а профиль меняет только приложение.
+        await edit(change)
         return ToolResult(text: "keys on server: \(updated.count)")
     }
 

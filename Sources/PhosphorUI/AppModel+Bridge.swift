@@ -127,6 +127,12 @@ extension AppModel {
         case .add(let host): addHost(host)
         case .update(let host): update(host)
         case .remove(let id): removeHost(id)
+        case .keyAdded(let fingerprint, let host):
+            book.recordKeyAdded(fingerprint: fingerprint, host: host)
+            scheduleSave()
+        case .keyRemoved(let fingerprint, let host):
+            book.forgetKey(fingerprint: fingerprint, host: host)
+            scheduleSave()
         }
     }
 }

@@ -1,6 +1,5 @@
 import Foundation
 
-
 /// One frame of pixel art, parsed once from rows of characters.
 ///
 /// A frame is drawn many times a second, so the text form is turned into a

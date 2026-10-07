@@ -811,3 +811,87 @@ struct ToolCatalogCoverageTests {
         }
     }
 }
+
+@Suite("Ключи через мост: дата добавления")
+struct BridgeKeyDateTests {
+    private static let keyA =
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILC2LvfH8cqJFP0LYaIDtuTloX9a85tUuOVqmxjwYHPr fixture-a"
+    private static let keyB =
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKvDq8eXgg2JiQZ8Uy8vnzi8DdfxZP1fl6uMa/7PdCtF fixture-b"
+    private static let fingerprintB = "SHA256:ONt2qkakMUEYwh4yGHOJmjJYTkw/3X4IiKYaEcc66tE"
+
+    /// Сервер, на котором `authorized_keys` уже лежит, а запись всегда удаётся.
+    private actor KeysTransport: SSHTransport {
+        nonisolated let host: ServerHost
+        let file: String
+        init(host: ServerHost, file: String) {
+            self.host = host
+            self.file = file
+        }
+        func run(_ command: String, timeout: Duration) async throws -> CommandResult {
+            CommandResult(
+                status: 0, stdout: command.hasPrefix("cat ~/.ssh/authorized_keys") ? file : "", stderr: "")
+        }
+        func stream(_ command: String, onLine: @escaping @Sendable (String) -> Void) async throws {}
+        func close() async {}
+    }
+
+    private actor Edits {
+        var all: [HostEdit] = []
+        func remember(_ edit: HostEdit) { all.append(edit) }
+    }
+
+    private func call(
+        _ arguments: [String: String], file: String
+    ) async -> (ToolResult, [HostEdit], ServerHost.ID) {
+        let host = ServerHost(name: "prod-01", address: "192.0.2.20")
+        let policy = AccessPolicy()
+        await policy.setMode(.full, for: host.id)
+        let session = HostSession(host: host, transport: KeysTransport(host: host, file: file))
+        let edits = Edits()
+        let runner = ToolRunner(
+            policy: policy,
+            audit: AuditLog(
+                url: FileManager.default.temporaryDirectory
+                    .appendingPathComponent("phosphor-test-\(UUID().uuidString).jsonl")),
+            book: { HostBook(hosts: [host]) },
+            sessions: { _ in session },
+            edit: { await edits.remember($0) },
+            confirm: { _, _ in true })
+        var all = arguments
+        all["host"] = host.id.uuidString
+        let result = await runner.call("manage_authorized_key", arguments: all)
+        return (result, await edits.all, host.id)
+    }
+
+    @Test("ключ, добавленный агентом, получает дату в профиле")
+    func addRecordsDate() async {
+        let (result, edits, host) = await call(["action": "add", "key": Self.keyB], file: Self.keyA)
+        #expect(!result.isError, "\(result.text)")
+        guard case .keyAdded(let fingerprint, let id)? = edits.first, edits.count == 1 else {
+            Issue.record("дата не дошла до приложения: \(edits)")
+            return
+        }
+        #expect(fingerprint == Self.fingerprintB)
+        #expect(id == host)
+    }
+
+    @Test("удалённый агентом ключ забывает дату")
+    func removeForgetsDate() async {
+        let (result, edits, host) = await call(
+            ["action": "remove", "fingerprint": Self.fingerprintB], file: Self.keyA + "\n" + Self.keyB)
+        #expect(!result.isError, "\(result.text)")
+        guard case .keyRemoved(let fingerprint, let id)? = edits.first, edits.count == 1 else {
+            Issue.record("удаление не дошло до приложения: \(edits)")
+            return
+        }
+        #expect(fingerprint == Self.fingerprintB)
+        #expect(id == host)
+    }
+
+    @Test("уже существующий ключ не переписывает дату")
+    func existingKeyKeepsDate() async {
+        let (_, edits, _) = await call(["action": "add", "key": Self.keyA], file: Self.keyA)
+        #expect(edits.isEmpty)
+    }
+}

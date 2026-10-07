@@ -1,6 +1,5 @@
 import Foundation
 
-
 /// Which animal lives in the corner.
 public enum PetKind: String, Sendable, CaseIterable {
     case cat, glider

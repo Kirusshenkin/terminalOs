@@ -3,9 +3,11 @@ public import Foundation
 
 /// One round of sync: read storage, merge, write back if anything changed.
 public enum SyncEngine {
-    public enum Outcome: Sendable, Equatable {
-        /// Merged records to apply to the profile, and machines waiting at the door.
-        case synced(records: [SyncRecord], state: SyncState, requests: [SyncMachine])
+    public enum Outcome: Sendable {
+        /// Merged records to apply to the profile, machines waiting at the door,
+        /// and the storages that failed this round — the others went through.
+        case synced(
+            records: [SyncRecord], state: SyncState, requests: [SyncMachine], failures: [UUID: any Error])
         /// Storage already holds a profile, and this machine is not let in yet.
         /// The request is left there; another machine shows the same code.
         case awaitingApproval(state: SyncState, code: String)
@@ -34,143 +36,257 @@ public enum SyncEngine {
         }
     }
 
-    /// How many times a write that lost a race is retried from a fresh read.
+    /// How many times a round is repeated when a write lost a race.
     static let attempts = 3
 
+    /// - Parameter remotes: every storage of `state.storages` that can be
+    ///   reached now; a missing one counts as down for this round.
     public static func run(
-        items: [SyncItem], state: SyncState, remote: SyncRemote, changes: Changes = Changes(),
+        items: [SyncItem], state: SyncState, remotes: [UUID: SyncRemote], changes: Changes = Changes(),
         now: @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1_000) }
     ) async throws -> Outcome {
-        for _ in 0..<attempts {
+        for attempt in 1...attempts {
+            var round = Round(items: items, state: state, remotes: remotes, changes: changes, now: now())
             do {
-                return try await round(
-                    items: items, state: state, remote: remote, changes: changes, now: now())
-            } catch SyncError.busy {
+                return try await round.run()
+            } catch SyncError.busy where attempt < attempts {
                 continue
             }
         }
         throw SyncError.busy
     }
+}
 
-    /// What a round works on: the snapshot to write next and its key.
-    private struct Base {
-        var snapshot: SyncSnapshot
-        var key: SymmetricKey
-        var records: [SyncRecord] = []
-        var mustWrite = false
+/// One round over every storage: read all, check, merge, write all.
+///
+/// Each storage holds a full copy. Machines and the profile key are shared:
+/// the snapshot with the newest key generation decides them, so a storage
+/// that missed a revocation cannot bring the revoked machine back. Revision
+/// and epoch are per storage, and so is every failure: one server down or
+/// tampered with is reported, the others carry on.
+private struct Round {
+    let items: [SyncItem]
+    var state: SyncState
+    let remotes: [UUID: SyncRemote]
+    let changes: SyncEngine.Changes
+    let now: Int64
+
+    /// What one storage showed this round.
+    private struct Copy {
+        var view: SyncRemote.View
+        var snapshot: SyncSnapshot?
+        var records: [SyncRecord]?
     }
 
-    private static func round(
-        items: [SyncItem], state initial: SyncState, remote: SyncRemote, changes: Changes, now: Int64
-    ) async throws -> Outcome {
-        var state = initial
-        let me = try state.identity.machine()
-        let view = try await remote.read()
-        guard var base = try open(view, state: state, me: me) else {
-            if !view.requests.contains(where: { $0.id == me.id }) { try await remote.request(me) }
-            return .awaitingApproval(state: state, code: me.code)
-        }
-        if state.machines.isEmpty, let signer = view.snapshot?.signer,
-            let machine = base.snapshot.machines.first(where: { $0.id == signer }), machine != changes.trust
-        {
-            return .confirmSigner(state: state, signer: machine)
-        }
+    private var copies: [UUID: Copy] = [:]
+    private var failures: [UUID: any Error] = [:]
 
-        // Свои правки штампуются до того, как часы увидят чужие: так штамп
-        // ближе ко времени правки, а не ко времени синхронизации.
+    init(
+        items: [SyncItem], state: SyncState, remotes: [UUID: SyncRemote], changes: SyncEngine.Changes,
+        now: Int64
+    ) {
+        self.items = items
+        self.state = state
+        self.remotes = remotes
+        self.changes = changes
+        self.now = now
+    }
+
+    mutating func run() async throws -> SyncEngine.Outcome {
+        let me = try state.identity.machine()
+        for id in state.storages {
+            guard let remote = remotes[id] else {
+                failures[id] = SyncError.storage("")
+                continue
+            }
+            do {
+                copies[id] = Copy(view: try await remote.read())
+            } catch {
+                failures[id] = error
+            }
+        }
+        guard !copies.isEmpty else { throw failures.values.first ?? SyncError.storage("") }
+
+        if state.machines.isEmpty, copies.values.contains(where: { $0.view.snapshot != nil }) {
+            if let early = try await firstContact(me) { return early }
+        }
+        acceptAll()
+        let requests = uniqueRequests()
+        var shared = try sharedBase(me)
         let local = state.stamp(items, now: now)
         var clock = state.clock
-        for record in base.records { clock.observe(record.stamp, now: now) }
+        for record in shared.records { clock.observe(record.stamp, now: now) }
         state.lastStamp = clock.last
-        let merged = SyncMerge.merge(base.records, local, now: now)
-        if merged != base.records.sorted(by: { $0.key < $1.key }) { base.mustWrite = true }
+        let merged = SyncMerge.merge(shared.records, local, now: now)
 
-        let approved = try admit(view.requests, to: &base, changes: changes, me: me)
-        if base.mustWrite {
-            base.snapshot.revision = max(base.snapshot.revision, view.revision, state.lastRevision) + 1
-            base.snapshot.records = try SyncCrypto.seal(
-                merged, key: base.key, generation: base.snapshot.keyGeneration)
-            try await remote.write(
-                try state.identity.sign(base.snapshot), revision: base.snapshot.revision,
-                expecting: view.revision, consuming: approved)
+        let approved = try admit(requests, to: &shared, me: me)
+        var busy = false
+        for (id, copy) in copies.sorted(by: { $0.key.uuidString < $1.key.uuidString }) {
+            guard failures[id] == nil, let remote = remotes[id] else { continue }
+            do {
+                try await write(merged, shared: shared, copy: copy, to: remote, id: id, approved: approved)
+            } catch SyncError.busy {
+                busy = true
+            } catch {
+                failures[id] = error
+            }
+        }
+        if busy { throw SyncError.busy }
+        guard failures.count < state.storages.count else {
+            throw failures.values.first ?? SyncError.storage("")
         }
 
-        state.lastRevision = base.snapshot.revision
-        state.machines = base.snapshot.machines
-        state.keyGeneration = base.snapshot.keyGeneration
-        state.epoch = base.snapshot.epoch
-        state.profileKey = base.key.withUnsafeBytes { Data($0) }
+        state.machines = shared.machines
+        state.keyGeneration = shared.generation
+        state.profileKey = shared.key.withUnsafeBytes { Data($0) }
         state.lastSync = Date(timeIntervalSince1970: Double(now) / 1_000)
-        let members = Set(base.snapshot.machines.map(\.id))
-        let waiting = view.requests.filter { !members.contains($0.id) }
-        return .synced(records: merged, state: state, requests: waiting)
+        let members = Set(shared.machines.map(\.id))
+        return .synced(
+            records: merged, state: state, requests: requests.filter { !members.contains($0.id) },
+            failures: failures)
     }
 
-    /// Checks and opens what storage holds. nil: this machine is not let in yet.
-    private static func open(_ view: SyncRemote.View, state: SyncState, me: SyncMachine) throws -> Base? {
-        if let signed = view.snapshot {
-            let snapshot: SyncSnapshot
-            if state.machines.isEmpty {
-                guard let first = try SyncCrypto.acceptFirst(signed, me: me) else { return nil }
-                snapshot = first
-            } else {
-                snapshot = try SyncCrypto.accept(
-                    signed, trusted: state.machines, lastRevision: state.lastRevision, lastEpoch: state.epoch)
+    /// A machine that trusts nobody yet. nil: it was let in and the person
+    /// confirmed who did it — carry on with a normal round.
+    private mutating func firstContact(_ me: SyncMachine) async throws -> SyncEngine.Outcome? {
+        for (id, copy) in copies.sorted(by: { $0.key.uuidString < $1.key.uuidString }) {
+            guard let signed = copy.view.snapshot else { continue }
+            let first: SyncSnapshot?
+            do {
+                first = try SyncCrypto.acceptFirst(signed, me: me)
+            } catch {
+                // Битый снимок на одном сервере не мешает войти через другой.
+                failures[id] = error
+                continue
             }
-            guard snapshot.machines.contains(where: { $0.id == me.id }) else {
-                throw SyncError.notForThisMachine
+            guard let first, let signer = first.machines.first(where: { $0.id == signed.signer }) else {
+                continue
             }
-            let key = try state.identity.unwrap(snapshot)
-            let records = try SyncCrypto.open(snapshot.records, key: key, generation: snapshot.keyGeneration)
-            return Base(snapshot: snapshot, key: key, records: records)
+            guard signer == changes.trust else { return .confirmSigner(state: state, signer: signer) }
+            state.machines = first.machines
+            return nil
         }
-        if state.isJoined, let stored = state.profileKey {
-            // Папку стёрли или сервер переустановили: профиль у нас на руках,
-            // складываем его заново под прежним ключом и для прежних машин.
-            let key = SymmetricKey(data: stored)
-            var snapshot = SyncSnapshot(
-                revision: max(state.lastRevision, view.revision), keyGeneration: state.keyGeneration,
-                machines: state.machines.isEmpty ? [me] : state.machines)
-            snapshot.epoch = state.epoch + 1
-            snapshot.keys = try snapshot.machines.map { machine throws(SyncError) in
-                try SyncCrypto.wrap(key, for: machine)
-            }
-            return Base(snapshot: snapshot, key: key, mustWrite: true)
+        for (id, copy) in copies where !copy.view.requests.contains(where: { $0.id == me.id }) {
+            guard let remote = remotes[id] else { continue }
+            do { try await remote.request(me) } catch { failures[id] = error }
         }
-        // Хранилище пустое: эта машина его и заводит.
-        let key = SymmetricKey(size: .bits256)
-        let snapshot = SyncSnapshot(
-            revision: view.revision, machines: [me], keys: [try SyncCrypto.wrap(key, for: me)])
-        return Base(snapshot: snapshot, key: key, mustWrite: true)
+        return .awaitingApproval(state: state, code: me.code)
+    }
+
+    /// Checks every snapshot against the trusted machines and that storage's mark.
+    private mutating func acceptAll() {
+        for (id, copy) in copies {
+            guard let signed = copy.view.snapshot else { continue }
+            let mark = state.marks[id] ?? StorageMark()
+            do {
+                let snapshot = try SyncCrypto.accept(
+                    signed, trusted: state.machines, lastRevision: mark.revision, lastEpoch: mark.epoch)
+                copies[id]?.snapshot = snapshot
+                // Снимок старшего поколения без этой машины ещё не значит отзыв:
+                // решает только общий список ниже. Открывается то, что открывается.
+                if let key = try? state.identity.unwrap(snapshot) {
+                    copies[id]?.records = try SyncCrypto.open(
+                        snapshot.records, key: key, generation: snapshot.keyGeneration)
+                }
+            } catch {
+                failures[id] = error
+            }
+        }
+    }
+
+    private func uniqueRequests() -> [SyncMachine] {
+        var seen = Set<String>()
+        return copies.sorted { $0.key.uuidString < $1.key.uuidString }
+            .flatMap(\.value.view.requests)
+            .filter { seen.insert($0.id).inserted }
+    }
+
+    /// Machines, key and records every storage gets this round.
+    private struct Shared {
+        var machines: [SyncMachine]
+        var generation: UInt32
+        var key: SymmetricKey
+        var records: [SyncRecord]
+    }
+
+    private func sharedBase(_ me: SyncMachine) throws -> Shared {
+        let accepted = copies.filter { failures[$0.key] == nil }.compactMap(\.value.snapshot)
+        guard let top = accepted.map(\.keyGeneration).max() else {
+            // Ни одного снимка: хранилища пустые или их стёрли. Профиль у нас
+            // на руках — складываем заново под прежним ключом; нет — заводим.
+            if let stored = state.profileKey {
+                return Shared(
+                    machines: state.machines.isEmpty ? [me] : state.machines, generation: state.keyGeneration,
+                    key: SymmetricKey(data: stored), records: [])
+            }
+            return Shared(machines: [me], generation: 0, key: SymmetricKey(size: .bits256), records: [])
+        }
+        var machines: [SyncMachine] = []
+        for snapshot in accepted where snapshot.keyGeneration == top {
+            for machine in snapshot.machines where !machines.contains(where: { $0.id == machine.id }) {
+                machines.append(machine)
+            }
+        }
+        guard machines.contains(where: { $0.id == me.id }),
+            let newest = accepted.first(where: { $0.keyGeneration == top && $0.machines.contains(me) })
+        else { throw SyncError.notForThisMachine }
+        let records = copies.values.compactMap(\.records).reduce([SyncRecord]()) {
+            SyncMerge.merge($0, $1, now: now)
+        }
+        return Shared(
+            machines: machines, generation: top, key: try state.identity.unwrap(newest), records: records)
     }
 
     /// Lets approved machines in and removes revoked ones. Returns the ids of
     /// requests used up, so storage can drop them.
-    private static func admit(
-        _ requests: [SyncMachine], to base: inout Base, changes: Changes, me: SyncMachine
-    ) throws(SyncError) -> [String] {
+    private func admit(_ requests: [SyncMachine], to shared: inout Shared, me: SyncMachine) throws -> [String]
+    {
         let approved = requests.filter { request in
-            changes.approve.contains(request.id) && !base.snapshot.machines.contains { $0.id == request.id }
+            changes.approve.contains(request.id) && !shared.machines.contains { $0.id == request.id }
         }
-        for machine in approved {
-            base.snapshot.machines.append(machine)
-            base.snapshot.keys.append(try SyncCrypto.wrap(base.key, for: machine))
-            base.mustWrite = true
-        }
-        let revoked = changes.revoke.filter { id in
-            id != me.id && base.snapshot.machines.contains { $0.id == id }
-        }
+        shared.machines += approved
+        let revoked = changes.revoke.filter { id in id != me.id && shared.machines.contains { $0.id == id } }
         if !revoked.isEmpty {
             // Отзыв меняет ключ: записи всё равно запечатываются заново.
-            base.snapshot.machines.removeAll { revoked.contains($0.id) }
-            base.key = SymmetricKey(size: .bits256)
-            base.snapshot.keyGeneration += 1
-            base.snapshot.keys = try base.snapshot.machines.map { machine throws(SyncError) in
-                try SyncCrypto.wrap(base.key, for: machine)
-            }
-            base.mustWrite = true
+            shared.machines.removeAll { revoked.contains($0.id) }
+            shared.key = SymmetricKey(size: .bits256)
+            shared.generation += 1
         }
         return approved.map(\.id)
+    }
+
+    /// Writes one storage if what it holds differs from what it should.
+    private mutating func write(
+        _ merged: [SyncRecord], shared: Shared, copy: Copy, to remote: SyncRemote, id: UUID,
+        approved: [String]
+    ) async throws {
+        let mark = state.marks[id] ?? StorageMark()
+        let held = copy.snapshot
+        let current =
+            held.map { snapshot in
+                snapshot.keyGeneration == shared.generation
+                    && Set(snapshot.machines.map(\.id)) == Set(shared.machines.map(\.id))
+                    && copy.records.map { $0.sorted { $0.key < $1.key } } == merged
+            } ?? false
+        let consumes = copy.view.requests.contains { approved.contains($0.id) }
+        guard !current || consumes else {
+            if let held { state.marks[id] = StorageMark(revision: held.revision, epoch: held.epoch) }
+            return
+        }
+        var next = SyncSnapshot(
+            revision: max(held?.revision ?? 0, copy.view.revision, mark.revision) + 1,
+            keyGeneration: shared.generation, machines: shared.machines)
+        // Пустое хранилище, где эта машина уже бывала, — папку стёрли:
+        // новая эпоха, чтобы ушедшие вперёд машины не приняли её за откат.
+        next.epoch = held?.epoch ?? (mark == StorageMark() ? 0 : mark.epoch + 1)
+        next.keys = try shared.machines.map { machine throws(SyncError) in
+            try SyncCrypto.wrap(shared.key, for: machine)
+        }
+        next.records = try SyncCrypto.seal(merged, key: shared.key, generation: shared.generation)
+        try await remote.write(
+            try state.identity.sign(next), revision: next.revision, expecting: copy.view.revision,
+            consuming: approved)
+        state.marks[id] = StorageMark(revision: next.revision, epoch: next.epoch)
     }
 }
 

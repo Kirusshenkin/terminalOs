@@ -39,21 +39,36 @@ private struct Mac {
     var requests: [SyncMachine] = []
     /// Машина, которая пустила эту и ждёт сверки кода.
     var signer: SyncMachine?
+    /// Хранилища, не прошедшие последний круг.
+    var failures: [UUID: any Error] = [:]
 
     init(_ name: String, storage: UUID) throws {
-        state = SyncState(identity: try SyncIdentity.create(name: name, useEnclave: false), storage: storage)
+        try self.init(name, storages: [storage])
+    }
+
+    init(_ name: String, storages: [UUID]) throws {
+        state = SyncState(
+            identity: try SyncIdentity.create(name: name, useEnclave: false), storages: storages)
+    }
+
+    /// Ревизия первого хранилища — то, что видит машина с одним сервером.
+    var revision: UInt64 { state.marks[state.storages[0]]?.revision ?? 0 }
+
+    @discardableResult
+    mutating func sync(
+        _ remote: SyncRemote, _ changes: SyncEngine.Changes = .init(), at now: Int64 = 1_000
+    ) async throws -> String? {
+        try await sync(remotes: [state.storages[0]: remote], changes, at: now)
     }
 
     /// Один круг, как его делает приложение: записи из профиля, слияние,
     /// результат обратно в профиль. Возвращает код, если машину ещё не пустили.
     @discardableResult
     mutating func sync(
-        _ remote: SyncRemote, _ changes: SyncEngine.Changes = .init(), at now: Int64 = 1_000
-    )
-        async throws -> String?
-    {
+        remotes: [UUID: SyncRemote], _ changes: SyncEngine.Changes = .init(), at now: Int64 = 1_000
+    ) async throws -> String? {
         switch try await SyncEngine.run(
-            items: book.syncItems(), state: state, remote: remote, changes: changes, now: { now })
+            items: book.syncItems(), state: state, remotes: remotes, changes: changes, now: { now })
         {
         case .awaitingApproval(let next, let code):
             state = next
@@ -62,8 +77,9 @@ private struct Mac {
             state = next
             signer = machine
             return nil
-        case .synced(let records, let next, let waiting):
+        case .synced(let records, let next, let waiting, let failed):
             state = next
+            failures = failed
             book.applySync(records)
             state.rebase(book.syncItems(), merged: records)
             requests = waiting
@@ -138,10 +154,10 @@ struct SyncFlowTests {
     func observationsStayLocal() async throws {
         let folder = try Folder()
         var (a, b) = try await pair(folder)
-        let revision = a.state.lastRevision
+        let revision = a.revision
         a.book.remember(a.book.hosts[0].id, osName: "Ubuntu 24.04")
         try await a.sync(folder.remote, at: 4_000)
-        #expect(a.state.lastRevision == revision)
+        #expect(a.revision == revision)
         try await b.sync(folder.remote, at: 5_000)
         #expect(b.book.hosts[0].osName == nil)
         #expect(a.book.hosts[0].osName == "Ubuntu 24.04")
@@ -319,5 +335,93 @@ struct SyncDashTests {
         try await b.sync(folder.remote, at: 4_000)
         try await a.sync(folder.remote, at: 5_000)
         #expect(a.book.hosts.count == 2)
+    }
+}
+
+@Suite("Синхронизация: несколько хранилищ")
+struct SyncManyStoragesTests {
+    let first = UUID(), second = UUID()
+
+    /// A и B на двух хранилищах, B пущена.
+    private func pair(_ one: Folder, _ two: Folder) async throws -> (Mac, Mac) {
+        let both = [first: one.remote, second: two.remote]
+        var a = try Mac("a", storages: [first, second])
+        a.book.hosts = [ServerHost(name: "web", address: "10.0.0.1")]
+        try await a.sync(remotes: both)
+        var b = try Mac("b", storages: [first, second])
+        #expect(try await b.sync(remotes: both) != nil)
+        // Просьба оставлена в обоих хранилищах.
+        for folder in [one, two] {
+            #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path + "/requests").count == 1)
+        }
+        try await a.sync(remotes: both)
+        try await a.sync(remotes: both, .init(approve: a.requests.map(\.id)), at: 2_000)
+        try await b.sync(remotes: both, at: 3_000)
+        try await b.sync(remotes: both, .init(trust: try #require(b.signer)), at: 3_000)
+        #expect(b.state.isJoined && b.book.hosts.map(\.name) == ["web"])
+        return (a, b)
+    }
+
+    @Test("сервер лежит — синхронизация идёт через другой, а он догоняет, когда вернётся")
+    func oneDown() async throws {
+        let one = try Folder(), two = try Folder()
+        var (a, b) = try await pair(one, two)
+        b.book.hosts.append(ServerHost(name: "db", address: "10.0.0.2"))
+        try await b.sync(remotes: [second: two.remote], at: 4_000)
+        #expect(b.failures[first] != nil)
+        // A видит только второй сервер — и правка уже там.
+        try await a.sync(remotes: [second: two.remote], at: 5_000)
+        #expect(a.book.hosts.count == 2)
+        // Первый вернулся: A дописывает туда то, что он пропустил.
+        try await a.sync(remotes: [first: one.remote, second: two.remote], at: 6_000)
+        var c = b
+        c.book = HostBook()
+        c.state.forgetHistory()
+        try await c.sync(remotes: [first: one.remote], at: 7_000)
+        #expect(c.book.hosts.count == 2)
+    }
+
+    @Test("хранилище, пропустившее отзыв, не возвращает отозванную машину")
+    func revokeWhileDown() async throws {
+        let one = try Folder(), two = try Folder()
+        var (a, b) = try await pair(one, two)
+        try await a.sync(remotes: [first: one.remote], .init(revoke: [b.state.identity.id]), at: 4_000)
+        try await a.sync(remotes: [first: one.remote, second: two.remote], at: 5_000)
+        #expect(a.state.machines.count == 1 && a.state.keyGeneration == 1)
+        #expect(a.failures.isEmpty)
+        await #expect(throws: SyncError.notForThisMachine) {
+            try await b.sync(remotes: [first: one.remote, second: two.remote], at: 6_000)
+        }
+    }
+
+    @Test("добавленное хранилище получает полную копию на следующем круге")
+    func addStorage() async throws {
+        let one = try Folder(), two = try Folder()
+        var a = try Mac("a", storages: [first])
+        a.book.hosts = [ServerHost(name: "web", address: "10.0.0.1")]
+        try await a.sync(remotes: [first: one.remote])
+        a.state.storages.append(second)
+        try await a.sync(remotes: [first: one.remote, second: two.remote], at: 2_000)
+        #expect(FileManager.default.fileExists(atPath: two.path + "/snapshot.json"))
+        var b = try Mac("b", storages: [second])
+        #expect(try await b.sync(remotes: [second: two.remote], at: 3_000) != nil)
+    }
+
+    @Test("профиль сборки 168 с одним хранилищем читается как список из одного")
+    func legacyState() throws {
+        var state = SyncState(
+            identity: try SyncIdentity.create(name: "a", useEnclave: false), storages: [first])
+        state.marks[first] = StorageMark(revision: 7, epoch: 2)
+        let modern = try JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any]
+        var legacy = try #require(modern)
+        legacy["storages"] = nil
+        legacy["marks"] = nil
+        legacy["storage"] = first.uuidString
+        legacy["lastRevision"] = 7
+        legacy["epoch"] = 2
+        let decoded = try JSONDecoder().decode(
+            SyncState.self, from: JSONSerialization.data(withJSONObject: legacy))
+        #expect(decoded.storages == [first])
+        #expect(decoded.marks[first] == StorageMark(revision: 7, epoch: 2))
     }
 }

@@ -4,14 +4,14 @@ import SyncKit
 
 /// Синхронизация между своими машинами — блок на странице профиля (#18).
 struct SyncSection: View {
-    @Environment(\.style) private var style
+    @Environment(\.style) var style
     @Bindable var model: AppModel
     @State private var storage: ServerHost.ID?
     /// Машина, отзыв которой ждёт второго нажатия: отзыв меняет ключ
     /// профиля для всех, случайный клик тут дороже лишнего.
     @State private var revoking: String?
 
-    private var strings: Strings { model.strings }
+    var strings: Strings { model.strings }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -47,6 +47,7 @@ struct SyncSection: View {
                     Task { await model.enableSync(storage: storage) }
                 }
                 .disabled(storage == nil)
+                .opacity(storage == nil ? 0.4 : 1)
             }
             status
         }
@@ -57,8 +58,7 @@ struct SyncSection: View {
     }
 
     @ViewBuilder private func enabled(_ state: SyncState) -> some View {
-        Text("\(strings("sync.storage")): \(model.syncStorage?.name ?? "—") · ~/.phosphor-sync")
-            .font(style.font(11.5)).foregroundStyle(style.text)
+        storages(state)
         HStack(spacing: 8) {
             PhButton(strings(state.isJoined ? "sync.now" : "sync.check")) { Task { await model.syncNow() } }
             PhButton(strings("sync.disable")) { Task { await model.disableSync() } }
@@ -131,10 +131,50 @@ struct SyncSection: View {
         }
     }
 
-    private func note(_ text: String, color: Color? = nil) -> some View {
+    func note(_ text: String, color: Color? = nil) -> some View {
         Text(text)
             .font(style.font(11)).foregroundStyle(color ?? style.muted)
             .fixedSize(horizontal: false, vertical: true)
             .textSelection(.enabled)
+    }
+}
+
+/// Хранилища: у каждого полная копия, у каждого своя строка с ошибкой.
+extension SyncSection {
+    @ViewBuilder func storages(_ state: SyncState) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label2(strings("sync.storages"))
+            ForEach(model.syncStorages, id: \.id) { storage in
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 8) {
+                        Text(storage.host?.name ?? strings("sync.hostGone"))
+                            .font(style.font(12)).foregroundStyle(style.text)
+                        Text("~/.phosphor-sync").font(style.font(11)).foregroundStyle(style.muted)
+                        Spacer(minLength: 4)
+                        if state.storages.count > 1 {
+                            PhButton(strings("sync.removeStorage")) {
+                                Task { await model.removeStorage(storage.id) }
+                            }
+                        }
+                    }
+                    if let failure = model.syncFailures[storage.id] {
+                        note(failure, color: style.warning)
+                    }
+                }
+            }
+            let others = model.book.hosts.filter { !state.storages.contains($0.id) }
+            if !others.isEmpty {
+                Menu {
+                    ForEach(others) { host in
+                        Button(host.name) { Task { await model.addStorage(host.id) } }
+                    }
+                } label: {
+                    Text(strings("sync.addStorage")).font(style.font(11.5)).foregroundStyle(style.accent)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+            }
+            note(strings("sync.storagesNote"))
+        }
     }
 }

@@ -244,6 +244,8 @@ public final class AppModel {
     /// просится в профиль.
     public internal(set) var syncPhase: SyncPhase = .off
     public internal(set) var syncRequests: [SyncMachine] = []
+    /// Хранилища, не прошедшие последний круг, и почему. Остальные прошли.
+    public internal(set) var syncFailures: [UUID: String] = [:]
     var syncTask: Task<Void, Never>?
     var syncRunning = false
     var syncAgain = false

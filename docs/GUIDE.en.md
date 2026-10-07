@@ -209,6 +209,9 @@ To keep hosts, groups, snippets and forwards the same on all your Macs:
 **⌘9 → profile → sync between machines**, pick a storage server and press
 **turn on**. A `~/.phosphor-sync` folder appears on the server; it holds only
 ciphertext. Passwords and keys do not sync.
+There can be several storages: **+ add storage** puts a full copy on another
+server. If one is down, sync goes through the others and it catches up when it
+is back; its error shows on its own row.
 
 On the second Mac add the same server, pick it as storage and press **turn on** —
 an eight-character code appears. On the first Mac the same section shows a request

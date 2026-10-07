@@ -17,6 +17,16 @@ extension Strings {
             .english: "Add a server first: storage is a folder on it.",
         ],
         "sync.storage": [.russian: "хранилище", .english: "storage"],
+        "sync.storages": [.russian: "хранилища", .english: "storages"],
+        "sync.storagesNote": [
+            .russian: "На каждом сервере — полная копия. Недоступный сервер не мешает: синхронизация идёт "
+                + "через остальные, а он догонит, когда вернётся.",
+            .english: "Each server holds a full copy. One that is down does not get in the way: sync goes "
+                + "through the others, and it catches up when it is back.",
+        ],
+        "sync.addStorage": [.russian: "+ добавить хранилище", .english: "+ add storage"],
+        "sync.removeStorage": [.russian: "убрать", .english: "remove"],
+        "sync.hostGone": [.russian: "хост удалён из списка", .english: "host removed from the list"],
         "sync.enable": [.russian: "включить", .english: "turn on"],
         "sync.now": [.russian: "синхронизировать", .english: "sync now"],
         "sync.disable": [.russian: "выключить на этой машине", .english: "turn off on this machine"],

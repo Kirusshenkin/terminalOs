@@ -25,8 +25,29 @@ extension AppModel {
 
     public var syncState: SyncState? { book.sync }
 
-    public var syncStorage: ServerHost? {
-        book.sync.flatMap { state in book.hosts.first { $0.id == state.storage } }
+    /// Хранилища по порядку; хост, которого больше нет в списке, — nil.
+    public var syncStorages: [(id: ServerHost.ID, host: ServerHost?)] {
+        (book.sync?.storages ?? []).map { id in (id, book.hosts.first { $0.id == id }) }
+    }
+
+    /// Ещё один сервер с полной копией: следующий круг сам запишет туда снимок.
+    public func addStorage(_ id: ServerHost.ID) async {
+        guard var state = book.sync, !state.storages.contains(id) else { return }
+        state.storages.append(id)
+        book.sync = state
+        await writeProfile(startingSync: false)
+        await syncNow()
+    }
+
+    /// Перестаёт ходить на сервер. Папка на нём остаётся: её могут читать
+    /// другие машины, а удалить её — решение человека, а не приложения.
+    public func removeStorage(_ id: ServerHost.ID) async {
+        guard var state = book.sync, state.storages.count > 1 else { return }
+        state.storages.removeAll { $0 == id }
+        state.marks[id] = nil
+        book.sync = state
+        syncFailures[id] = nil
+        await writeProfile(startingSync: false)
     }
 
     /// Заводит ключи этой машины и делает первый круг: пустую папку займёт,
@@ -35,7 +56,7 @@ extension AppModel {
         guard book.sync == nil, profileWritable else { return }
         do {
             let name = Host.current().localizedName ?? "Mac"
-            book.sync = SyncState(identity: try SyncIdentity.create(name: name), storage: storage)
+            book.sync = SyncState(identity: try SyncIdentity.create(name: name), storages: [storage])
         } catch {
             syncPhase = .failed(strings.syncError(error))
             return
@@ -55,6 +76,7 @@ extension AppModel {
         syncTask?.cancel()
         book.sync = nil
         syncRequests = []
+        syncFailures = [:]
         syncPhase = .off
         await writeProfile(startingSync: false)
     }
@@ -70,13 +92,16 @@ extension AppModel {
 
     /// Убирает просьбу, не пуская машину.
     public func dismissMachine(_ id: String) async {
-        guard let remote = syncRemote() else { return }
-        do {
-            try await remote.dismiss(id)
-            syncRequests.removeAll { $0.id == id }
-        } catch {
-            syncPhase = .failed(strings.syncError(error))
+        // Просьба лежит в каждом хранилище, куда дотянулась машина: убирать
+        // отовсюду. Ошибка одного сервера — в его строке, остальные не ждут.
+        for (storage, remote) in syncRemotes() {
+            do {
+                try await remote.dismiss(id)
+            } catch {
+                syncFailures[storage] = strings.syncError(error)
+            }
         }
+        syncRequests.removeAll { $0.id == id }
     }
 
     /// Синхронизация после правки — с задержкой, чтобы серия правок ушла одной.
@@ -130,18 +155,22 @@ extension AppModel {
 
     /// `false` — круг не удался или результат устарел и применять его нечего.
     private func syncRound(_ changes: SyncEngine.Changes) async -> Bool {
-        guard let state = book.sync, let remote = syncRemote() else { return false }
+        guard let state = book.sync else { return false }
+        let remotes = syncRemotes()
         syncPhase = .working
         let items = book.syncItems()
         let outcome: SyncEngine.Outcome
         do {
-            outcome = try await SyncEngine.run(items: items, state: state, remote: remote, changes: changes)
+            outcome = try await SyncEngine.run(items: items, state: state, remotes: remotes, changes: changes)
         } catch {
-            syncPhase = .failed(strings.syncError(error))
+            syncPhase = .failed(remotes.isEmpty ? strings("sync.noStorage") : strings.syncError(error))
             return false
         }
-        // Профиль поменялся, пока шёл круг: применять ответ значит затереть правку.
-        guard book.syncItems() == items, book.sync?.identity == state.identity else {
+        // Профиль или список хранилищ поменялся, пока шёл круг: применять ответ
+        // значит затереть правку.
+        guard book.syncItems() == items, book.sync?.identity == state.identity,
+            book.sync?.storages == state.storages
+        else {
             syncAgain = true
             return true
         }
@@ -152,7 +181,9 @@ extension AppModel {
         case .confirmSigner(let next, let signer):
             book.sync = next
             syncPhase = .confirm(signer: signer)
-        case .synced(let records, var next, let waiting):
+        case .synced(let records, var next, let waiting, let failures):
+            syncFailures = failures.mapValues { strings.syncError($0) }
+            for id in next.storages where remotes[id] == nil { syncFailures[id] = strings("sync.noStorage") }
             book.applySync(records)
             next.rebase(book.syncItems(), merged: records)
             book.sync = next
@@ -165,15 +196,16 @@ extension AppModel {
         return true
     }
 
-    private func syncRemote() -> SyncRemote? {
-        guard let state = book.sync else { return nil }
-        guard let host = book.hosts.first(where: { $0.id == state.storage }) else {
-            syncPhase = .failed(strings("sync.noStorage"))
-            return nil
+    /// Хранилища, чьи хосты есть в списке. Пропавший хост — ошибка его строки.
+    private func syncRemotes() -> [UUID: SyncRemote] {
+        var remotes: [UUID: SyncRemote] = [:]
+        for id in book.sync?.storages ?? [] {
+            guard let host = book.hosts.first(where: { $0.id == id }) else { continue }
+            let transport = SystemSSHTransport(host: host, route: book.route(for: host))
+            remotes[id] = SyncRemote { command, input in
+                try await transport.run(command, input: input, timeout: .seconds(60))
+            }
         }
-        let transport = SystemSSHTransport(host: host, route: book.route(for: host))
-        return SyncRemote { command, input in
-            try await transport.run(command, input: input, timeout: .seconds(60))
-        }
+        return remotes
     }
 }

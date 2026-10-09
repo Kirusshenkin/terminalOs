@@ -40,6 +40,8 @@ public struct Appearance: Codable, Sendable, Equatable {
     public var summonKey: Bool?
     /// Своя копия проекта для каждого агента. Необязательное — как и прочие.
     public var agentWorktrees: Bool?
+    /// Агенты на этом Маке под песочницей (план §16.9). Необязательное — как и прочие.
+    public var agentSandbox: Bool?
 
     public init(
         themeID: String = BuiltInThemes.phosphor.id,
@@ -60,7 +62,8 @@ public struct Appearance: Codable, Sendable, Equatable {
         logMotion: String? = nil,
         biometricReuseSeconds: Double? = nil,
         summonKey: Bool? = nil,
-        agentWorktrees: Bool? = nil
+        agentWorktrees: Bool? = nil,
+        agentSandbox: Bool? = nil
     ) {
         self.themeID = themeID
         self.language = language
@@ -81,6 +84,7 @@ public struct Appearance: Codable, Sendable, Equatable {
         self.biometricReuseSeconds = biometricReuseSeconds
         self.summonKey = summonKey
         self.agentWorktrees = agentWorktrees
+        self.agentSandbox = agentSandbox
     }
 }
 

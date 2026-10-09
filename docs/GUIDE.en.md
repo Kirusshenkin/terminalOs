@@ -173,6 +173,12 @@ Right-click the agent's session → **close and remove its project copy**: the c
 goes only if it has nothing uncommitted, and the branch stays — merging it is
 your call. Turn it off in ⌘, → behaviour → "own project copy per agent".
 
+An agent on this Mac runs in a **sandbox**, the way Claude Code sandboxes itself:
+it can write only to its project, temporary folders and its own settings, and
+`~/.ssh`, `~/.gnupg` and `~/.aws` are hidden from it. So `git push` over SSH
+will not work from the agent — push from the shell. Turn it off in ⌘, →
+behaviour → "sandbox for agents on this Mac". Servers get no sandbox.
+
 ## 7. The other tabs
 
 The header has three parts. On the left is the server list. Inside the frame are the selected server and everything done to it: until a server is picked, these tabs ask you to pick one. On the right is what all servers share. Tabs switch with the mouse or keyboard:

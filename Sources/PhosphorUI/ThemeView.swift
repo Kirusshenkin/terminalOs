@@ -124,6 +124,21 @@ public struct ThemeView: View {
                     .font(style.font(11)).foregroundStyle(style.muted)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Label2(strings("set.agentSandbox"))
+                HStack(spacing: 8) {
+                    toggleChip(strings("set.on"), on: model.agentSandbox) {
+                        model.agentSandbox = true
+                        model.saveAppearance()
+                    }
+                    toggleChip(strings("set.off"), on: !model.agentSandbox) {
+                        model.agentSandbox = false
+                        model.saveAppearance()
+                    }
+                }
+                Text(strings("set.agentSandboxNote"))
+                    .font(style.font(11)).foregroundStyle(style.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Label2(strings("set.motion"))
                 HStack(spacing: 8) {
                     ForEach(MotionAmount.allCases, id: \.self) { amount in

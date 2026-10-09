@@ -5,6 +5,15 @@ import SSHKit
 /// Выбор нейронки в новой панели (план §23, «Нейронки в панелях»).
 @MainActor
 extension AppModel {
+    /// Сколько сессий ждут ответа человека. Ради этого числа в шапке горит
+    /// метка у «Терминала», даже когда открыт другой раздел.
+    public var blockedSessions: Int {
+        let all = liveSessions + localSessions + [plainShell].compactMap(\.self) + backgroundSessions
+        return all.reduce(into: 0) { total, session in
+            if session.status == .blocked { total += 1 }
+        }
+    }
+
     /// Ключ `installedAgents` для того, на что смотрит терминал.
     var agentsKey: String? {
         localFocused ? "local" : selectedHost?.uuidString
@@ -62,14 +71,28 @@ extension AppModel {
         // Поставили — список устарел; следующая строка выбора спросит машину заново.
         if missing, let key = agentsKey { installedAgents[key] = nil }
         let worktree = agentWorktrees
+        let remote = !localFocused
+        // Песочница — только на этом Маке: на сервере нет Seatbelt (план §16.9).
+        let sandboxed = agentSandbox && !remote
         Task {
+            var start = choice.launch(remote: remote) ?? command
+            if sandboxed {
+                do {
+                    try await Task.detached { try AgentSandbox.installProfile() }.value
+                } catch {
+                    // Без профиля агент не стартует: молча запустить его без
+                    // песочницы — значит обмануть того, кто её включил.
+                    agentNote = strings("term.sandbox.failed")
+                    return
+                }
+                start = AgentSandbox.wrap(start, profilePath: AgentSandbox.profileURL.path)
+            }
             // Агент стартует в папке панели, из которой открыли новую, — там
             // проект, а не в домашней папке, где открывается свежая панель.
             let origin = await originPath()
-            let remote = !localFocused
             let line = AgentWorktree.launchLine(
                 command: command, origin: origin, worktree: worktree, stamp: AgentWorktree.stamp(Date()),
-                notice: strings("term.worktree.notice"), start: choice.launch(remote: remote))
+                notice: strings("term.worktree.notice"), start: start)
             let full = missing ? (choice.installLine(then: line, remote: remote) ?? line) : line
             surface.send(txt: full + "\r")
         }

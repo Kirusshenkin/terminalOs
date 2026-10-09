@@ -74,6 +74,26 @@ extension Strings {
                 "An agent started from the picker inside a git repository works in its own git worktree on an "
                 + "agent/… branch next to the project: two agents do not get in each other's way.",
         ],
+        "set.agentSandbox": [
+            .russian: "песочница для агентов на этом Маке", .english: "sandbox for agents on this Mac",
+        ],
+        "set.agentSandboxNote": [
+            .russian:
+                "Агент из строки выбора пишет только в свой проект, временные папки и свои настройки; "
+                + "~/.ssh, ~/.gnupg и ~/.aws ему не видны. git push по SSH из агента не сработает — пушь из шелла.",
+            .english:
+                "An agent started from the picker writes only to its project, temporary folders and its own "
+                + "settings; ~/.ssh, ~/.gnupg and ~/.aws are hidden from it. git push over SSH will not work "
+                + "from the agent — push from the shell.",
+        ],
+        "term.sandbox.failed": [
+            .russian:
+                "Агент не запущен: не удалось записать профиль песочницы в ~/Library/Application Support/"
+                + "Phosphor. Проверь права на эту папку или выключи песочницу в настройках.",
+            .english:
+                "Agent not started: could not write the sandbox profile to ~/Library/Application Support/"
+                + "Phosphor. Check permissions on that folder, or turn the sandbox off in Settings.",
+        ],
         // Подключение ИИ к мосту
         "ai.title": [.russian: "подключить нейронку", .english: "connect an AI"],
         "ai.command": [.russian: "команда для claude code", .english: "command for claude code"],

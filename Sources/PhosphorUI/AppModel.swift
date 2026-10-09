@@ -292,15 +292,6 @@ public final class AppModel {
     /// Смотрит ли кто-нибудь на окно. Опрос замирает, когда нет.
     var windowActive = true
 
-    /// Сколько сессий ждут ответа человека. Ради этого числа в шапке горит
-    /// метка у «Терминала», даже когда открыт другой раздел.
-    public var blockedSessions: Int {
-        let all = liveSessions + localSessions + [plainShell].compactMap(\.self) + backgroundSessions
-        return all.reduce(into: 0) { total, session in
-            if session.status == .blocked { total += 1 }
-        }
-    }
-
     /// Открытые «спейсы» — хосты, к которым в этой сессии подключались, в
     /// порядке открытия. Рейл терминала показывает их сверху; между ними
     /// переключаются, не теряя того, что крутится на сервере в tmux.
@@ -320,8 +311,11 @@ public final class AppModel {
     /// Итог «закрыть и убрать копию проекта» — одной строкой в рейле.
     public var agentNote: String?
     /// Заводить ли агенту свою копию проекта (git worktree) при запуске из
-    /// строки выбора. По умолчанию да: два агента в одной папке мешают друг другу.
+    /// строки выбора — два агента в одной папке мешают друг другу; и запускать
+    /// ли его на этом Маке под песочницей: пишет только в свой проект и свои
+    /// настройки, `~/.ssh` не видит (план §16.9). По умолчанию оба — да.
     public var agentWorktrees = true
+    public var agentSandbox = true
     /// Мост от уведомлений macOS к модели: клик по уведомлению ведёт в сессию.
     let agentNotifier = AgentNotifier()
     /// Ключ незнакомого сервера, ждущий решения человека: отпечаток уже
@@ -563,7 +557,7 @@ public final class AppModel {
         vignette = saved.vignette
         petVisible = saved.petVisible ?? true
         summonKey = saved.summonKey ?? false
-        agentWorktrees = saved.agentWorktrees ?? true
+        (agentWorktrees, agentSandbox) = (saved.agentWorktrees ?? true, saved.agentSandbox ?? true)
         GlobalHotKey.shared.set(enabled: summonKey)
         pollSeconds = saved.pollSeconds ?? 4
         logLines = saved.logLines ?? 5_000

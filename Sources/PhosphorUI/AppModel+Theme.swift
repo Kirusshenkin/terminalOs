@@ -66,7 +66,8 @@ extension AppModel {
                 logMotion: logMotion.rawValue,
                 biometricReuseSeconds: biometricReuseSeconds,
                 summonKey: summonKey,
-                agentWorktrees: agentWorktrees
+                agentWorktrees: agentWorktrees,
+                agentSandbox: agentSandbox
             ))
     }
 }

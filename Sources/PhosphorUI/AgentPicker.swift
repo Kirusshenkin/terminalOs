@@ -29,10 +29,13 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
     /// Чем запускать, если не голым `command`: другая модель в том же агенте.
     /// nil — просто `command`.
     public let start: String?
+    /// Запуск для удалённой панели, когда локальный способ на сервере не
+    /// работает. nil — на сервере запускается тем же `start` (или `command`).
+    public let remoteStart: String?
 
     public init(
         id: String, title: String, command: String?, install: String?, login: String? = nil,
-        remoteLogin: String? = nil, start: String? = nil
+        remoteLogin: String? = nil, start: String? = nil, remoteStart: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -41,23 +44,33 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
         self.login = login
         self.remoteLogin = remoteLogin
         self.start = start
+        self.remoteStart = remoteStart
     }
+
+    /// Чем запускать панель: на сервере — удалённый способ, где он задан.
+    func launch(remote: Bool) -> String? { remote ? (remoteStart ?? start) : start }
 
     public static let shell = PaneLaunch(id: "shell", title: "shell", command: nil, install: nil)
 
     public static let choices: [PaneLaunch] = [
         shell,
         // Свой установщик: Node не нужен, бинарь ложится в ~/.local/bin.
+        // `CLAUDE_INSTALL_ALLOW_SUDO=1` — иначе под root (а серверы почти все
+        // root@) установщик отказывается ставить; обычному юзеру флаг безвреден.
         PaneLaunch(
             id: "claude", title: "Claude Code", command: "claude",
-            install: "curl -fsSL https://claude.ai/install.sh | bash"),
+            install: "curl -fsSL https://claude.ai/install.sh | CLAUDE_INSTALL_ALLOW_SUDO=1 bash"),
         // На сервере codex по умолчанию зовёт браузер и висит; он сам
         // подсказывает `--device-auth` — вход по коду устройства, без браузера.
         PaneLaunch(
             id: "codex", title: "Codex", command: "codex", install: npmInstall("@openai/codex"),
             remoteLogin: "codex login --device-auth"),
+        // На сервере у gemini нет входа без браузера: OAuth ждёт localhost и
+        // виснет, кода устройства нет — остаётся ключ в окружении. Удалённая
+        // панель спрашивает ключ, кладёт под замок и подставляет в `GEMINI_API_KEY`.
         PaneLaunch(
-            id: "gemini", title: "Gemini", command: "gemini", install: npmInstall("@google/gemini-cli")),
+            id: "gemini", title: "Gemini", command: "gemini", install: npmInstall("@google/gemini-cli"),
+            remoteStart: geminiStart),
         PaneLaunch(
             id: "cursor", title: "Cursor", command: "cursor-agent",
             install: "curl https://cursor.com/install -fsS | bash", login: "cursor-agent login"),
@@ -81,6 +94,21 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
         "{ [ -n \"$ZHIPU_API_KEY\" ] || grep -qs '\"\(glmProvider)\"' "
         + "\"${XDG_DATA_HOME:-$HOME/.local/share}/opencode/auth.json\" "
         + "|| opencode auth login -p \(glmProvider); } && opencode -m \(glmProvider)/glm-5.3"
+
+    /// Запуск Gemini на сервере: вход только ключом в окружении.
+    ///
+    /// `@google/gemini-cli` без браузера входит лишь через `GEMINI_API_KEY`
+    /// (device-кода нет, OAuth по SSH виснет — проверено на живом сервере).
+    /// Ключ берётся из окружения, иначе из файла под замком рядом с настройками
+    /// gemini, иначе панель один раз спрашивает его (ввод скрыт) и сохраняет.
+    /// Файл читает только человек (`umask 077`); приложение ключа не видит и не
+    /// хранит — как у GLM, его вводят прямо в панель.
+    static let geminiStart =
+        "{ [ -n \"$GEMINI_API_KEY\" ] || { f=\"$HOME/.gemini/phosphor-key\"; "
+        + "[ -s \"$f\" ] || { printf 'Gemini API key (https://aistudio.google.com/apikey): '; "
+        + "stty -echo 2>/dev/null; read -r k; stty echo 2>/dev/null; printf '\\n'; "
+        + "mkdir -p \"$HOME/.gemini\"; (umask 077; printf '%s' \"$k\" > \"$f\"); }; "
+        + "export GEMINI_API_KEY=\"$(cat \"$f\")\"; }; } && gemini"
 
     /// Куда агенты ставятся сами, мимо системного PATH: свои установщики
     /// (`~/.local/bin`, `~/.opencode/bin`), Homebrew, глобальные npm и bun.

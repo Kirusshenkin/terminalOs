@@ -109,6 +109,36 @@ struct PaneLaunchTests {
         #expect(line.contains("tar -xJ -C \"$HOME/.local\""))
     }
 
+    @Test("claude ставится и под root: установщик иначе отказывается")
+    func claudeInstallsUnderRoot() throws {
+        let claude = try #require(PaneLaunch.choices.first { $0.id == "claude" })
+        #expect(try #require(claude.install).contains("CLAUDE_INSTALL_ALLOW_SUDO=1"))
+    }
+
+    @Test("удалённая панель берёт headless-запуск, локальная — обычный")
+    func remoteStartOnlyOnRemote() {
+        let choice = PaneLaunch(
+            id: "fake", title: "fake", command: "fake", install: nil,
+            start: "run-local", remoteStart: "run-remote")
+        #expect(choice.launch(remote: false) == "run-local")
+        #expect(choice.launch(remote: true) == "run-remote")
+        // Нет remoteStart — удалённая падает обратно на обычный старт.
+        let onlyLocal = PaneLaunch(
+            id: "f2", title: "f2", command: "f2", install: nil, start: "run-local")
+        #expect(onlyLocal.launch(remote: true) == "run-local")
+    }
+
+    @Test("gemini на сервере спрашивает ключ, кладёт под замок и подставляет в окружение")
+    func geminiRemoteUsesKeyFromEnv() throws {
+        let gemini = try #require(PaneLaunch.choices.first { $0.id == "gemini" })
+        let remote = try #require(gemini.remoteStart)
+        #expect(gemini.start == nil)  // локально gemini сам откроет браузер
+        #expect(remote.contains("GEMINI_API_KEY"))
+        #expect(remote.contains("umask 077"))  // ключ под замком
+        #expect(remote.contains("stty -echo"))  // ввод ключа скрыт
+        #expect(remote.hasSuffix("gemini"))  // запуск без -p: интерактивная панель
+    }
+
     @Test("GLM спрашивает ключ z.ai, только когда у opencode его ещё нет")
     func glmAsksKeyOnce() throws {
         let home = FileManager.default.temporaryDirectory

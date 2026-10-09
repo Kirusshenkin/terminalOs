@@ -66,10 +66,11 @@ extension AppModel {
             // Агент стартует в папке панели, из которой открыли новую, — там
             // проект, а не в домашней папке, где открывается свежая панель.
             let origin = await originPath()
+            let remote = !localFocused
             let line = AgentWorktree.launchLine(
                 command: command, origin: origin, worktree: worktree, stamp: AgentWorktree.stamp(Date()),
-                notice: strings("term.worktree.notice"), start: choice.start)
-            let full = missing ? (choice.installLine(then: line, remote: !localFocused) ?? line) : line
+                notice: strings("term.worktree.notice"), start: choice.launch(remote: remote))
+            let full = missing ? (choice.installLine(then: line, remote: remote) ?? line) : line
             surface.send(txt: full + "\r")
         }
     }

@@ -79,7 +79,7 @@ public struct HostsView: View {
                     model.importReport = model.importKnownHosts()
                 }
                 Button(strings("nav.importTermius")) {
-                    model.importReport = model.importTermiusHistory()
+                    Task { model.importReport = await model.importTermius() }
                 }
             } label: {
                 Text(strings("nav.importMenu"))

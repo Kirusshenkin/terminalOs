@@ -4,6 +4,7 @@ public import KeysKit
 import MetricsKit
 import PhosphorCore
 import SSHKit
+import Security
 
 /// Правка списка хостов. Любое изменение сразу планирует запись профиля.
 @MainActor
@@ -53,8 +54,49 @@ extension AppModel {
         return appendNew(KnownHostsFile.servers(text), source: "known_hosts")
     }
 
-    /// Хосты Termius: из расшифрованного дампа, если он лежит рядом с
-    /// профилем, иначе — адреса из истории подключений.
+    /// Хосты Termius: расшифровывает само хранилище, если оно на месте и ключ
+    /// `localKey` отдан связкой ключей; иначе откатывается к дампу или истории.
+    ///
+    /// Чтение `localKey` принадлежит Termius, и macOS спросит пароль учётной
+    /// записи — поэтому метод асинхронный: запрос идёт в фоне, окно не висит.
+    /// Отмена запроса — не ошибка: тогда импортируются хотя бы адреса из
+    /// истории, а логины и порты человек допишет сам.
+    @discardableResult
+    public func importTermius() async -> ImportReport {
+        let source = strings("hosts.termius")
+        let storePresent = TermiusVault.defaultDirectories()
+            .contains { FileManager.default.fileExists(atPath: $0) }
+        if storePresent, let key = await Self.readTermiusLocalKey() {
+            return appendNew(
+                TermiusVault.hosts(localKey: key, existing: book.hosts), source: source)
+        }
+        return importTermiusHistory()
+    }
+
+    /// Reads Termius's `localKey` from the Keychain off the main thread.
+    ///
+    /// Запись принадлежит другому приложению, поэтому `SecItemCopyMatching`
+    /// покажет системный запрос пароля и заблокирует поток до ответа — значит,
+    /// не на главном. Ключ лежит как base64-текст.
+    private static func readTermiusLocalKey() async -> Data? {
+        await Task.detached(priority: .userInitiated) {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: "Termius",
+                kSecAttrAccount as String: "localKey",
+                kSecReturnData as String: true,
+            ]
+            var item: CFTypeRef?
+            guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+                let data = item as? Data,
+                let base64 = String(data: data, encoding: .utf8)
+            else { return nil }
+            return Data(base64Encoded: base64.trimmingCharacters(in: .whitespacesAndNewlines))
+        }.value
+    }
+
+    /// Хосты Termius из дампа рядом с профилем или, в крайнем случае, адреса из
+    /// истории подключений. Запасной путь для `importTermius`.
     @discardableResult
     public func importTermiusHistory() -> ImportReport {
         let source = strings("hosts.termius")
@@ -120,18 +162,32 @@ extension AppModel {
     public func refreshImportOffers() {
         var offers: [ImportOffer] = []
         for source in ImportSource.allCases {
-            let count = candidates(from: source).count
+            let count = source == .termius ? termiusOfferCount() : candidates(from: source).count
             if count > 0 { offers.append(ImportOffer(key: source.key, count: count, source: source)) }
         }
         importOffers = offers
     }
 
+    /// Сколько хостов предложить из Termius, не спрашивая пароль.
+    ///
+    /// Уже импортированное не предлагаем снова: как только в списке есть хост с
+    /// тегом `termius`, предложение исчезает. Иначе — число записей в
+    /// хранилище (без расшифровки), а если хранилища нет, то дамп или история.
+    private func termiusOfferCount() -> Int {
+        if book.hosts.contains(where: { $0.tags.contains("termius") }) { return 0 }
+        let inStore = TermiusVault.availableHostCount()
+        return inStore > 0 ? inStore : candidates(from: .termius).count
+    }
+
     /// Переносит всё из источника и обновляет предложения.
     public func take(_ offer: ImportOffer) {
-        // Termius — через тот же путь, что кнопка: он же убирает открытый дамп.
+        // Termius — через тот же путь, что кнопка: расшифровка хранилища с
+        // откатом к истории. Асинхронно, потому что ключ спрашивает пароль.
         if offer.source == .termius {
-            importReport = importTermiusHistory()
-            refreshImportOffers()
+            Task {
+                importReport = await importTermius()
+                refreshImportOffers()
+            }
             return
         }
         let fresh = candidates(from: offer.source)

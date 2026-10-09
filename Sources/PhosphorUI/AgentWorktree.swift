@@ -22,12 +22,15 @@ enum AgentWorktree {
     ///   - notice: строка, которую панель печатает после переезда в копию;
     ///     `%@` — путь копии. В свежей копии нет node_modules и .build, и без
     ///     этой строки первая упавшая сборка агента была бы загадкой.
+    ///   - start: чем запускать, если это не голое имя команды (`command`
+    ///     тогда — только имя для копии и ветки).
     ///
     /// Синтаксис POSIX: в fish строка не сработает — fish как шелл панели пока
     /// не поддерживается. Набирается после ответа о папке, поэтому то, что
     /// человек успел напечатать в панели за это время, окажется перед ней.
     static func launchLine(
-        command: String, origin: String?, worktree: Bool, stamp: String, notice: String = ""
+        command: String, origin: String?, worktree: Bool, stamp: String, notice: String = "",
+        start: String? = nil
     ) -> String {
         var parts: [String] = []
         if let origin { parts.append("cd \(Shell.quote(origin))") }
@@ -41,7 +44,7 @@ enum AgentWorktree {
                     + "&& { tmux set-option \(option) \"$w\" 2>/dev/null; true; }"
                     + (notice.isEmpty ? "" : " && printf \(printfFormat(notice)) \"$w\""))
         }
-        parts.append(command)
+        parts.append(start ?? command)
         return parts.joined(separator: "; ")
     }
 

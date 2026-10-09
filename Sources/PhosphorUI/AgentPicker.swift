@@ -19,13 +19,20 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
     /// Вход, который агент сам при первом запуске не предлагает. nil — агент
     /// спросит вход сам, как только откроется.
     public let login: String?
+    /// Чем запускать, если не голым `command`: другая модель в том же агенте.
+    /// nil — просто `command`.
+    public let start: String?
 
-    public init(id: String, title: String, command: String?, install: String?, login: String? = nil) {
+    public init(
+        id: String, title: String, command: String?, install: String?, login: String? = nil,
+        start: String? = nil
+    ) {
         self.id = id
         self.title = title
         self.command = command
         self.install = install
         self.login = login
+        self.start = start
     }
 
     public static let shell = PaneLaunch(id: "shell", title: "shell", command: nil, install: nil)
@@ -45,7 +52,23 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
         PaneLaunch(
             id: "opencode", title: "opencode", command: "opencode",
             install: "curl -fsSL https://opencode.ai/install | bash", login: "opencode auth login"),
+        // GLM по подписке z.ai: своей программы у z.ai нет, модель живёт в
+        // opencode. Ключ спрашивает и хранит сам opencode — у приложения его нет.
+        PaneLaunch(
+            id: "glm", title: "GLM (z.ai)", command: "opencode",
+            install: "curl -fsSL https://opencode.ai/install | bash", start: glmStart),
     ]
+
+    /// Провайдер подписки z.ai в каталоге моделей opencode (models.dev).
+    static let glmProvider = "zai-coding-plan"
+
+    /// Вход в z.ai — только если ключа ещё нет ни в окружении, ни в файле
+    /// ключей opencode (`$XDG_DATA_HOME/opencode/auth.json`, по умолчанию
+    /// `~/.local/share`). `-p` сразу спрашивает ключ, без списка провайдеров.
+    static let glmStart =
+        "{ [ -n \"$ZHIPU_API_KEY\" ] || grep -qs '\"\(glmProvider)\"' "
+        + "\"${XDG_DATA_HOME:-$HOME/.local/share}/opencode/auth.json\" "
+        + "|| opencode auth login -p \(glmProvider); } && opencode -m \(glmProvider)/glm-5.3"
 
     /// Куда агенты ставятся сами, мимо системного PATH: свои установщики
     /// (`~/.local/bin`, `~/.opencode/bin`), Homebrew, глобальные npm и bun.

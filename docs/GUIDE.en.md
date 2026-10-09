@@ -141,11 +141,13 @@ session. The icon next to it changes the orientation. Splits work on servers and
 on this Mac (with tmux and persistent sessions on).
 
 A new pane first asks what to run: the **shell** or an AI agent (Claude Code, Codex,
-Gemini, Cursor, opencode). The main pane gets the same via the **AI agent** button
+Gemini, Cursor, opencode, GLM from z.ai). The main pane gets the same via the **AI agent** button
 above the terminal. **Tab** and the arrows choose, **Enter** runs it, **Esc**
 keeps a plain shell. The agent runs as its own program under your subscription —
 Phosphor asks for no API keys. If it is not installed, Enter installs it and starts
 it; on first start the agent asks you to sign in.
+**GLM (z.ai)** runs inside opencode: on first start it asks for your z.ai
+(Coding Plan) key and keeps it itself — Phosphor never sees the key.
 
 **Drag** a file or a picture onto a pane to type its path, escaped the way
 Terminal.app does it — the quickest way to hand a screenshot to an agent.

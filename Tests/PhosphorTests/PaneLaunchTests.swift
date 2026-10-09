@@ -73,6 +73,41 @@ struct PaneLaunchTests {
         #expect(try run(install: "echo install") == "install\nlogin\nstart\n")
         #expect(try run(install: "echo install; false") == "install\n")
     }
+
+    @Test("GLM спрашивает ключ z.ai, только когда у opencode его ещё нет")
+    func glmAsksKeyOnce() throws {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("phosphor-glm-\(UUID().uuidString)")
+        let bin = home.appendingPathComponent("bin")
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: home) }  // временная папка теста
+        // Подставной opencode печатает, с чем его позвали.
+        let fake = bin.appendingPathComponent("opencode")
+        try Data("#!/bin/sh\necho \"$@\"\n".utf8).write(to: fake)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fake.path)
+        let glm = try #require(PaneLaunch.choices.first { $0.id == "glm" })
+        let start = try #require(glm.start)
+
+        func run(_ extra: [String: String] = [:]) throws -> String {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/sh")
+            process.arguments = ["-c", start]
+            process.environment = ["PATH": bin.path + ":/usr/bin:/bin", "HOME": home.path]
+                .merging(extra) { $1 }
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            try process.run()
+            process.waitUntilExit()
+            return String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        }
+        let model = "-m zai-coding-plan/glm-5.3\n"
+        #expect(try run() == "auth login -p zai-coding-plan\n" + model)
+        #expect(try run(["ZHIPU_API_KEY": "k"]) == model)
+        let store = home.appendingPathComponent(".local/share/opencode")
+        try FileManager.default.createDirectory(at: store, withIntermediateDirectories: true)
+        try Data(#"{"zai-coding-plan":{"type":"api"}}"#.utf8).write(to: store.appendingPathComponent("auth.json"))
+        #expect(try run() == model)
+    }
 }
 
 @Suite("Нейронки в панелях: подписи")

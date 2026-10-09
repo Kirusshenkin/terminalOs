@@ -68,7 +68,7 @@ extension AppModel {
             let origin = await originPath()
             let line = AgentWorktree.launchLine(
                 command: command, origin: origin, worktree: worktree, stamp: AgentWorktree.stamp(Date()),
-                notice: strings("term.worktree.notice"))
+                notice: strings("term.worktree.notice"), start: choice.start)
             let full = missing ? (choice.installLine(then: line) ?? line) : line
             surface.send(txt: full + "\r")
         }

@@ -49,7 +49,7 @@ public struct TerminalPane: View {
                     .foregroundStyle(isFailure ? style.warning : style.muted)
                     .padding(.bottom, 8)
             }
-            if model.canSplit || !model.extraPanes.isEmpty { splitBar }
+            splitBar
             panes
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -59,7 +59,7 @@ public struct TerminalPane: View {
     @ViewBuilder private var panes: some View {
         let extras = model.extraPanes
         if extras.isEmpty {
-            hostSurface(model.terminalDestination)
+            mainPane
         } else {
             let layout =
                 model.splitVertical
@@ -67,7 +67,7 @@ public struct TerminalPane: View {
             GeometryReader { geometry in
                 let total = model.splitVertical ? geometry.size.width : geometry.size.height
                 layout {
-                    hostSurface(model.terminalDestination)
+                    mainPane
                         .frame(
                             width: model.splitVertical ? total * model.splitRatio : nil,
                             height: model.splitVertical ? nil : total * model.splitRatio)
@@ -149,10 +149,30 @@ public struct TerminalPane: View {
         }
     }
 
-    /// Тонкая полоса управления сплитом над терминалом.
+    /// Главная панель. Строка выбора нейронки над ней — по кнопке «нейронка».
+    private var mainPane: some View {
+        ZStack(alignment: .topLeading) {
+            hostSurface(model.terminalDestination)
+            if model.pendingLaunch.contains(model.terminalDestination) {
+                AgentPicker(strings: strings, installed: model.installedHere) { choice in
+                    model.launch(choice, in: model.terminalDestination)
+                }
+            }
+        }
+    }
+
+    /// Тонкая полоса над терминалом: нейронка и сплит.
     private var splitBar: some View {
         HStack(spacing: 10) {
             Spacer()
+            // Позвать нейронку в главную панель; новые панели спрашивают сами.
+            Button {
+                model.askLaunch()
+            } label: {
+                Label2(strings("term.agent"))
+            }
+            .buttonStyle(PressFeedback())
+            .help(strings("term.agentHelp"))
             // Добавить панель можно, пока их меньше потолка: за каждой стоит
             // живой ssh, и «ещё одна» без края — это утечка на экране.
             if model.canSplit {

@@ -140,11 +140,12 @@ Above the terminal — **split** button (⌘D) — up to four panes, each with i
 session. The icon next to it changes the orientation. Splits work on servers and
 on this Mac (with tmux and persistent sessions on).
 
-A new pane first asks what to run: the **shell** or an agent (Codex, Gemini CLI,
-Cursor, opencode…). **Tab** and the arrows choose, **Enter** runs it, **Esc**
+A new pane first asks what to run: the **shell** or an AI agent (Claude Code, Codex,
+Gemini, Cursor, opencode). The main pane gets the same via the **AI agent** button
+above the terminal. **Tab** and the arrows choose, **Enter** runs it, **Esc**
 keeps a plain shell. The agent runs as its own program under your subscription —
-Phosphor asks for no API keys. If it is not installed, Enter types the install
-command without running it; that is up to you.
+Phosphor asks for no API keys. If it is not installed, Enter installs it and starts
+it; on first start the agent asks you to sign in.
 
 **Drag** a file or a picture onto a pane to type its path, escaped the way
 Terminal.app does it — the quickest way to hand a screenshot to an agent.

@@ -5,13 +5,18 @@ extension Strings {
     static let agentTable: [String: [Language: String]] = [
         "term.launch": [.russian: "что запустить в этой панели", .english: "what to run in this pane"],
         "term.shell": [.russian: "шелл", .english: "shell"],
+        "term.agent": [.russian: "нейронка", .english: "AI agent"],
+        "term.agentHelp": [
+            .russian: "Запустить нейронку в этой панели: Claude Code, Codex, Gemini…",
+            .english: "Run an AI agent in this pane: Claude Code, Codex, Gemini…",
+        ],
         "term.launchHint": [
             .russian: "Tab — дальше · Enter — запустить · Esc — просто шелл",
             .english: "Tab — next · Enter — run · Esc — just the shell",
         ],
         "term.launchMissing": [
-            .russian: "На этой машине его нет: Enter вставит команду установки, запустить её — тебе.",
-            .english: "Not installed here: Enter types the install command, running it is up to you.",
+            .russian: "Его здесь нет: Enter поставит и запустит, вход агент спросит сам.",
+            .english: "Not installed here: Enter installs and starts it, the agent asks you to sign in.",
         ],
         "term.reply.accept": [.russian: "принять", .english: "accept"],
         "term.reply.text": [.russian: "ответить…", .english: "reply…"],

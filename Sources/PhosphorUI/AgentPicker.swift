@@ -12,36 +12,75 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
     public let title: String
     /// Что набрать в шелле. nil — сам шелл, набирать нечего.
     public let command: String?
-    /// Как поставить, если агента на машине нет. Вставляется в шелл без
-    /// Enter: ставить или нет, решает человек.
+    /// Как поставить, если агента на машине нет. Запускается по Enter в строке
+    /// выбора: выбрать неустановленного агента и нажать Enter — это и есть
+    /// согласие поставить.
     public let install: String?
+    /// Вход, который агент сам при первом запуске не предлагает. nil — агент
+    /// спросит вход сам, как только откроется.
+    public let login: String?
+
+    public init(id: String, title: String, command: String?, install: String?, login: String? = nil) {
+        self.id = id
+        self.title = title
+        self.command = command
+        self.install = install
+        self.login = login
+    }
 
     public static let shell = PaneLaunch(id: "shell", title: "shell", command: nil, install: nil)
 
     public static let choices: [PaneLaunch] = [
         shell,
+        // Свой установщик: Node не нужен, бинарь ложится в ~/.local/bin.
         PaneLaunch(
             id: "claude", title: "Claude Code", command: "claude",
-            install: "npm install -g @anthropic-ai/claude-code"),
-        PaneLaunch(id: "codex", title: "Codex", command: "codex", install: "npm install -g @openai/codex"),
+            install: "curl -fsSL https://claude.ai/install.sh | bash"),
+        PaneLaunch(id: "codex", title: "Codex", command: "codex", install: npmInstall("@openai/codex")),
         PaneLaunch(
-            id: "gemini", title: "Gemini", command: "gemini", install: "npm install -g @google/gemini-cli"),
+            id: "gemini", title: "Gemini", command: "gemini", install: npmInstall("@google/gemini-cli")),
         PaneLaunch(
             id: "cursor", title: "Cursor", command: "cursor-agent",
-            install: "curl https://cursor.com/install -fsS | bash"),
+            install: "curl https://cursor.com/install -fsS | bash", login: "cursor-agent login"),
         PaneLaunch(
-            id: "opencode", title: "opencode", command: "opencode", install: "npm install -g opencode-ai"),
+            id: "opencode", title: "opencode", command: "opencode",
+            install: "curl -fsSL https://opencode.ai/install | bash", login: "opencode auth login"),
     ]
+
+    /// Куда агенты ставятся сами, мимо системного PATH: свои установщики
+    /// (`~/.local/bin`, `~/.opencode/bin`), Homebrew, глобальные npm и bun.
+    static let agentPaths =
+        "/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.opencode/bin:$HOME/.npm-global/bin:$HOME/.bun/bin"
+
+    /// Глобальный пакет npm. Нет npm, но есть Homebrew — сперва ставится Node;
+    /// нет и его — шелл скажет `brew: command not found`, и цепочка встанет.
+    static func npmInstall(_ package: String) -> String {
+        "{ command -v npm >/dev/null 2>&1 || brew install node; } && npm install -g \(package)"
+    }
+
+    /// Строка для панели, когда агента на машине нет: поставить, войти, если
+    /// агент не спросит сам, и запустить. Каждый шаг — только после удачи
+    /// предыдущего: упавшая установка остаётся на экране, а не уезжает под
+    /// запущенным ничем. Чистая функция.
+    ///
+    /// - Parameter launch: строка запуска агента (с переездом в копию проекта).
+    func installLine(then launch: String) -> String? {
+        guard let install else { return nil }
+        // Свежий бинарь лежит там, чего в PATH этого шелла могло не быть, а
+        // `hash -r` забывает «не найдено», запомненное шеллом раньше.
+        var parts = ["\(install)", "export PATH=\"$PATH:\(Self.agentPaths)\"", "hash -r"]
+        if let login { parts.append(login) }
+        return parts.joined(separator: " && ") + " && { " + launch + "; }"
+    }
 
     /// Одна команда, которая печатает имена найденных агентов, по одному в строке.
     ///
-    /// Кроме обычного PATH смотрит туда, куда агенты ставятся сами: Homebrew,
-    /// `~/.local/bin`, глобальные пакеты npm и bun — у неинтерактивного шелла
-    /// этих путей часто нет.
+    /// Кроме обычного PATH смотрит туда, куда агенты ставятся сами — у
+    /// неинтерактивного шелла этих путей часто нет.
     static func detectionCommand(_ choices: [PaneLaunch] = choices) -> String {
         let names = choices.compactMap(\.command).joined(separator: " ")
-        return "PATH=\"$PATH:/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.npm-global/bin:"
-            + "$HOME/.bun/bin\"; for c in \(names); do command -v \"$c\" >/dev/null 2>&1 && echo \"$c\"; done"
+        return "PATH=\"$PATH:\(agentPaths)\"; "
+            + "for c in \(names); do command -v \"$c\" >/dev/null 2>&1 && echo \"$c\"; done"
     }
 
     /// Имена из вывода `detectionCommand`. Всё, чего нет в каталоге, отбрасывается:

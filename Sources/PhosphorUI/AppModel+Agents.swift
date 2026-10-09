@@ -44,18 +44,23 @@ extension AppModel {
         installedAgents[key] = PaneLaunch.installed(in: output)
     }
 
+    /// Строка выбора над главной панелью: нейронку можно позвать и без сплита.
+    public func askLaunch() {
+        pendingLaunch.insert(terminalDestination)
+        Task { await loadInstalledAgents() }
+    }
+
     /// Запускает выбранное в панели. Шелл уже там — его просто показываем.
-    /// Агента нет на машине — в шелл вставляется команда установки без Enter.
+    /// Агента нет на машине — та же строка сперва ставит его и, если агент не
+    /// спросит вход сам, открывает вход: Enter на неустановленном и есть «поставь».
     public func launch(_ choice: PaneLaunch, in destination: TerminalHost.Destination) {
         pendingLaunch.remove(destination)
         guard let surface = surfaces.existing(destination) else { return }
         surface.window?.makeFirstResponder(surface)
         guard let command = choice.command else { return }
         let missing = installedHere.map { !$0.contains(command) } ?? false
-        if missing, let install = choice.install {
-            surface.send(txt: install)
-            return
-        }
+        // Поставили — список устарел; следующая строка выбора спросит машину заново.
+        if missing, let key = agentsKey { installedAgents[key] = nil }
         let worktree = agentWorktrees
         Task {
             // Агент стартует в папке панели, из которой открыли новую, — там
@@ -64,7 +69,8 @@ extension AppModel {
             let line = AgentWorktree.launchLine(
                 command: command, origin: origin, worktree: worktree, stamp: AgentWorktree.stamp(Date()),
                 notice: strings("term.worktree.notice"))
-            surface.send(txt: line + "\r")
+            let full = missing ? (choice.installLine(then: line) ?? line) : line
+            surface.send(txt: full + "\r")
         }
     }
 

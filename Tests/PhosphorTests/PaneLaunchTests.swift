@@ -45,6 +45,34 @@ struct PaneLaunchTests {
         let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
         #expect(PaneLaunch.installed(in: output).contains("codex"))
     }
+
+    @Test("у каждого агента каталога есть установка, у шелла — нет")
+    func everyAgentInstallable() {
+        for choice in PaneLaunch.choices where choice.command != nil {
+            #expect(choice.installLine(then: "x") != nil, "\(choice.id)")
+        }
+        #expect(PaneLaunch.shell.installLine(then: "x") == nil)
+    }
+
+    @Test("установка, вход и запуск идут по порядку; упавшая установка ничего не запускает")
+    func installLineRunsInOrder() throws {
+        func run(install: String) throws -> String {
+            let choice = PaneLaunch(
+                id: "fake", title: "fake", command: "fake", install: install, login: "echo login")
+            let line = try #require(choice.installLine(then: "echo start"))
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/sh")
+            process.arguments = ["-c", line]
+            process.environment = ["PATH": "/usr/bin:/bin", "HOME": "/nonexistent"]
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            try process.run()
+            process.waitUntilExit()
+            return String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        }
+        #expect(try run(install: "echo install") == "install\nlogin\nstart\n")
+        #expect(try run(install: "echo install; false") == "install\n")
+    }
 }
 
 @Suite("Нейронки в панелях: подписи")

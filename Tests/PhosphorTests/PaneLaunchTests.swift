@@ -74,6 +74,41 @@ struct PaneLaunchTests {
         #expect(try run(install: "echo install; false") == "install\n")
     }
 
+    @Test("удалённая панель берёт headless-вход, локальная — обычный")
+    func remoteLoginOnlyOnRemote() throws {
+        let choice = PaneLaunch(
+            id: "fake", title: "fake", command: "fake", install: "echo i",
+            login: "echo browser", remoteLogin: "echo device")
+        let local = try #require(choice.installLine(then: "echo go", remote: false))
+        let remote = try #require(choice.installLine(then: "echo go", remote: true))
+        #expect(local.contains("echo browser"))
+        #expect(!local.contains("echo device"))
+        #expect(remote.contains("echo device"))
+        #expect(!remote.contains("echo browser"))
+        // Нет remoteLogin — удалённая падает обратно на обычный вход.
+        let onlyLocal = PaneLaunch(
+            id: "f2", title: "f2", command: "f2", install: "echo i", login: "echo browser")
+        #expect(try #require(onlyLocal.installLine(then: "echo go", remote: true)).contains("echo browser"))
+    }
+
+    @Test("codex на сервере входит по коду устройства, не через браузер")
+    func codexRemoteUsesDeviceAuth() throws {
+        let codex = try #require(PaneLaunch.choices.first { $0.id == "codex" })
+        #expect(codex.remoteLogin == "codex login --device-auth")
+        #expect(codex.login == nil)  // локально codex сам откроет браузер
+    }
+
+    @Test("npm-установка не зависит от brew/sudo: домашний префикс и Node в ~/.local")
+    func npmInstallNeedsNoRootOrBrew() {
+        let line = PaneLaunch.npmInstall("@scope/pkg")
+        // Пакет — в домашний префикс, а не в системный каталог (EACCES).
+        #expect(line.contains("npm install -g --prefix \"$HOME/.npm-global\" @scope/pkg"))
+        // Нет npm и нет brew (Linux) — Node приезжает tar.xz в ~/.local, а не
+        // прежним `brew install node`, который на сервере не существует.
+        #expect(line.contains("nodejs.org/dist/latest-v22.x/"))
+        #expect(line.contains("tar -xJ -C \"$HOME/.local\""))
+    }
+
     @Test("GLM спрашивает ключ z.ai, только когда у opencode его ещё нет")
     func glmAsksKeyOnce() throws {
         let home = FileManager.default.temporaryDirectory

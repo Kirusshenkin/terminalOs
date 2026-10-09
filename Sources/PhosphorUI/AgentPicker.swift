@@ -19,19 +19,27 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
     /// Вход, который агент сам при первом запуске не предлагает. nil — агент
     /// спросит вход сам, как только откроется.
     public let login: String?
+    /// Вход для удалённой панели, когда обычный не годится без браузера.
+    ///
+    /// На сервере по SSH браузера нет, а вход агента по умолчанию ждёт переход
+    /// на `localhost` — и висит. Где у агента есть headless-вход по коду
+    /// устройства, он идёт сюда и подставляется вместо `login` только для
+    /// удалённых панелей; на локальной машине остаётся обычный браузерный.
+    public let remoteLogin: String?
     /// Чем запускать, если не голым `command`: другая модель в том же агенте.
     /// nil — просто `command`.
     public let start: String?
 
     public init(
         id: String, title: String, command: String?, install: String?, login: String? = nil,
-        start: String? = nil
+        remoteLogin: String? = nil, start: String? = nil
     ) {
         self.id = id
         self.title = title
         self.command = command
         self.install = install
         self.login = login
+        self.remoteLogin = remoteLogin
         self.start = start
     }
 
@@ -43,7 +51,11 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
         PaneLaunch(
             id: "claude", title: "Claude Code", command: "claude",
             install: "curl -fsSL https://claude.ai/install.sh | bash"),
-        PaneLaunch(id: "codex", title: "Codex", command: "codex", install: npmInstall("@openai/codex")),
+        // На сервере codex по умолчанию зовёт браузер и висит; он сам
+        // подсказывает `--device-auth` — вход по коду устройства, без браузера.
+        PaneLaunch(
+            id: "codex", title: "Codex", command: "codex", install: npmInstall("@openai/codex"),
+            remoteLogin: "codex login --device-auth"),
         PaneLaunch(
             id: "gemini", title: "Gemini", command: "gemini", install: npmInstall("@google/gemini-cli")),
         PaneLaunch(
@@ -75,10 +87,29 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
     static let agentPaths =
         "/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.opencode/bin:$HOME/.npm-global/bin:$HOME/.bun/bin"
 
-    /// Глобальный пакет npm. Нет npm, но есть Homebrew — сперва ставится Node;
-    /// нет и его — шелл скажет `brew: command not found`, и цепочка встанет.
+    /// Глобальный пакет npm — так, чтобы встать и на сервере без прав root.
+    ///
+    /// Две ловушки, обе проверены на чистой Ubuntu без Node и без sudo:
+    /// - `npm install -g` в системный префикс падает с `EACCES`, а Homebrew на
+    ///   Linux нет, и прежний запасной `brew install node` давал
+    ///   `brew: command not found`. Поэтому Node ставится в домашнюю папку:
+    ///   на macOS — Homebrew, на Linux — официальный tar.xz в `~/.local`
+    ///   (ветка LTS 22, её путь уже в `agentPaths`).
+    /// - Сам пакет ставится с `--prefix "$HOME/.npm-global"` — бинарь ложится
+    ///   в `~/.npm-global/bin` (тоже в `agentPaths`), мимо системного каталога,
+    ///   поэтому root и sudo не нужны ни там, ни там.
     static func npmInstall(_ package: String) -> String {
-        "{ command -v npm >/dev/null 2>&1 || brew install node; } && npm install -g \(package)"
+        let node =
+            "if command -v npm >/dev/null 2>&1; then :; "
+            + "elif [ \"$(uname)\" = Darwin ]; then brew install node; "
+            + "else a=x64; [ \"$(uname -m)\" = aarch64 ] && a=arm64; "
+            + "f=$(curl -fsSL https://nodejs.org/dist/latest-v22.x/ "
+            + "| grep -o \"node-v[0-9.]*-linux-$a.tar.xz\" | head -1); "
+            + "mkdir -p \"$HOME/.local\" "
+            + "&& curl -fsSL \"https://nodejs.org/dist/latest-v22.x/$f\" "
+            + "| tar -xJ -C \"$HOME/.local\" --strip-components=1 "
+            + "&& export PATH=\"$HOME/.local/bin:$PATH\"; fi"
+        return "{ \(node); } && npm install -g --prefix \"$HOME/.npm-global\" \(package)"
     }
 
     /// Строка для панели, когда агента на машине нет: поставить, войти, если
@@ -87,12 +118,13 @@ public struct PaneLaunch: Sendable, Equatable, Identifiable {
     /// запущенным ничем. Чистая функция.
     ///
     /// - Parameter launch: строка запуска агента (с переездом в копию проекта).
-    func installLine(then launch: String) -> String? {
+    func installLine(then launch: String, remote: Bool = false) -> String? {
         guard let install else { return nil }
         // Свежий бинарь лежит там, чего в PATH этого шелла могло не быть, а
         // `hash -r` забывает «не найдено», запомненное шеллом раньше.
         var parts = ["\(install)", "export PATH=\"$PATH:\(Self.agentPaths)\"", "hash -r"]
-        if let login { parts.append(login) }
+        // На удалённой панели — headless-вход, где он есть; иначе обычный.
+        if let login = remote ? (remoteLogin ?? login) : login { parts.append(login) }
         return parts.joined(separator: " && ") + " && { " + launch + "; }"
     }
 

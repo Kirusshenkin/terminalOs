@@ -9,7 +9,7 @@ struct TerminalLocalTests {
     @MainActor func pollCommand() {
         let command = AppModel.pollCommand(tmux: "/opt/homebrew/bin/tmux")
         #expect(command.contains("command -v /opt/homebrew/bin/tmux"))
-        #expect(command.contains("/opt/homebrew/bin/tmux list-panes -a"))
+        #expect(command.contains("/opt/homebrew/bin/tmux -u list-panes -a"))
         // Разделы и маркер отсутствия tmux — договор с разборщиком.
         #expect(command.contains("echo \(AppModel.panesMarker)"))
         #expect(command.contains("echo \(AppModel.procsMarker)"))

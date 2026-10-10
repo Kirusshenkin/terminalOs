@@ -106,14 +106,14 @@ extension AppModel {
         if localFocused {
             guard let name = localSession, let tmux = localTmuxPath else { return nil }
             output = await LocalTmux.run(
-                "\(Shell.quote(tmux)) display-message -p -t \(Shell.quote(name + ":")) \(format) 2>/dev/null")
+                "\(Shell.quote(tmux)) -u display-message -p -t \(Shell.quote(name + ":")) \(format) 2>/dev/null")
         } else {
             guard let session else { return nil }
             let name = terminalSession ?? "main"
             // Не узнали — агент стартует там, где открылась панель; это не ошибка.
             output = try? await session.run(
                 Shell.withPackagePaths
-                    + "tmux display-message -p -t \(Shell.quote(name + ":")) \(format) 2>/dev/null"
+                    + "tmux -u display-message -p -t \(Shell.quote(name + ":")) \(format) 2>/dev/null"
             ).stdout
         }
         let path = output?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

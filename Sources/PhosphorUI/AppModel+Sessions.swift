@@ -39,10 +39,15 @@ extension AppModel {
     /// Пустой список сессий — это ноль строк, а не ошибка, поэтому `|| true`
     /// стоит внутри группы: иначе отсутствие сессий читалось бы как отсутствие
     /// tmux.
+    ///
+    /// `-u` обязателен: приложение, запущенное из Finder, живёт без `LANG`, а
+    /// tmux в не-UTF-8 локали заменяет табуляцию в выводе на `_`. Строки
+    /// панелей тогда не делятся на поля, и список сессий молча пустеет —
+    /// только что заведённая сессия исчезала из рейла на следующем опросе.
     static func pollCommand(tmux: String = "tmux") -> String {
         "command -v \(tmux) >/dev/null 2>&1 && { echo \"NOW $(date +%s)\"; "
             + "echo \(panesMarker); "
-            + "\(tmux) list-panes -a -F "
+            + "\(tmux) -u list-panes -a -F "
             + "'#{session_name}\t#{pane_active}\t#{pane_current_command}\t"
             + "#{session_windows}\t#{session_attached}\t#{session_activity}\t#{pane_tty}' 2>/dev/null "
             + "|| true; echo \(procsMarker); "
@@ -193,8 +198,19 @@ extension AppModel {
             localSessions = []
             return
         }
-        localSessions = Self.parseSessions(
+        var found = Self.parseSessions(
             await LocalTmux.run(Self.pollCommand(tmux: Shell.quote(tmux))))
+        // Опрос мог уйти раньше, чем tmux завёл новую сессию: клиент уже
+        // запущен, а в ответе её ещё нет. Пока клиент жив, сессия есть —
+        // строку, которую человек только что создал, не снимаем.
+        let destination = localDestination
+        if localFocused, case .localSession(let name, _) = destination,
+            !found.contains(where: { $0.name == name }),
+            surfaces.existing(destination)?.isRunning == true
+        {
+            found.append(TmuxSession(name: name, windows: 1, attached: true))
+        }
+        localSessions = found
     }
 
     /// Смотрит, кто стоит на переднем плане обычного шелла этого Мака.

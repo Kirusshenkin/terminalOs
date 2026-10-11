@@ -145,6 +145,104 @@ struct MetricsTests {
     func rejectsGarbage() {
         #expect(SnapshotParser.parse("совершенно посторонний текст") == nil)
     }
+
+    @Test("точка монтирования с пробелами разбирается правильно (#37)")
+    func mountsWithSpaces() throws {
+        let snapshot = try #require(SnapshotParser.parse("""
+            T 1756800000
+            L 0.42 0.51 0.48 2/184 9111
+            U 3542400.12 28000000.00
+            C cpu0 50 0 25 400 5 0 0 0
+            M MemTotal: 32000000
+            M MemAvailable: 20000000
+            D / 220000000000 188000000000 32000000000
+            D /mnt/my data 100000000000 50000000000 50000000000
+            D /var/lib/docker 200000000000 61000000000 139000000000
+            """))
+        #expect(snapshot.filesystems.count == 3)
+        #expect(snapshot.filesystems[0].mount == "/")
+        #expect(snapshot.filesystems[1].mount == "/mnt/my data")
+        #expect(snapshot.filesystems[2].mount == "/var/lib/docker")
+    }
+
+    @Test("блочные устройства: секторы в байты за 512")
+    func diskThroughput() throws {
+        let first = """
+            T 1756800000
+            C cpu0 50 0 25 400 5 0 0 0
+            M MemTotal: 32000000
+            B sda 1000 2000
+            """
+        let second = """
+            T 1756800002
+            C cpu0 100 0 50 450 10 0 0 0
+            M MemTotal: 32000000
+            B sda 1100 2100
+            """
+        let a = try #require(SnapshotParser.parse(first))
+        let b = try #require(SnapshotParser.parse(second))
+        let throughput = SnapshotParser.diskThroughput(from: a, to: b)
+        #expect(throughput.count == 1)
+        // (1100 - 1000) * 512 / 2 секунды = 100 * 512 / 2 = 25600 bytes/sec
+        #expect(abs(throughput[0].down - 25600) < 1)
+        // (2100 - 2000) * 512 / 2 = 100 * 512 / 2 = 25600 bytes/sec
+        #expect(abs(throughput[0].up - 25600) < 1)
+    }
+
+    @Test("процессы топ 6 по CPU разбираются целиком")
+    func topProcesses() throws {
+        let snapshot = try #require(SnapshotParser.parse("""
+            T 1756800000
+            C cpu0 50 0 25 400 5 0 0 0
+            M MemTotal: 32000000
+            S 1234 45.5 12.3 node
+            S 5678 23.2 8.9 chrome
+            """))
+        #expect(snapshot.processes.count == 2)
+        #expect(snapshot.processes[0].pid == 1234)
+        #expect(abs(snapshot.processes[0].cpu - 0.455) < 0.001)
+        #expect(abs(snapshot.processes[0].memory - 0.123) < 0.001)
+        #expect(snapshot.processes[0].command == "node")
+    }
+
+    @Test("счётчик вперёд при обнулении процессора не даёт отрицательного")
+    func counterWrapForward() throws {
+        let oldMax = UInt64.max / 2  // старое значение счётчика близко к максимуму
+        let newLow = UInt64.max / 4  // новое значение после переполнения (обнулилось)
+
+        // Конструируем снимки с переполнением счётчика
+        let before = """
+            T 1756800000
+            C cpu0 50 0 25 \(oldMax) 5 0 0 0
+            M MemTotal: 32000000
+            """
+        let after = """
+            T 1756800002
+            C cpu0 50 0 25 \(newLow) 10 0 0 0
+            M MemTotal: 32000000
+            """
+        let a = try #require(SnapshotParser.parse(before))
+        let b = try #require(SnapshotParser.parse(after))
+        let usage = SnapshotParser.usage(from: a, to: b)
+        // Когда счётчик обнулится (новый < старый), разница считается как 0,
+        // чтобы не дать отрицательного значения
+        #expect(usage[0] >= 0 && usage[0] <= 1)
+    }
+
+    @Test("интерфейсов может быть несколько")
+    func multipleInterfaces() throws {
+        let snapshot = try #require(SnapshotParser.parse("""
+            T 1756800000
+            C cpu0 50 0 25 400 5 0 0 0
+            M MemTotal: 32000000
+            N eth0 1000 500
+            N eth1 2000 1500
+            N lo 999999 999999
+            """))
+        #expect(snapshot.interfaces.count == 2)  // lo не считаем
+        #expect(snapshot.interfaces[0].name == "eth0")
+        #expect(snapshot.interfaces[1].name == "eth1")
+    }
 }
 
 @Suite("Docker")

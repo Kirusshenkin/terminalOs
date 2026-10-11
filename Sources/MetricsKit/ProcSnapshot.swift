@@ -90,7 +90,7 @@ public enum ProcProbe {
         echo "U $(cat /proc/uptime)"; \
         sed -n 's/^cpu/C cpu/p' /proc/stat; \
         awk '/^(MemTotal|MemAvailable|SwapTotal|SwapFree):/{print "M",$1,$2}' /proc/meminfo; \
-        df -PB1 -x tmpfs -x devtmpfs 2>/dev/null | awk 'NR>1{print "D",$6,$2,$3,$4}'; \
+        df -PB1 -x tmpfs -x devtmpfs 2>/dev/null | awk 'NR>1{mount=""; for(i=6;i<=NF;i++){if(i>6)mount=mount" "; mount=mount$i} print "D",mount,$2,$3,$4}'; \
         awk 'NR>2{gsub(":","",$1); print "N",$1,$2,$10}' /proc/net/dev; \
         awk '$3 ~ /^(sd[a-z]|nvme[0-9]+n[0-9]+|vd[a-z]|xvd[a-z])$/ \
             {print "B",$3,$6,$10}' /proc/diskstats; \
@@ -274,10 +274,16 @@ public enum SnapshotParser {
     }
 
     private static func filesystem(from fields: [String]) -> Snapshot.Filesystem? {
-        guard fields.count >= 5,
-            let total = Int64(fields[2]), let used = Int64(fields[3]), let available = Int64(fields[4])
+        guard fields.count >= 5 else { return nil }
+        // The last 3 fields are always numeric (total, used, available).
+        // Everything between "D" and the numbers is the mount point (which may have spaces).
+        guard let available = Int64(fields[fields.count - 1]),
+              let used = Int64(fields[fields.count - 2]),
+              let total = Int64(fields[fields.count - 3])
         else { return nil }
-        return Snapshot.Filesystem(mount: fields[1], total: total, used: used, available: available)
+        // Reconstruct mount point from all fields except the tag and the 3 numeric fields at the end.
+        let mount = fields[1..<(fields.count - 3)].joined(separator: " ")
+        return Snapshot.Filesystem(mount: mount, total: total, used: used, available: available)
     }
 
     private static func interface(from fields: [String]) -> Snapshot.Interface? {

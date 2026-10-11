@@ -279,8 +279,8 @@ public enum SnapshotParser {
         // The last 3 fields are always numeric (total, used, available).
         // Everything between "D" and the numbers is the mount point (which may have spaces).
         guard let available = Int64(fields[fields.count - 1]),
-              let used = Int64(fields[fields.count - 2]),
-              let total = Int64(fields[fields.count - 3])
+            let used = Int64(fields[fields.count - 2]),
+            let total = Int64(fields[fields.count - 3])
         else { return nil }
         // Reconstruct mount point from all fields except the tag and the 3 numeric fields at the end.
         let mount = fields[1..<(fields.count - 3)].joined(separator: " ")

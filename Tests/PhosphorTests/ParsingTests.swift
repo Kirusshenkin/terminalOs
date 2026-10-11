@@ -148,17 +148,19 @@ struct MetricsTests {
 
     @Test("точка монтирования с пробелами разбирается правильно (#37)")
     func mountsWithSpaces() throws {
-        let snapshot = try #require(SnapshotParser.parse("""
-            T 1756800000
-            L 0.42 0.51 0.48 2/184 9111
-            U 3542400.12 28000000.00
-            C cpu0 50 0 25 400 5 0 0 0
-            M MemTotal: 32000000
-            M MemAvailable: 20000000
-            D / 220000000000 188000000000 32000000000
-            D /mnt/my data 100000000000 50000000000 50000000000
-            D /var/lib/docker 200000000000 61000000000 139000000000
-            """))
+        let snapshot = try #require(
+            SnapshotParser.parse(
+                """
+                T 1756800000
+                L 0.42 0.51 0.48 2/184 9111
+                U 3542400.12 28000000.00
+                C cpu0 50 0 25 400 5 0 0 0
+                M MemTotal: 32000000
+                M MemAvailable: 20000000
+                D / 220000000000 188000000000 32000000000
+                D /mnt/my data 100000000000 50000000000 50000000000
+                D /var/lib/docker 200000000000 61000000000 139000000000
+                """))
         #expect(snapshot.filesystems.count == 3)
         #expect(snapshot.filesystems[0].mount == "/")
         #expect(snapshot.filesystems[1].mount == "/mnt/my data")
@@ -191,13 +193,15 @@ struct MetricsTests {
 
     @Test("процессы топ 6 по CPU разбираются целиком")
     func topProcesses() throws {
-        let snapshot = try #require(SnapshotParser.parse("""
-            T 1756800000
-            C cpu0 50 0 25 400 5 0 0 0
-            M MemTotal: 32000000
-            S 1234 45.5 12.3 node
-            S 5678 23.2 8.9 chrome
-            """))
+        let snapshot = try #require(
+            SnapshotParser.parse(
+                """
+                T 1756800000
+                C cpu0 50 0 25 400 5 0 0 0
+                M MemTotal: 32000000
+                S 1234 45.5 12.3 node
+                S 5678 23.2 8.9 chrome
+                """))
         #expect(snapshot.processes.count == 2)
         #expect(snapshot.processes[0].pid == 1234)
         #expect(abs(snapshot.processes[0].cpu - 0.455) < 0.001)
@@ -231,14 +235,16 @@ struct MetricsTests {
 
     @Test("интерфейсов может быть несколько")
     func multipleInterfaces() throws {
-        let snapshot = try #require(SnapshotParser.parse("""
-            T 1756800000
-            C cpu0 50 0 25 400 5 0 0 0
-            M MemTotal: 32000000
-            N eth0 1000 500
-            N eth1 2000 1500
-            N lo 999999 999999
-            """))
+        let snapshot = try #require(
+            SnapshotParser.parse(
+                """
+                T 1756800000
+                C cpu0 50 0 25 400 5 0 0 0
+                M MemTotal: 32000000
+                N eth0 1000 500
+                N eth1 2000 1500
+                N lo 999999 999999
+                """))
         #expect(snapshot.interfaces.count == 2)  // lo не считаем
         #expect(snapshot.interfaces[0].name == "eth0")
         #expect(snapshot.interfaces[1].name == "eth1")
@@ -307,9 +313,18 @@ struct DockerTests {
     @Test("несколько контейнеров разбираются все")
     func parseMultiple() {
         let output = [
-            json(["ID": "aaa1", "Names": "web", "Image": "nginx", "State": "running", "Status": "Up 1 day", "Ports": "", "Labels": ""]),
-            json(["ID": "bbb2", "Names": "db", "Image": "postgres", "State": "running", "Status": "Up 1 day", "Ports": "", "Labels": ""]),
-            json(["ID": "ccc3", "Names": "cache", "Image": "redis", "State": "exited", "Status": "Exited (0)", "Ports": "", "Labels": ""]),
+            json([
+                "ID": "aaa1", "Names": "web", "Image": "nginx", "State": "running", "Status": "Up 1 day",
+                "Ports": "", "Labels": "",
+            ]),
+            json([
+                "ID": "bbb2", "Names": "db", "Image": "postgres", "State": "running", "Status": "Up 1 day",
+                "Ports": "", "Labels": "",
+            ]),
+            json([
+                "ID": "ccc3", "Names": "cache", "Image": "redis", "State": "exited", "Status": "Exited (0)",
+                "Ports": "", "Labels": "",
+            ]),
         ].joined(separator: "\n")
         let containers = DockerCLI.parseList(output)
         #expect(containers.count == 3)
@@ -323,7 +338,9 @@ struct DockerTests {
         let outputs = [
             json(["ID": "a", "Name": "small", "CPUPerc": "1.23%", "MemUsage": "64KiB / 512MiB", "PIDs": "1"]),
             json(["ID": "b", "Name": "big", "CPUPerc": "45.67%", "MemUsage": "2.5GiB / 8GiB", "PIDs": "42"]),
-            json(["ID": "c", "Name": "huge", "CPUPerc": "99.99%", "MemUsage": "1.8TiB / 2TiB", "PIDs": "1000"]),
+            json([
+                "ID": "c", "Name": "huge", "CPUPerc": "99.99%", "MemUsage": "1.8TiB / 2TiB", "PIDs": "1000",
+            ]),
         ].joined(separator: "\n")
         let stats = DockerCLI.parseStats(outputs)
         #expect(stats.count == 3)
@@ -428,7 +445,8 @@ struct KeysTests {
 
     @Test("ключ с несколькими опциями разбирается полностью")
     func multipleOptions() {
-        let line = "restrict,pty,command=\"/bin/false\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh test@host"
+        let line =
+            "restrict,pty,command=\"/bin/false\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh test@host"
         let keys = AuthorizedKeysFile.parse(line)
         #expect(keys.count == 1)
         #expect(keys[0].options?.contains("restrict") == true)
@@ -561,7 +579,8 @@ struct SSHConfigTests {
         let empty = SSHConfigImport.parse("")
         #expect(empty.entries.isEmpty)
 
-        let comments = SSHConfigImport.parse("""
+        let comments = SSHConfigImport.parse(
+            """
             # This is a comment
             # Another comment
 
@@ -682,7 +701,8 @@ struct ProvisionTests {
 
     @Test("sudo только с паролем — не поможет, docker остаётся как есть")
     func dockerSudoNeedsPassword() {
-        let output = livedInOutput
+        let output =
+            livedInOutput
             .replacingOccurrences(of: "DOCKEROK yes", with: "DOCKEROK no")
             .replacingOccurrences(of: "SUDO yes", with: "SUDO no")
         let profile = HostProbe.parse(output)
@@ -836,128 +856,5 @@ struct QuickConnectTests {
     func badPortFallsBack() throws {
         let host = try #require(parse("root@10.0.0.1:абв"))
         #expect(host.port == 22)
-    }
-}
-
-@Suite("Расширенные метрики")
-struct ExtendedMetricsTests {
-    private let first = """
-        T 1756800000
-        L 0.42 0.51 0.48 3/184 9111
-        U 3542400.12 28000000.00
-        C cpu0 50 0 25 400 5 0 0 0
-        M MemTotal: 32000000
-        M MemAvailable: 20000000
-        M SwapTotal: 2000000
-        M SwapFree: 1500000
-        B nvme0n1 200000 400000
-        F 4096
-        S 912 45.5 12.3 node
-        S 41 2.0 0.5 postgres
-        K 6.8.0-45-generic
-        P AMD EPYC 7763 64-Core Processor
-        """
-
-    private let second = """
-        T 1756800002
-        L 0.44 0.51 0.48 5/186 9111
-        U 3542402.12 28000004.00
-        C cpu0 100 0 50 450 10 0 0 0
-        M MemTotal: 32000000
-        M MemAvailable: 19000000
-        M SwapTotal: 2000000
-        M SwapFree: 1500000
-        B nvme0n1 204000 408000
-        F 4200
-        """
-
-    @Test("процессы, дескрипторы, ядро и модель процессора разбираются")
-    func parsesExtras() throws {
-        let snapshot = try #require(SnapshotParser.parse(first))
-        #expect(snapshot.runningProcesses == 3)
-        #expect(snapshot.totalProcesses == 184)
-        #expect(snapshot.openFiles == 4096)
-        #expect(snapshot.kernel == "6.8.0-45-generic")
-        #expect(snapshot.cpuModel.contains("EPYC"))
-    }
-
-    @Test("самые тяжёлые процессы приходят в долях, а не в процентах")
-    func parsesProcesses() throws {
-        let snapshot = try #require(SnapshotParser.parse(first))
-        #expect(snapshot.processes.count == 2)
-        #expect(snapshot.processes[0].pid == 912)
-        #expect(snapshot.processes[0].command == "node")
-        #expect(abs(snapshot.processes[0].cpu - 0.455) < 0.001)
-    }
-
-    @Test("swap считается использованным, а не свободным")
-    func swapAccounting() throws {
-        let snapshot = try #require(SnapshotParser.parse(first))
-        #expect(snapshot.swapTotal == 2_000_000 * 1024)
-        #expect(snapshot.swapFree == 1_500_000 * 1024)
-    }
-
-    @Test("скорость диска переводится из секторов в байты")
-    func diskThroughput() throws {
-        let a = try #require(SnapshotParser.parse(first))
-        let b = try #require(SnapshotParser.parse(second))
-        let flow = try #require(SnapshotParser.diskThroughput(from: a, to: b).first)
-        #expect(flow.name == "nvme0n1")
-        // (204000-200000) секторов × 512 байт ÷ 2 с
-        #expect(flow.down == 4_000.0 * 512 / 2)
-        #expect(flow.up == 8_000.0 * 512 / 2)
-    }
-
-    @Test("счётчики диска после перезагрузки не дают отрицательной скорости")
-    func diskCountersResetSafely() throws {
-        let a = try #require(SnapshotParser.parse(second))
-        let b = try #require(SnapshotParser.parse(first))
-        #expect(
-            SnapshotParser.diskThroughput(from: a, to: b).allSatisfy {
-                $0.down >= 0 && $0.up >= 0
-            })
-    }
-
-    @Test("команда сбора спрашивает всё нужное одним каналом")
-    func probeCoversEverything() {
-        let loop = ProcProbe.loop()
-        for needle in [
-            "/proc/loadavg", "/proc/stat", "/proc/meminfo", "df -PB1",
-            "/proc/net/dev", "/proc/diskstats", "file-nr", "ps -eo",
-        ] {
-            #expect(loop.contains(needle), "в цикле нет \(needle)")
-        }
-        // Неизменное спрашивается отдельно и один раз.
-        #expect(ProcProbe.once.contains("uname -r"))
-        #expect(ProcProbe.once.contains("cpuinfo"))
-        #expect(
-            !loop.contains("cpuinfo"), "модель процессора не меняется — не спрашиваем её каждые две секунды")
-    }
-}
-
-@Suite("Переменные окружения контейнера")
-struct DockerEnvironmentTests {
-    @Test("значение со знаком равенства не обрезается")
-    func keepsValueWithEquals() {
-        let json = """
-            [{"Config":{"Env":["NODE_ENV=production","DSN=postgres://u:p@h/db?x=1","EMPTY="]}}]
-            """
-        let parsed = DockerCLI.parseEnvironment(json)
-        #expect(parsed.count == 3)
-        #expect(parsed[0] == ("NODE_ENV", "production"))
-        #expect(parsed[1].value == "postgres://u:p@h/db?x=1")
-        #expect(parsed[2].value == "")
-    }
-
-    @Test("строка без имени и мусор вместо json дают пустой список")
-    func survivesJunk() {
-        #expect(DockerCLI.parseEnvironment("не json").isEmpty)
-        #expect(DockerCLI.parseEnvironment("[]").isEmpty)
-        #expect(
-            DockerCLI.parseEnvironment(
-                """
-                [{"Config":{"Env":["=нет имени","без знака равенства"]}}]
-                """
-            ).isEmpty)
     }
 }

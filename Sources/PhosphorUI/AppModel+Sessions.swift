@@ -208,7 +208,10 @@ extension AppModel {
             !found.contains(where: { $0.name == name }),
             surfaces.existing(destination)?.isRunning == true
         {
-            found.append(TmuxSession(name: name, windows: 1, attached: true))
+            var stub = TmuxSession(name: name, windows: 1, attached: true)
+            // Keep the agent from the previous poll if one exists
+            stub.agent = localSessions.first(where: { $0.name == name })?.agent
+            found.append(stub)
         }
         localSessions = found
     }

@@ -119,6 +119,8 @@ struct SessionRail: View {
         }
         .padding(.horizontal, 12).padding(.top, 12)
 
+        ProjectPicker(model: model).padding(.horizontal, 4)
+
         if model.localTmuxPath == nil {
             // Без tmux локальная сессия не переживёт даже закрытия вкладки.
             // Говорим это прямо и сразу даём, что сделать.

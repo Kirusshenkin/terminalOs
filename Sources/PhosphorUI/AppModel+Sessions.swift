@@ -204,7 +204,7 @@ extension AppModel {
         // запущен, а в ответе её ещё нет. Пока клиент жив, сессия есть —
         // строку, которую человек только что создал, не снимаем.
         let destination = localDestination
-        if localFocused, case .localSession(let name, _) = destination,
+        if localFocused, case .localSession(let name, _, _) = destination,
             !found.contains(where: { $0.name == name }),
             surfaces.existing(destination)?.isRunning == true
         {
@@ -219,7 +219,7 @@ extension AppModel {
     /// терминал спрашивается у `ps` напрямую. Так агент, запущенный без tmux,
     /// тоже виден в рейле со статусом.
     func loadPlainShell() async {
-        guard let surface = surfaces.existing(.local), let pid = surface.shellPid else {
+        guard let surface = surfaces.existing(plainShellDestination), let pid = surface.shellPid else {
             plainShell = nil
             return
         }
@@ -269,6 +269,9 @@ extension AppModel {
     public func createLocalSession() {
         let name = SSHInvocation.tmuxSessionName(newSessionName) ?? "main"
         newSessionName = ""
+        // Новая сессия открывается в проекте, в котором сейчас работают. Живая
+        // остаётся в своей папке: tmux её уже не сдвинет.
+        if !localSessions.contains(where: { $0.name == name }) { localDirectories[name] = localProject }
         focusLocal(name)
         if !localSessions.contains(where: { $0.name == name }) {
             localSessions.append(TmuxSession(name: name, windows: 1, attached: true))
@@ -281,10 +284,11 @@ extension AppModel {
         // Поверхность гасим первой: за ней стоит tmux-клиент, которому иначе
         // осталось бы разговаривать с мёртвой сессией.
         if let safe = SSHInvocation.tmuxSessionName(name) {
-            surfaces.discard(.localSession(name: safe, tmux: tmux))
+            surfaces.discard(.localSession(name: safe, tmux: tmux, directory: localDirectories[name]))
         }
         _ = await LocalTmux.run(
             "\(Shell.quote(tmux)) kill-session -t \(Shell.quote(name)) 2>/dev/null || true")
+        localDirectories[name] = nil
         if localSession == name { localSession = nil }
         await loadLocalSessions()
         saveLayout()
@@ -367,6 +371,9 @@ extension AppModel {
         localSession = saved.localSession
         localFocused = saved.localFocused ?? false
         localExtraSessions = saved.localPanes ?? []
+        localDirectories = saved.localDirectories ?? [:]
+        plainShellDirectory = saved.plainShellDirectory
+        recentProjects = saved.recentProjects ?? []
     }
 
     /// Пишет раскладку на диск. Вызывается из действий, меняющих вид раздела:
@@ -387,7 +394,10 @@ extension AppModel {
                 localSession: localSession,
                 localFocused: localFocused,
                 splitRatio: splitRatio,
-                localPanes: localExtraSessions
+                localPanes: localExtraSessions,
+                localDirectories: localDirectories,
+                plainShellDirectory: plainShellDirectory,
+                recentProjects: recentProjects
             ))
     }
 
@@ -427,6 +437,8 @@ extension AppModel {
         taken.insert((localFocused ? localSession : terminalSession) ?? "main")
         if localFocused { taken.formUnion(localSessions.map(\.name)) }
         let name = Self.nextPaneName(taken: taken)
+        // Панель рядом — в том же проекте, что и основная.
+        if localFocused { localDirectories[name] = localProject }
         currentExtraSessions.append(name)
         // Новая панель сперва спрашивает, что в ней запустить: шелл или агента.
         if let pane = extraPanes.first(where: { $0.name == name }) {

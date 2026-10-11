@@ -6,7 +6,7 @@ extension AppModel {
     /// Куда смотрит терминал: на этот Мак или на выбранный сервер.
     public var terminalDestination: TerminalHost.Destination {
         if localFocused { return localDestination }
-        return destination(session: terminalSession ?? "main") ?? .local
+        return destination(session: terminalSession ?? "main") ?? plainShellDestination
     }
 
     /// Куда смотрит терминал на этом Маке: в постоянную сессию, если она
@@ -14,8 +14,8 @@ extension AppModel {
     public var localDestination: TerminalHost.Destination {
         guard persistentSessions, let name = localSession, let tmux = localTmuxPath,
             let safe = SSHInvocation.tmuxSessionName(name)
-        else { return .local }
-        return .localSession(name: safe, tmux: tmux)
+        else { return plainShellDestination }
+        return .localSession(name: safe, tmux: tmux, directory: localDirectories[name])
     }
 
     /// Дополнительные панели с их адресами. Пусто — панель одна.
@@ -33,7 +33,9 @@ extension AppModel {
         guard persistentSessions, let tmux = localTmuxPath else { return [] }
         return localExtraSessions.compactMap { name in
             SSHInvocation.tmuxSessionName(name).map {
-                Pane(name: name, destination: .localSession(name: $0, tmux: tmux))
+                Pane(
+                    name: name,
+                    destination: .localSession(name: $0, tmux: tmux, directory: localDirectories[name]))
             }
         }
     }

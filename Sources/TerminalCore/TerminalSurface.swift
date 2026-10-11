@@ -147,24 +147,34 @@ public final class TerminalSurface: LocalProcessTerminalView {
     /// сессия переживает закрытие приложения. Путь к tmux и окружение приходят
     /// снаружи: где он лежит на конкретном Маке, знает вызывающий, а не
     /// эмулятор.
-    public func startLocalShell(tmux path: String, session: String, environment: [String]) {
+    ///
+    /// `directory` — папка проекта: в ней tmux заводит новую сессию (`-c`).
+    /// Уже живой сессии `-c` не касается: она остаётся там, где её оставили.
+    public func startLocalShell(
+        tmux path: String, session: String, directory: String?, environment: [String]
+    ) {
         startProcess(
             executable: path,
-            args: ["new-session", "-A", "-s", session],
+            args: ["new-session", "-A", "-s", session] + (directory.map { ["-c", $0] } ?? []),
             environment: environment,
-            execName: "tmux"
+            execName: "tmux",
+            currentDirectory: directory ?? NSHomeDirectory()
         )
     }
 
-    /// Starts a login shell in the user's home directory.
-    public func startLocalShell() {
+    /// Starts a login shell in `directory`, or in the user's home directory.
+    ///
+    /// Without an explicit directory the shell inherits the app's working
+    /// directory, which for an app launched by macOS is `/`.
+    public func startLocalShell(directory: String?) {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         let name = (shell as NSString).lastPathComponent
         startProcess(
             executable: shell,
             args: ["-l"],
             environment: Terminal.getEnvironmentVariables(termName: "xterm-256color"),
-            execName: "-\(name)"
+            execName: "-\(name)",
+            currentDirectory: directory ?? NSHomeDirectory()
         )
     }
 }

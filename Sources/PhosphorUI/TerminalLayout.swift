@@ -37,6 +37,12 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
     public var splitRatio: Double?
     /// Дополнительные панели на этом Маке.
     public var localPanes: [String]?
+    /// Папка проекта каждой локальной сессии: имя сессии → путь.
+    public var localDirectories: [String: String]?
+    /// Папка обычного шелла этого Мака. nil — домашняя.
+    public var plainShellDirectory: String?
+    /// Последние проекты, свежий первым.
+    public var recentProjects: [String]?
 
     public init(
         spaces: [UUID] = [],
@@ -49,7 +55,10 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
         localSession: String? = nil,
         localFocused: Bool? = nil,
         splitRatio: Double? = nil,
-        localPanes: [String]? = nil
+        localPanes: [String]? = nil,
+        localDirectories: [String: String]? = nil,
+        plainShellDirectory: String? = nil,
+        recentProjects: [String]? = nil
     ) {
         self.spaces = spaces
         self.spaceSessions = spaceSessions
@@ -62,6 +71,9 @@ public struct TerminalLayout: Codable, Sendable, Equatable {
         self.localFocused = localFocused
         self.splitRatio = splitRatio
         self.localPanes = localPanes
+        self.localDirectories = localDirectories
+        self.plainShellDirectory = plainShellDirectory
+        self.recentProjects = recentProjects
     }
 
     /// Та же раскладка, но без хостов, которых больше нет в списке.

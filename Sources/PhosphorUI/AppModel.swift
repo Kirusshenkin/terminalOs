@@ -350,6 +350,13 @@ public final class AppModel {
     public var localSession: String?
     /// Смотрит ли терминал на этот Мак, а не на сервер.
     public var localFocused = false
+    /// Папка проекта каждой локальной сессии: имя → путь. Нет имени — сессия
+    /// заведена не здесь или до выбора проекта, и папку знает только tmux.
+    public internal(set) var localDirectories: [String: String] = [:]
+    /// Папка обычного шелла этого Мака. nil — домашняя.
+    public internal(set) var plainShellDirectory: String?
+    /// Последние проекты этого Мака, свежий первым.
+    public internal(set) var recentProjects: [String] = []
 
     /// Куда пишется раскладка раздела «Терминал». Читается она не здесь, а
     /// когда откроется профиль: до него список хостов пуст, и сверить

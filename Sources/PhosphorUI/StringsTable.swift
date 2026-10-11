@@ -338,6 +338,11 @@ extension Strings {
         "term.windows": [.russian: "окон", .english: "windows"],
         "term.thisMac": [.russian: "этот Мак", .english: "this Mac"],
         "term.plainShell": [.russian: "обычный шелл", .english: "plain shell"],
+        "term.project.none": [.russian: "выбрать проект", .english: "choose a project"],
+        "term.project.choose": [.russian: "выбрать папку…", .english: "choose folder…"],
+        "term.project.home": [.russian: "домашняя папка", .english: "home folder"],
+        "term.project.open": [.russian: "открыть", .english: "Open"],
+        "term.project.label": [.russian: "проект", .english: "project"],
         "term.noLocalTmux": [
             .russian: "на этом Маке нет tmux — локальная сессия не переживёт перезапуск. "
                 + "поставь: brew install tmux",

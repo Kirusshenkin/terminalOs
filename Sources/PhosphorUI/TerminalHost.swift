@@ -14,12 +14,15 @@ public struct TerminalHost: NSViewRepresentable {
     /// Куда открывать шелл. Он же ключ поверхности: разные сессии на одном
     /// хосте — это разные ленты, и каждая живёт своей жизнью.
     public enum Destination: Hashable {
-        /// Обычный одноразовый шелл на этом Маке: закрыл — и нет его.
-        case local
+        /// Обычный одноразовый шелл на этом Маке: закрыл — и нет его. Папка
+        /// — часть адреса: сменили проект — это уже другой шелл. nil —
+        /// домашняя папка.
+        case local(directory: String?)
         /// Постоянная сессия на этом Маке: тот же tmux, что и на сервере,
         /// только здесь. Путь к нему часть адреса потому, что он же ключ
-        /// поверхности, а ставят tmux один раз и надолго.
-        case localSession(name: String, tmux: String)
+        /// поверхности, а ставят tmux один раз и надолго. Папка проекта
+        /// закреплена за именем сессии, поэтому ключ от неё не плывёт.
+        case localSession(name: String, tmux: String, directory: String?)
         case remote(host: ServerHost, route: Route, controlPath: String, session: String?)
     }
 
@@ -75,11 +78,11 @@ public struct TerminalHost: NSViewRepresentable {
     /// показ, возврат в раздел и переподключение по ⇧⌘R.
     static func start(_ surface: TerminalSurface, at destination: Destination) {
         switch destination {
-        case .local:
-            surface.startLocalShell()
-        case .localSession(let name, let tmux):
+        case .local(let directory):
+            surface.startLocalShell(directory: directory)
+        case .localSession(let name, let tmux, let directory):
             surface.startLocalShell(
-                tmux: tmux, session: name, environment: LocalTmux.environment())
+                tmux: tmux, session: name, directory: directory, environment: LocalTmux.environment())
         case .remote(let host, let route, let controlPath, let session):
             surface.startRemoteShell(
                 host: host, route: route, controlPath: controlPath, tmuxSession: session)

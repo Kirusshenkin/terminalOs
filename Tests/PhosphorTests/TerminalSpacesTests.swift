@@ -53,4 +53,58 @@ struct TerminalSpacesTests {
         let command = AppModel.captureCommand(session: "build")
         #expect(command.contains("capture-pane -p -J -t 'build:'"))
     }
+
+    @Test("превью с кириллицей разбирается правильно")
+    func previewWithCyrillic() {
+        let screen = "привет\nмир\n"
+        let lines = AppModel.previewLines(screen)
+        #expect(lines.count > 0)
+        #expect(lines.first?.contains("привет") == true)
+    }
+
+    @Test("превью с эмодзи не ломается")
+    func previewWithEmoji() {
+        let screen = "test 🔑 key\n🖥️ server\n"
+        let lines = AppModel.previewLines(screen)
+        #expect(lines.count >= 1)
+        #expect(lines.first?.contains("🔑") == true)
+    }
+
+    @Test("очень длинная кириллическая строка обрезается с многоточием")
+    func previewCutsCyrillicWideLines() {
+        let screen = String(repeating: "ё", count: 500)
+        let lines = AppModel.previewLines(screen)
+        #expect(lines.first?.hasSuffix("…") == true)
+    }
+
+    @Test("смешанные окончания строк (CRLF и LF)")
+    func previewMixedLineEndings() {
+        let screen = "line1\r\nline2\nline3\r\n"
+        let lines = AppModel.previewLines(screen)
+        #expect(lines.count >= 2)
+    }
+
+    @Test("сессия с кириллицей в имени кодируется и декодируется")
+    func placeWithCyrillic() {
+        let place = AppModel.AgentPlace.local("тест")
+        let encoded = AgentNotifier.encode(place)
+        let decoded = AgentNotifier.decode(encoded)
+        #expect(decoded == place)
+    }
+
+    @Test("очень длинное имя сессии выживает round-trip")
+    func placeWithLongName() {
+        let longName = String(repeating: "a", count: 500)
+        let place = AppModel.AgentPlace.local(longName)
+        let encoded = AgentNotifier.encode(place)
+        let decoded = AgentNotifier.decode(encoded)
+        #expect(decoded == place)
+    }
+
+    @Test("очень большой экран обрезается по лимиту")
+    func previewLimitsSuperLargeScreen() {
+        let lines = (1...1000).map { "line \($0)" }.joined(separator: "\n")
+        let preview = AppModel.previewLines(lines)
+        #expect(preview.count <= AppModel.previewLineLimit)
+    }
 }

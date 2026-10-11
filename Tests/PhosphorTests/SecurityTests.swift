@@ -365,6 +365,92 @@ struct ProfileStoreTests {
         #expect(await !store.hasProfile())
         #expect(await !secrets.exists(ProfileStore.masterKeyAccount))
     }
+
+    @Test("truncated профиль даёт ошибку, а не молчаливый отказ")
+    async func truncatedProfile() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let store = ProfileStore(store: MemorySecretStore(), url: url)
+        try await store.save(Sample(hosts: ["a"], note: "b"), reason: "тест")
+
+        // Обрезаём файл на половине
+        var data = try Data(contentsOf: url)
+        data = data.subdata(in: 0..<(data.count / 2))
+        try data.write(to: url)
+
+        await #expect(throws: VaultError.truncated) {
+            _ = try await ProfileStore(store: MemorySecretStore(), url: url)
+                .load(Sample.self, reason: "тест")
+        }
+    }
+
+    @Test("профиль с повреждённой подлинностью")
+    async func corruptedAuthentication() async throws {
+        let url = temporaryURL()
+        let secrets = MemorySecretStore()
+        let store = ProfileStore(store: secrets, url: url)
+        try await store.save(Sample(hosts: ["a"], note: "b"), reason: "тест")
+
+        // Меняем последний байт
+        var data = try Data(contentsOf: url)
+        data[data.count - 1] ^= 0xFF
+        try data.write(to: url)
+
+        await #expect(throws: VaultError.cannotDecrypt) {
+            _ = try await ProfileStore(store: secrets, url: url)
+                .load(Sample.self, reason: "тест")
+        }
+    }
+
+    @Test("экспорт/импорт с спецсимволами в значениях")
+    async func exportImportSpecialCharacters() async throws {
+        let source = temporaryURL()
+        let target = temporaryURL()
+        defer {
+            try? FileManager.default.removeItem(at: source.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: target.deletingLastPathComponent())
+        }
+
+        let value = Sample(
+            hosts: ["сервер.рф", "тест'инг"],
+            note: "экспорт\nс переводом\r\nи кавычками"
+        )
+        let first = ProfileStore(store: MemorySecretStore(), url: source)
+        try await first.save(value, reason: "тест")
+
+        let bundle = try await first.export(passphrase: "фраза", reason: "тест")
+        let second = ProfileStore(store: MemorySecretStore(), url: target)
+        _ = try await second.importProfile(
+            bundle, as: Sample.self, passphrase: "фраза", reason: "тест")
+
+        #expect(
+            try await ProfileStore(store: MemorySecretStore(), url: target)
+                .load(Sample.self, reason: "тест")
+                == value
+        )
+    }
+
+    @Test("одновременное чтение и запись не ломает файл")
+    async func concurrentReadWrite() async throws {
+        let url = temporaryURL()
+        let secrets = MemorySecretStore()
+        let store = ProfileStore(store: secrets, url: url)
+
+        try await store.save(Sample(hosts: ["a"], note: "1"), reason: "тест")
+
+        let v1 = try await store.load(Sample.self, reason: "тест")
+        #expect(v1 == Sample(hosts: ["a"], note: "1"))
+
+        try await store.save(Sample(hosts: ["b"], note: "2"), reason: "тест")
+
+        let v2 = try await store.load(Sample.self, reason: "тест")
+        #expect(v2 == Sample(hosts: ["b"], note: "2"))
+
+        // Файл на диске целый и читается правильно
+        let fresh = ProfileStore(store: secrets, url: url)
+        let v3 = try await fresh.load(Sample.self, reason: "тест")
+        #expect(v3 == v2)
+    }
 }
 
 @Suite("Настройки внешнего вида")

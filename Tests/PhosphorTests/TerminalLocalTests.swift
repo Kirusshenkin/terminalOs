@@ -54,4 +54,106 @@ struct TerminalLocalTests {
         guard let path = LocalTmux.find() else { return }
         #expect(FileManager.default.isExecutableFile(atPath: path))
     }
+
+    @Test("пустой вывод даёт пустой список сессий")
+    @MainActor func emptyOutput() {
+        let sessions = AppModel.parseSessions("")
+        #expect(sessions.isEmpty)
+    }
+
+    @Test("вывод с только NOW маркером")
+    @MainActor func onlyNowMarker() {
+        let output = "NOW 1700000000"
+        let sessions = AppModel.parseSessions(output)
+        #expect(sessions.isEmpty)
+    }
+
+    @Test("сессия с кириллицей в имени разбирается")
+    @MainActor func cyrilicSessionName() {
+        let output = """
+            NOW 1700000000
+            PANES
+            тест\t1\tzsh\t1\t1\t1700000000\t/dev/ttys004
+            PROCS
+            """
+        let sessions = AppModel.parseSessions(output)
+        #expect(sessions.count == 1)
+        #expect(sessions[0].name == "тест")
+    }
+
+    @Test("очень длинное имя сессии")
+    @MainActor func veryLongSessionName() {
+        let longName = String(repeating: "a", count: 500)
+        let output = """
+            NOW 1700000000
+            PANES
+            \(longName)\t1\tzsh\t1\t1\t1700000000\t/dev/ttys004
+            PROCS
+            """
+        let sessions = AppModel.parseSessions(output)
+        #expect(sessions.count == 1)
+        #expect(sessions[0].name == longName)
+    }
+
+    @Test("пане без TTY разбирается (поле TTY отсутствует)")
+    @MainActor func panWithoutTTY() {
+        let output = """
+            NOW 1700000000
+            PANES
+            work\t1\tzsh\t1\t1\t1700000000
+            PROCS
+            """
+        let sessions = AppModel.parseSessions(output)
+        #expect(sessions.count == 1)
+    }
+
+    @Test("активная и неактивная панели в одной сессии")
+    @MainActor func activeAndInactivePanes() {
+        let output = """
+            NOW 1700000000
+            PANES
+            multi\t1\tzsh\t2\t1\t1700000000\t/dev/ttys004
+            multi\t0\tzsh\t2\t1\t1699999000\t/dev/ttys005
+            PROCS
+            """
+        let sessions = AppModel.parseSessions(output)
+        #expect(sessions.count == 1)
+        #expect(sessions[0].name == "multi")
+    }
+
+    @Test("команда с кириллицей")
+    @MainActor func cyrillicCommand() {
+        let output = """
+            NOW 1700000000
+            PANES
+            тест\t1\tпредложение\t1\t1\t1700000000\t/dev/ttys004
+            PROCS
+            """
+        let sessions = AppModel.parseSessions(output)
+        #expect(sessions.count == 1)
+    }
+
+    @Test("строка PROCS без данных слева")
+    @MainActor func procsMarkerWithoutData() {
+        let output = """
+            NOW 1700000000
+            PANES
+            work\t1\tzsh\t1\t1\t1700000000\t/dev/ttys004
+            PROCS
+            """
+        let sessions = AppModel.parseSessions(output)
+        #expect(sessions.count == 1)
+    }
+
+    @Test("большой timestamp не переполняет")
+    @MainActor func largeTimestamp() {
+        let output = """
+            NOW 9999999999
+            PANES
+            work\t1\tzsh\t1\t1\t9999999999\t/dev/ttys004
+            PROCS
+            """
+        let sessions = AppModel.parseSessions(output)
+        #expect(sessions.count == 1)
+    }
 }

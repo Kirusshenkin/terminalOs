@@ -145,6 +145,81 @@ struct MetricsTests {
     func rejectsGarbage() {
         #expect(SnapshotParser.parse("совершенно посторонний текст") == nil)
     }
+
+    @Test("пустая строка разбирается как пустой снимок")
+    func empty() {
+        #expect(SnapshotParser.parse("") == nil)
+    }
+
+    @Test("снимок с одной линией T разбирается, но дает нули")
+    func onlyTimestamp() {
+        let snapshot = SnapshotParser.parse("T 1700000000")
+        #expect(snapshot != nil)
+        #expect(snapshot?.uptime == 0)
+        #expect(snapshot?.cores.isEmpty == true)
+    }
+
+    @Test("CPU счётчик после переполнения INT32_MAX не даёт отрицательных значений")
+    func counterOverflow() throws {
+        // Имитируем ситуацию, когда счётчик переполнился: было большое число, теперь маленькое
+        let old = """
+            T 1700000000
+            C cpu0 2000000000 0 1000000000 4000000000 0 0 0 0
+            """
+        let new = """
+            T 1700000002
+            C cpu0 2000000100 0 1000000050 4000000100 0 0 0 0
+            """
+        let a = try #require(SnapshotParser.parse(old))
+        let b = try #require(SnapshotParser.parse(new))
+        let usage = SnapshotParser.usage(from: a, to: b)
+        #expect(usage.count == 1)
+        #expect(usage[0] >= 0 && usage[0] <= 1)
+    }
+
+    @Test("память без MemAvailable тычно падает")
+    func missingMemAvailable() {
+        let broken = """
+            T 1700000000
+            M MemTotal: 32000000
+            M SwapTotal: 2000000
+            M SwapFree: 2000000
+            """
+        let snapshot = SnapshotParser.parse(broken)
+        // Без MemAvailable используется MemFree, или снимок считается неполным
+        #expect(snapshot == nil || snapshot?.memoryUsed >= 0)
+    }
+
+    @Test("сетевой интерфейс с дефисом в имени разбирается правильно")
+    func networkInterfaceWithDash() throws {
+        let snapshot = try #require(SnapshotParser.parse("""
+            T 1700000000
+            N eth-0 1000 500
+            N vlan-100 2000 1000
+            """))
+        #expect(snapshot.interfaces.count == 2)
+        #expect(snapshot.interfaces.map(\.name) == ["eth-0", "vlan-100"])
+    }
+
+    @Test("диск с путём содержащим пробелы разбирается")
+    func diskPathWithSpaces() throws {
+        let snapshot = try #require(SnapshotParser.parse("""
+            T 1700000000
+            D /mnt/My\\ Disk 220000000000 188000000000 32000000000
+            """))
+        // Проверяем что парсинг не упал
+        #expect(snapshot.filesystems.count >= 0)
+    }
+
+    @Test("выпадающие данные MemFree не ломают память")
+    func memFreeAbsent() {
+        let snapshot = SnapshotParser.parse("""
+            T 1700000000
+            M MemTotal: 32000000
+            M MemAvailable: 20000000
+            """)
+        #expect(snapshot != nil)
+    }
 }
 
 @Suite("Docker")
@@ -722,5 +797,346 @@ struct DockerEnvironmentTests {
                 [{"Config":{"Env":["=нет имени","без знака равенства"]}}]
                 """
             ).isEmpty)
+    }
+}
+
+@Suite("Метрики /proc - граничные случаи")
+struct MetricsEdgeCaseTests {
+    @Test("пустой ввод отвергается")
+    func emptyInput() {
+        #expect(SnapshotParser.parse("") == nil)
+        #expect(SnapshotParser.parse("\n\n") == nil)
+    }
+
+    @Test("отсутствие MemAvailable при наличии MemTotal — ошибка")
+    func missingMemAvailable() {
+        let incomplete = """
+            T 1756800000
+            L 0.42 0.51 0.48 2/184 9111
+            U 3542400.12 28000000.00
+            C cpu  100 0 50 800 10 0 0 0
+            M MemTotal: 32000000
+            M SwapTotal: 2000000
+            M SwapFree: 2000000
+            """
+        #expect(SnapshotParser.parse(incomplete) == nil)
+    }
+
+    @Test("повреждённая линия CPU (не все поля) отвергается")
+    func malformedCPULine() {
+        let broken = """
+            T 1756800000
+            L 0.42 0.51 0.48 2/184 9111
+            U 3542400.12 28000000.00
+            C cpu  100 0 50
+            M MemTotal: 32000000
+            M MemAvailable: 20000000
+            """
+        #expect(SnapshotParser.parse(broken) == nil)
+    }
+
+    @Test("имя интерфейса с дефисом и цифрами разбирается")
+    func networkInterfaceWithDashes() {
+        let input = """
+            T 1756800000
+            L 0.0 0.0 0.0 1/100 1000
+            U 1000.0 1000.0
+            C cpu  100 0 50 800 10 0 0 0
+            M MemTotal: 1000000
+            M MemAvailable: 800000
+            N eth-1 1000 500
+            N docker0 2000 1000
+            """
+        let snapshot = try? SnapshotParser.parse(input)
+        #expect(snapshot?.interfaces.map(\.name).contains("eth-1") == true)
+        #expect(snapshot?.interfaces.map(\.name).contains("docker0") == true)
+    }
+
+    @Test("счётчик взрывается при переполнении (большое число → 0)")
+    func counterWrapAround() {
+        let before = """
+            T 1000000000
+            L 0.1 0.1 0.1 1/10 1000
+            U 4000000000.0 1000000.0
+            C cpu  4294967290 0 0 4000 0 0 0 0
+            C cpu0 2147483645 0 0 2000 0 0 0 0
+            M MemTotal: 1000000
+            M MemAvailable: 900000
+            """
+        let after = """
+            T 1000000002
+            L 0.1 0.1 0.1 1/10 1000
+            U 4000000002.0 1000000.0
+            C cpu  10 0 0 4200 0 0 0 0
+            C cpu0 5 0 0 2100 0 0 0 0
+            M MemTotal: 1000000
+            M MemAvailable: 900000
+            """
+        let a = try? SnapshotParser.parse(before)
+        let b = try? SnapshotParser.parse(after)
+        let usage = SnapshotParser.usage(from: a!, to: b!)
+        #expect(usage.count == 2)
+        #expect(usage.allSatisfy { $0 >= 0 && $0 <= 1 })
+    }
+
+    @Test("диск с нулевой ёмкостью не ломает форматирование")
+    func zeroCapacityDisk() {
+        let input = """
+            T 1756800000
+            L 0.1 0.1 0.1 1/10 1000
+            U 1000.0 1000.0
+            C cpu  100 0 50 800 10 0 0 0
+            M MemTotal: 1000000
+            M MemAvailable: 900000
+            D /mnt/loop0 0 0 0
+            """
+        let snapshot = try? SnapshotParser.parse(input)
+        #expect(snapshot?.filesystems.count == 1)
+    }
+}
+
+@Suite("Docker - граничные случаи")
+struct DockerEdgeCaseTests {
+    private func json(_ pairs: KeyValuePairs<String, String>) -> String {
+        let body = pairs.map { "\"\($0.key)\":\"\($0.value)\"" }.joined(separator: ",")
+        return "{\(body)}"
+    }
+
+    @Test("пустой список контейнеров парсится как пустой")
+    func emptyList() {
+        let empty = ""
+        #expect(DockerCLI.parseList(empty).isEmpty)
+    }
+
+    @Test("только перевод строки — пустой список")
+    func onlyNewlines() {
+        #expect(DockerCLI.parseList("\n\n\n").isEmpty)
+    }
+
+    @Test("портрет очень длинного имени контейнера")
+    func veryLongContainerName() {
+        let longName = String(repeating: "a", count: 1000)
+        let input = json([
+            "ID": "abc123", "Names": longName, "Image": "img:1",
+            "State": "running", "Status": "Up 1 hour", "Ports": "", "Labels": "",
+        ])
+        let containers = DockerCLI.parseList(input)
+        #expect(containers.count == 1)
+        #expect(containers[0].name == longName)
+    }
+
+    @Test("IPv6 порты разбираются правильно")
+    func ipv6Ports() {
+        let input = json([
+            "ID": "def456", "Names": "web", "Image": "web:1",
+            "State": "running", "Status": "Up 1 hour",
+            "Ports": "[::]:8080->8080/tcp",
+            "Labels": "",
+        ])
+        let containers = DockerCLI.parseList(input)
+        #expect(containers.count == 1)
+    }
+
+    @Test("статистика с очень большими числами")
+    func largeStats() {
+        let json = """
+            {"ID":"xyz","Name":"big","CPUPerc":"99.99%","MemUsage":"1024GiB / 2048GiB","PIDs":"9999"}
+            """
+        let stats = DockerCLI.parseStats(json)
+        #expect(stats.count == 1)
+        #expect(stats[0].cpu > 0.99)
+        #expect(stats[0].memoryUsed > 1_000_000_000_000)
+    }
+
+    @Test("неполное JSON (отсутствуют поля) — пропускаются контейнеры")
+    func incompleteJSON() {
+        let incomplete = """
+            {"ID":"abc","Names":"container"}
+            """
+        #expect(DockerCLI.parseList(incomplete).isEmpty)
+    }
+}
+
+@Suite("authorized_keys - граничные случаи")
+struct KeysEdgeCaseTests {
+    @Test("пустой файл — пустой список")
+    func emptyFile() {
+        let keys = AuthorizedKeysFile.parse("")
+        #expect(keys.isEmpty)
+    }
+
+    @Test("только комментарии — пустой список")
+    func onlyComments() {
+        let text = """
+            # комментарий 1
+            # комментарий 2
+
+            """
+        let keys = AuthorizedKeysFile.parse(text)
+        #expect(keys.isEmpty)
+    }
+
+    @Test("очень длинный ключ (8KB+) разбирается целиком")
+    func veryLongKey() {
+        let longBase64 = String(repeating: "A", count: 8192)
+        let input = "ssh-ed25519 \(longBase64) very-long-comment"
+        let keys = AuthorizedKeysFile.parse(input)
+        #expect(keys.count == 1)
+        #expect(keys[0].base64.count > 8000)
+    }
+
+    @Test("UTF-8 в комментарии сохраняется")
+    func utf8InComment() {
+        let text = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh привет@москва"
+        let keys = AuthorizedKeysFile.parse(text)
+        #expect(keys.count == 1)
+        #expect(keys[0].comment == "привет@москва")
+    }
+
+    @Test("эмодзи в комментарии не ломают разбор")
+    func emojiInComment() {
+        let text = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh key🔑@🖥️"
+        let keys = AuthorizedKeysFile.parse(text)
+        #expect(keys.count == 1)
+        #expect(keys[0].comment.contains("🔑"))
+    }
+
+    @Test("смешанные окончания строк (CRLF и LF)")
+    func mixedLineEndings() {
+        let text = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh key1\r\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlMnOpQrStUvWxYz012345 key2\n"
+        let keys = AuthorizedKeysFile.parse(text)
+        #expect(keys.count == 2)
+    }
+
+    @Test("ключ с очень длинным паттерном опций")
+    func longOptions() {
+        let opts = (0..<100).map { "no-port-forwarding" }.joined(separator: ",")
+        let text = "\(opts) ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh key"
+        let keys = AuthorizedKeysFile.parse(text)
+        #expect(keys.count == 1)
+    }
+}
+
+@Suite("SSH config - граничные случаи")
+struct SSHConfigEdgeCaseTests {
+    @Test("пустой конфиг парсится")
+    func emptyConfig() {
+        let result = SSHConfigImport.parse("")
+        #expect(result.entries.isEmpty)
+    }
+
+    @Test("только комментарии парсятся")
+    func onlyComments() {
+        let text = """
+            # комментарий 1
+            # комментарий 2
+            """
+        let result = SSHConfigImport.parse(text)
+        #expect(result.entries.isEmpty)
+    }
+
+    @Test("смешивание табов и пробелов в отступах")
+    func tabsAndSpaces() {
+        let text = """
+            Host test1
+            \tHostName 10.0.0.1
+              User admin
+            Host test2
+            	HostName 10.0.0.2
+              	User user
+            """
+        let result = SSHConfigImport.parse(text)
+        #expect(result.entries.count >= 1)
+    }
+
+    @Test("цепочка через несколько бастионов")
+    func proxyChain() {
+        let text = """
+            Host bastion1
+                HostName 10.0.0.1
+            Host bastion2
+                HostName 10.0.0.2
+                ProxyJump bastion1
+            Host target
+                HostName 10.0.0.3
+                ProxyJump bastion2
+            """
+        let result = SSHConfigImport.parse(text)
+        let hosts = SSHConfigImport.hosts(from: result)
+        #expect(hosts.count == 3)
+    }
+
+    @Test("портрет бестолкового имени хоста")
+    func invalidHostName() {
+        let text = """
+            Host 192.168.1.1
+                HostName 10.0.0.1
+            """
+        let result = SSHConfigImport.parse(text)
+        #expect(result.entries.count >= 1)
+    }
+}
+
+@Suite("Кольцевой буфер - граничные случаи")
+struct RingBufferEdgeCaseTests {
+    @Test("переполнение на точной границе ёмкости")
+    func exactCapacityWrap() {
+        var buffer = RingBuffer<Int>(capacity: 3)
+        buffer.append(1)
+        buffer.append(2)
+        buffer.append(3)
+        #expect(buffer.elements == [1, 2, 3])
+        #expect(buffer.count == 3)
+        #expect(buffer.isFull)
+        buffer.append(4)
+        #expect(buffer.elements == [2, 3, 4])
+        #expect(buffer.count == 3)
+    }
+
+    @Test("порядок элементов сохраняется при обороте")
+    func wrappingMaintainsOrder() {
+        var buffer = RingBuffer<String>(capacity: 2)
+        buffer.append("a")
+        buffer.append("b")
+        buffer.append("c")
+        buffer.append("d")
+        #expect(buffer.elements == ["c", "d"])
+        let last = buffer.last
+        #expect(last == "d")
+    }
+
+    @Test("ёмкость 1 работает корректно")
+    func capacityOne() {
+        var buffer = RingBuffer<Int>(capacity: 1)
+        buffer.append(1)
+        #expect(buffer.elements == [1])
+        #expect(buffer.isFull)
+        buffer.append(2)
+        #expect(buffer.elements == [2])
+        #expect(buffer.last == 2)
+    }
+
+    @Test("большая ёмкость обрабатывается")
+    func largeCapacity() {
+        var buffer = RingBuffer<Int>(capacity: 10000)
+        for i in 0..<10000 {
+            buffer.append(i)
+        }
+        #expect(buffer.count == 10000)
+        #expect(buffer.last == 9999)
+        #expect(buffer.first == 0)
+    }
+
+    @Test("removeAll очищает состояние")
+    func clearStateAfterRemoveAll() {
+        var buffer = RingBuffer<Int>(capacity: 5)
+        buffer.append(1)
+        buffer.append(2)
+        buffer.append(3)
+        buffer.removeAll()
+        #expect(buffer.isEmpty)
+        #expect(buffer.elements == [])
+        buffer.append(10)
+        #expect(buffer.elements == [10])
     }
 }

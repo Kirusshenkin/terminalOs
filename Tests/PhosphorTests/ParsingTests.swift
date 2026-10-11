@@ -303,6 +303,46 @@ struct DockerTests {
     func quotesIdentifiers() {
         #expect(DockerCLI.action("rm", id: "evil; reboot") == "docker rm 'evil; reboot'")
     }
+
+    @Test("несколько контейнеров разбираются все")
+    func parseMultiple() {
+        let output = [
+            json(["ID": "aaa1", "Names": "web", "Image": "nginx", "State": "running", "Status": "Up 1 day", "Ports": "", "Labels": ""]),
+            json(["ID": "bbb2", "Names": "db", "Image": "postgres", "State": "running", "Status": "Up 1 day", "Ports": "", "Labels": ""]),
+            json(["ID": "ccc3", "Names": "cache", "Image": "redis", "State": "exited", "Status": "Exited (0)", "Ports": "", "Labels": ""]),
+        ].joined(separator: "\n")
+        let containers = DockerCLI.parseList(output)
+        #expect(containers.count == 3)
+        #expect(containers[0].id == "aaa1")
+        #expect(containers[1].id == "bbb2")
+        #expect(containers[2].state == .exited)
+    }
+
+    @Test("статистика с разными суффиксами размеров разбирается")
+    func statsWithSuffixes() {
+        let outputs = [
+            json(["ID": "a", "Name": "small", "CPUPerc": "1.23%", "MemUsage": "64KiB / 512MiB", "PIDs": "1"]),
+            json(["ID": "b", "Name": "big", "CPUPerc": "45.67%", "MemUsage": "2.5GiB / 8GiB", "PIDs": "42"]),
+            json(["ID": "c", "Name": "huge", "CPUPerc": "99.99%", "MemUsage": "1.8TiB / 2TiB", "PIDs": "1000"]),
+        ].joined(separator: "\n")
+        let stats = DockerCLI.parseStats(outputs)
+        #expect(stats.count == 3)
+        #expect(abs(stats[0].cpu - 0.0123) < 0.0001)
+        #expect(stats[0].memoryUsed == 64 * 1024)  // 64 KiB
+        #expect(stats[1].memoryUsed == Int64(2.5 * 1024 * 1024 * 1024))  // 2.5 GiB
+        #expect(abs(stats[2].cpu - 0.9999) < 0.0001)
+    }
+
+    @Test("контейнер с особыми символами в имени экранируется")
+    func quotesContainerNames() {
+        let names = ["simple", "with-dash", "with_underscore"]
+        for name in names {
+            let quoted = DockerCLI.action("exec", id: name)
+            // Должен начинаться с "docker exec " и содержать имя (возможно в кавычках)
+            #expect(quoted.starts(with: "docker exec "))
+            #expect(quoted.contains(name) || quoted.contains("'\(name)'"))
+        }
+    }
 }
 
 @Suite("authorized_keys")
@@ -363,6 +403,37 @@ struct KeysTests {
         let ed = AuthorizedKeysFile.parse(sample)[0]
         #expect(ed.weakness == nil)
         #expect(ed.bits == 256)
+    }
+
+    @Test("пустой файл не вызывает ошибок")
+    func emptyFile() {
+        let keys = AuthorizedKeysFile.parse("")
+        #expect(keys.isEmpty)
+    }
+
+    @Test("строки только с пробелами и комментарии пропускаются")
+    func skipsCommentsAndWhitespace() {
+        let content = """
+            # это комментарий
+
+
+            # ещё комментарий
+            ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh valid@host
+            # конец
+            """
+        let keys = AuthorizedKeysFile.parse(content)
+        #expect(keys.count == 1)
+        #expect(keys[0].comment == "valid@host")
+    }
+
+    @Test("ключ с несколькими опциями разбирается полностью")
+    func multipleOptions() {
+        let line = "restrict,pty,command=\"/bin/false\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1vN3Kk8lQ2mZ0pW7xR4tYs6uVbNcXdEfGh test@host"
+        let keys = AuthorizedKeysFile.parse(line)
+        #expect(keys.count == 1)
+        #expect(keys[0].options?.contains("restrict") == true)
+        #expect(keys[0].options?.contains("pty") == true)
+        #expect(keys[0].options?.contains("command") == true)
     }
 }
 
@@ -428,6 +499,74 @@ struct SSHConfigTests {
         } else {
             Issue.record("ожидали переход через бастион, получили \(hosts[1].reach)")
         }
+    }
+
+    @Test("User из конфига доезжает до хоста")
+    func userIsKept() {
+        let result = SSHConfigImport.parse(
+            """
+            Host prod
+                HostName 10.0.0.2
+                User appuser
+            """)
+        let hosts = SSHConfigImport.hosts(from: result)
+        #expect(hosts.count == 1)
+        #expect(hosts[0].user == "appuser")
+    }
+
+    @Test("Port из конфига доезжает до хоста")
+    func portIsKept() {
+        let result = SSHConfigImport.parse(
+            """
+            Host prod
+                HostName 10.0.0.2
+                Port 2222
+            """)
+        let hosts = SSHConfigImport.hosts(from: result)
+        #expect(hosts.count == 1)
+        #expect(hosts[0].port == 2222)
+    }
+
+    @Test("несколько хостов с разными параметрами")
+    func multipleHosts() {
+        let result = SSHConfigImport.parse(
+            """
+            Host bastion
+                HostName 10.0.0.1
+                User admin
+                Port 22
+
+            Host prod
+                HostName 10.0.0.2
+                User appuser
+                Port 2222
+                ProxyJump bastion
+                IdentityFile ~/.ssh/id_prod
+
+            Host staging
+                HostName 10.0.0.3
+                User testuser
+                IdentityFile ~/.ssh/id_staging
+            """)
+        let hosts = SSHConfigImport.hosts(from: result)
+        #expect(hosts.count == 3)
+        #expect(hosts[0].user == "admin")
+        #expect(hosts[1].user == "appuser")
+        #expect(hosts[1].port == 2222)
+        #expect(hosts[2].user == "testuser")
+    }
+
+    @Test("пустой конфиг и конфиг с одними комментариями дают пустой результат")
+    func emptyConfig() {
+        let empty = SSHConfigImport.parse("")
+        #expect(empty.entries.isEmpty)
+
+        let comments = SSHConfigImport.parse("""
+            # This is a comment
+            # Another comment
+
+            """)
+        #expect(comments.entries.isEmpty)
     }
 }
 

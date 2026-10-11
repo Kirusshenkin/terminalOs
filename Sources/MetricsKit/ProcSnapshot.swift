@@ -90,7 +90,8 @@ public enum ProcProbe {
         echo "U $(cat /proc/uptime)"; \
         sed -n 's/^cpu/C cpu/p' /proc/stat; \
         awk '/^(MemTotal|MemAvailable|SwapTotal|SwapFree):/{print "M",$1,$2}' /proc/meminfo; \
-        df -PB1 -x tmpfs -x devtmpfs 2>/dev/null | awk 'NR>1{mount=""; for(i=6;i<=NF;i++){if(i>6)mount=mount" "; mount=mount$i} print "D",mount,$2,$3,$4}'; \
+        df -PB1 -x tmpfs -x devtmpfs 2>/dev/null | \
+        awk 'NR>1{m="";for(i=6;i<=NF;i++){if(i>6)m=m" ";m=m$i}print "D",m,$2,$3,$4}'; \
         awk 'NR>2{gsub(":","",$1); print "N",$1,$2,$10}' /proc/net/dev; \
         awk '$3 ~ /^(sd[a-z]|nvme[0-9]+n[0-9]+|vd[a-z]|xvd[a-z])$/ \
             {print "B",$3,$6,$10}' /proc/diskstats; \
